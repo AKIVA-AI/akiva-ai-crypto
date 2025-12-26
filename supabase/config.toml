@@ -1,1 +1,16 @@
 project_id = "usotocccywoadwkyjwhm"
+
+[functions.reallocate-capital]
+verify_jwt = true
+
+[functions.freeze-book]
+verify_jwt = true
+
+[functions.toggle-strategy]
+verify_jwt = true
+
+[functions.kill-switch]
+verify_jwt = true
+
+[functions.approve-meme-launch]
+verify_jwt = true

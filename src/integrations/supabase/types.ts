@@ -103,6 +103,53 @@ export type Database = {
           },
         ]
       }
+      book_budgets: {
+        Row: {
+          allocated_capital: number
+          book_id: string
+          created_at: string
+          current_daily_pnl: number
+          id: string
+          max_daily_loss: number
+          period_end: string
+          period_start: string
+          updated_at: string
+          used_capital: number
+        }
+        Insert: {
+          allocated_capital?: number
+          book_id: string
+          created_at?: string
+          current_daily_pnl?: number
+          id?: string
+          max_daily_loss?: number
+          period_end: string
+          period_start: string
+          updated_at?: string
+          used_capital?: number
+        }
+        Update: {
+          allocated_capital?: number
+          book_id?: string
+          created_at?: string
+          current_daily_pnl?: number
+          id?: string
+          max_daily_loss?: number
+          period_end?: string
+          period_start?: string
+          updated_at?: string
+          used_capital?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "book_budgets_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       books: {
         Row: {
           capital_allocated: number
@@ -180,6 +227,130 @@ export type Database = {
           },
         ]
       }
+      deployments: {
+        Row: {
+          book_id: string
+          config: Json
+          created_at: string
+          deployed_at: string | null
+          deployed_by: string | null
+          error_message: string | null
+          id: string
+          status: string
+          strategy_id: string
+          terminated_at: string | null
+          updated_at: string
+          venue_id: string | null
+        }
+        Insert: {
+          book_id: string
+          config?: Json
+          created_at?: string
+          deployed_at?: string | null
+          deployed_by?: string | null
+          error_message?: string | null
+          id?: string
+          status?: string
+          strategy_id: string
+          terminated_at?: string | null
+          updated_at?: string
+          venue_id?: string | null
+        }
+        Update: {
+          book_id?: string
+          config?: Json
+          created_at?: string
+          deployed_at?: string | null
+          deployed_by?: string | null
+          error_message?: string | null
+          id?: string
+          status?: string
+          strategy_id?: string
+          terminated_at?: string | null
+          updated_at?: string
+          venue_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deployments_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deployments_strategy_id_fkey"
+            columns: ["strategy_id"]
+            isOneToOne: false
+            referencedRelation: "strategies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deployments_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fills: {
+        Row: {
+          created_at: string
+          executed_at: string
+          fee: number
+          id: string
+          instrument: string
+          order_id: string
+          price: number
+          side: Database["public"]["Enums"]["order_side"]
+          size: number
+          venue_fill_id: string | null
+          venue_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          executed_at?: string
+          fee?: number
+          id?: string
+          instrument: string
+          order_id: string
+          price: number
+          side: Database["public"]["Enums"]["order_side"]
+          size: number
+          venue_fill_id?: string | null
+          venue_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          executed_at?: string
+          fee?: number
+          id?: string
+          instrument?: string
+          order_id?: string
+          price?: number
+          side?: Database["public"]["Enums"]["order_side"]
+          size?: number
+          venue_fill_id?: string | null
+          venue_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fills_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fills_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       global_settings: {
         Row: {
           api_base_url: string
@@ -215,6 +386,47 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: []
+      }
+      market_snapshots: {
+        Row: {
+          ask: number
+          bid: number
+          id: string
+          instrument: string
+          last_price: number
+          recorded_at: string
+          venue_id: string
+          volume_24h: number | null
+        }
+        Insert: {
+          ask: number
+          bid: number
+          id?: string
+          instrument: string
+          last_price: number
+          recorded_at?: string
+          venue_id: string
+          volume_24h?: number | null
+        }
+        Update: {
+          ask?: number
+          bid?: number
+          id?: string
+          instrument?: string
+          last_price?: number
+          recorded_at?: string
+          venue_id?: string
+          volume_24h?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "market_snapshots_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       meme_metrics: {
         Row: {
@@ -734,6 +946,78 @@ export type Database = {
           },
         ]
       }
+      trade_intents: {
+        Row: {
+          book_id: string
+          confidence: number
+          created_at: string
+          direction: Database["public"]["Enums"]["order_side"]
+          horizon_minutes: number
+          id: string
+          instrument: string
+          invalidation_price: number | null
+          liquidity_requirement: string
+          max_loss_usd: number
+          metadata: Json
+          processed_at: string | null
+          risk_decision: Json | null
+          status: string
+          strategy_id: string
+          target_exposure_usd: number
+        }
+        Insert: {
+          book_id: string
+          confidence: number
+          created_at?: string
+          direction: Database["public"]["Enums"]["order_side"]
+          horizon_minutes?: number
+          id?: string
+          instrument: string
+          invalidation_price?: number | null
+          liquidity_requirement?: string
+          max_loss_usd: number
+          metadata?: Json
+          processed_at?: string | null
+          risk_decision?: Json | null
+          status?: string
+          strategy_id: string
+          target_exposure_usd: number
+        }
+        Update: {
+          book_id?: string
+          confidence?: number
+          created_at?: string
+          direction?: Database["public"]["Enums"]["order_side"]
+          horizon_minutes?: number
+          id?: string
+          instrument?: string
+          invalidation_price?: number | null
+          liquidity_requirement?: string
+          max_loss_usd?: number
+          metadata?: Json
+          processed_at?: string | null
+          risk_decision?: Json | null
+          status?: string
+          strategy_id?: string
+          target_exposure_usd?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trade_intents_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trade_intents_strategy_id_fkey"
+            columns: ["strategy_id"]
+            isOneToOne: false
+            referencedRelation: "strategies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -754,6 +1038,53 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      venue_health: {
+        Row: {
+          error_rate: number
+          id: string
+          last_error: string | null
+          last_order_time: string | null
+          latency_ms: number
+          metadata: Json
+          order_success_rate: number
+          recorded_at: string
+          status: string
+          venue_id: string
+        }
+        Insert: {
+          error_rate?: number
+          id?: string
+          last_error?: string | null
+          last_order_time?: string | null
+          latency_ms?: number
+          metadata?: Json
+          order_success_rate?: number
+          recorded_at?: string
+          status?: string
+          venue_id: string
+        }
+        Update: {
+          error_rate?: number
+          id?: string
+          last_error?: string | null
+          last_order_time?: string | null
+          latency_ms?: number
+          metadata?: Json
+          order_success_rate?: number
+          recorded_at?: string
+          status?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_health_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       venues: {
         Row: {

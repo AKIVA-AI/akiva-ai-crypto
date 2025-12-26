@@ -2,9 +2,9 @@
 Crypto Ops Trading Engine - FastAPI Application
 """
 import structlog
-from fastapi import FastAPI, HTTPException, Depends, Header
+from fastapi import FastAPI, Header
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Optional, List
+from typing import Optional
 from uuid import UUID
 from pydantic import BaseModel
 
@@ -14,10 +14,10 @@ from app.services.risk_engine import risk_engine
 from app.services.portfolio_engine import portfolio_engine
 from app.services.oms_execution import oms_service
 from app.services.reconciliation import recon_service
-from app.services.meme_venture import meme_service
 from app.adapters.coinbase_adapter import CoinbaseAdapter
 from app.adapters.mexc_adapter import MEXCAdapter
 from app.adapters.dex_adapter import DEXAdapter
+from app.api import trading, risk, venues, meme
 
 structlog.configure(processors=[structlog.processors.JSONRenderer()])
 logger = structlog.get_logger()
@@ -51,6 +51,12 @@ async def startup():
     recon_service.register_adapter("mexc", mexc)
     
     logger.info("trading_engine_started", paper_mode=settings.is_paper_mode)
+
+# Include API routers
+app.include_router(trading.router)
+app.include_router(risk.router)
+app.include_router(venues.router)
+app.include_router(meme.router)
 
 # Health check
 @app.get("/health")
