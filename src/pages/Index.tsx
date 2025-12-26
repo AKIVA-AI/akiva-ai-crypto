@@ -4,8 +4,10 @@ import { AgentStatusGrid } from '@/components/dashboard/AgentStatusGrid';
 import { PositionsTable } from '@/components/dashboard/PositionsTable';
 import { RecentEvents } from '@/components/dashboard/RecentEvents';
 import { RiskGauge } from '@/components/dashboard/RiskGauge';
+import { PnLChart } from '@/components/dashboard/PnLChart';
 import { useDashboardMetrics } from '@/hooks/useDashboardMetrics';
 import { useDashboardRealtime } from '@/hooks/useRealtimeSubscriptions';
+import { useTradingShortcuts } from '@/hooks/useTradingShortcuts';
 import { DollarSign, TrendingUp, Layers, AlertTriangle, Loader2 } from 'lucide-react';
 
 export default function Index() {
@@ -13,6 +15,9 @@ export default function Index() {
   
   // Enable realtime updates for dashboard
   useDashboardRealtime();
+  
+  // Enable keyboard shortcuts
+  useTradingShortcuts();
 
   return (
     <MainLayout>
@@ -64,6 +69,9 @@ export default function Index() {
             />
           </div>
         )}
+
+        {/* P&L Chart */}
+        <PnLChart />
 
         {/* Main content grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
