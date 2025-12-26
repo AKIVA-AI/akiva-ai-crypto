@@ -23,3 +23,6 @@ verify_jwt = true
 
 [functions.token-metrics]
 verify_jwt = false
+
+[functions.trading-api]
+verify_jwt = true

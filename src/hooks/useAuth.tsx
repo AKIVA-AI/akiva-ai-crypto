@@ -55,18 +55,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
+    // Input validation
+    if (!email || !email.includes('@')) {
+      toast.error('Please enter a valid email address');
+      throw new Error('Invalid email');
+    }
+    if (password.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      throw new Error('Password too short');
+    }
+    if (!fullName.trim()) {
+      toast.error('Please enter your full name');
+      throw new Error('Name required');
+    }
+
+    const redirectUrl = `${window.location.origin}/`;
+    
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
+        emailRedirectTo: redirectUrl,
         data: {
-          full_name: fullName,
+          full_name: fullName.trim(),
         },
       },
     });
 
     if (error) {
-      toast.error(error.message);
+      if (error.message.includes('already registered')) {
+        toast.error('This email is already registered. Please sign in instead.');
+      } else {
+        toast.error(error.message);
+      }
       throw error;
     }
 
