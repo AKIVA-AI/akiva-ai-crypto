@@ -1,11 +1,12 @@
 import { MainLayout } from '@/components/layout/MainLayout';
 import { BookManagement } from '@/components/books/BookManagement';
+import { KillSwitchPanel } from '@/components/risk/KillSwitchPanel';
 import { useBooks } from '@/hooks/useBooks';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, AlertTriangle, Settings, TrendingDown, Loader2 } from 'lucide-react';
+import { Shield, AlertTriangle, Settings, Power, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function Risk() {
@@ -65,12 +66,20 @@ export default function Risk() {
           </div>
         </div>
 
-        <Tabs defaultValue="books" className="space-y-4">
+        <Tabs defaultValue="killswitch" className="space-y-4">
           <TabsList>
+            <TabsTrigger value="killswitch" className="gap-2">
+              <Power className="h-4 w-4" />
+              Kill Switch
+            </TabsTrigger>
             <TabsTrigger value="books">Trading Books</TabsTrigger>
             <TabsTrigger value="breakers">Circuit Breakers</TabsTrigger>
             <TabsTrigger value="exposure">Exposure Matrix</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="killswitch">
+            <KillSwitchPanel />
+          </TabsContent>
 
           <TabsContent value="books">
             <BookManagement />

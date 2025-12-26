@@ -1,0 +1,350 @@
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { 
+  TrendingUp, 
+  TrendingDown, 
+  AlertTriangle, 
+  Zap,
+  Calculator,
+  Shield,
+  Loader2
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+
+interface TradeTicketProps {
+  onClose?: () => void;
+  defaultInstrument?: string;
+  defaultBookId?: string;
+}
+
+export function TradeTicket({ onClose, defaultInstrument = 'BTC/USD', defaultBookId }: TradeTicketProps) {
+  const queryClient = useQueryClient();
+  
+  const [side, setSide] = useState<'buy' | 'sell'>('buy');
+  const [orderType, setOrderType] = useState<'market' | 'limit'>('market');
+  const [instrument, setInstrument] = useState(defaultInstrument);
+  const [size, setSize] = useState('0.1');
+  const [price, setPrice] = useState('');
+  const [bookId, setBookId] = useState(defaultBookId || '');
+  const [strategyId, setStrategyId] = useState('');
+  const [reduceOnly, setReduceOnly] = useState(false);
+  const [riskPercent, setRiskPercent] = useState([1]);
+
+  // Fetch books
+  const { data: books = [] } = useQuery({
+    queryKey: ['books-for-trade'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('books')
+        .select('*')
+        .eq('status', 'active');
+      return data || [];
+    },
+  });
+
+  // Fetch strategies
+  const { data: strategies = [] } = useQuery({
+    queryKey: ['strategies-for-trade', bookId],
+    queryFn: async () => {
+      if (!bookId) return [];
+      const { data } = await supabase
+        .from('strategies')
+        .select('*')
+        .eq('book_id', bookId)
+        .neq('status', 'off');
+      return data || [];
+    },
+    enabled: !!bookId,
+  });
+
+  // Fetch venues
+  const { data: venues = [] } = useQuery({
+    queryKey: ['venues-for-trade'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('venues')
+        .select('*')
+        .eq('is_enabled', true)
+        .eq('status', 'healthy');
+      return data || [];
+    },
+  });
+
+  // Mock current price
+  const currentPrice = instrument.includes('BTC') ? 68432.50 : 
+                       instrument.includes('ETH') ? 3245.75 : 1.00;
+
+  // Calculate notional
+  const sizeNum = parseFloat(size) || 0;
+  const priceNum = orderType === 'market' ? currentPrice : (parseFloat(price) || currentPrice);
+  const notional = sizeNum * priceNum;
+
+  // Risk calculation
+  const selectedBook = books.find(b => b.id === bookId);
+  const bookCapital = selectedBook?.capital_allocated || 100000;
+  const maxRiskAmount = (bookCapital * riskPercent[0]) / 100;
+
+  // Submit order mutation
+  const submitOrder = useMutation({
+    mutationFn: async () => {
+      if (!bookId) throw new Error('Please select a book');
+      
+      const { data, error } = await supabase
+        .from('orders')
+        .insert({
+          book_id: bookId,
+          instrument,
+          side,
+          size: sizeNum,
+          price: orderType === 'limit' ? priceNum : null,
+          status: 'open',
+          strategy_id: strategyId || null,
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success(`${side.toUpperCase()} order submitted`, {
+        description: `${sizeNum} ${instrument} @ ${orderType === 'market' ? 'Market' : priceNum}`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      onClose?.();
+    },
+    onError: (error: any) => {
+      toast.error('Order failed', { description: error.message });
+    },
+  });
+
+  const handleSubmit = () => {
+    if (notional > maxRiskAmount) {
+      toast.warning('Risk limit exceeded', {
+        description: `Notional ${notional.toFixed(2)} exceeds max risk ${maxRiskAmount.toFixed(2)}`,
+      });
+      return;
+    }
+    submitOrder.mutate();
+  };
+
+  return (
+    <Card className="glass-panel w-full max-w-md">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center justify-between">
+          <span className="flex items-center gap-2">
+            <Zap className="h-5 w-5 text-primary" />
+            Trade Ticket
+          </span>
+          <Badge variant="outline" className="font-mono">
+            {instrument}
+          </Badge>
+        </CardTitle>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        {/* Side Toggle */}
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            type="button"
+            variant={side === 'buy' ? 'default' : 'outline'}
+            className={cn(
+              'h-12 text-lg font-semibold transition-all',
+              side === 'buy' && 'bg-success hover:bg-success/90 text-success-foreground shadow-glow-success'
+            )}
+            onClick={() => setSide('buy')}
+          >
+            <TrendingUp className="mr-2 h-5 w-5" />
+            BUY
+          </Button>
+          <Button
+            type="button"
+            variant={side === 'sell' ? 'default' : 'outline'}
+            className={cn(
+              'h-12 text-lg font-semibold transition-all',
+              side === 'sell' && 'bg-destructive hover:bg-destructive/90 text-destructive-foreground shadow-glow-destructive'
+            )}
+            onClick={() => setSide('sell')}
+          >
+            <TrendingDown className="mr-2 h-5 w-5" />
+            SELL
+          </Button>
+        </div>
+
+        {/* Order Type */}
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            type="button"
+            variant={orderType === 'market' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setOrderType('market')}
+          >
+            Market
+          </Button>
+          <Button
+            type="button"
+            variant={orderType === 'limit' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setOrderType('limit')}
+          >
+            Limit
+          </Button>
+        </div>
+
+        <Separator />
+
+        {/* Book Selection */}
+        <div className="space-y-2">
+          <Label>Trading Book</Label>
+          <Select value={bookId} onValueChange={setBookId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select book" />
+            </SelectTrigger>
+            <SelectContent>
+              {books.map((book) => (
+                <SelectItem key={book.id} value={book.id}>
+                  <span className="flex items-center gap-2">
+                    {book.name}
+                    <Badge variant="outline" className="text-xs">
+                      {book.type}
+                    </Badge>
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Instrument */}
+        <div className="space-y-2">
+          <Label>Instrument</Label>
+          <Select value={instrument} onValueChange={setInstrument}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="BTC/USD">BTC/USD</SelectItem>
+              <SelectItem value="ETH/USD">ETH/USD</SelectItem>
+              <SelectItem value="SOL/USD">SOL/USD</SelectItem>
+              <SelectItem value="ETH/BTC">ETH/BTC</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Size */}
+        <div className="space-y-2">
+          <Label>Size</Label>
+          <Input
+            type="number"
+            value={size}
+            onChange={(e) => setSize(e.target.value)}
+            className="font-mono text-lg"
+            step="0.01"
+            min="0"
+          />
+        </div>
+
+        {/* Price (for limit orders) */}
+        {orderType === 'limit' && (
+          <div className="space-y-2">
+            <Label>Limit Price</Label>
+            <Input
+              type="number"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              placeholder={currentPrice.toString()}
+              className="font-mono"
+              step="0.01"
+            />
+          </div>
+        )}
+
+        {/* Risk Slider */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <Label className="flex items-center gap-2">
+              <Shield className="h-4 w-4 text-primary" />
+              Risk Limit
+            </Label>
+            <span className="text-sm font-mono text-muted-foreground">
+              {riskPercent[0]}% (${maxRiskAmount.toLocaleString()})
+            </span>
+          </div>
+          <Slider
+            value={riskPercent}
+            onValueChange={setRiskPercent}
+            min={0.5}
+            max={5}
+            step={0.5}
+            className="w-full"
+          />
+        </div>
+
+        {/* Reduce Only Toggle */}
+        <div className="flex items-center justify-between">
+          <Label htmlFor="reduce-only">Reduce Only</Label>
+          <Switch
+            id="reduce-only"
+            checked={reduceOnly}
+            onCheckedChange={setReduceOnly}
+          />
+        </div>
+
+        <Separator />
+
+        {/* Order Summary */}
+        <div className="rounded-lg bg-muted/30 p-3 space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Current Price</span>
+            <span className="font-mono">${currentPrice.toLocaleString()}</span>
+          </div>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Est. Notional</span>
+            <span className="font-mono font-semibold">${notional.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+          </div>
+          {notional > maxRiskAmount && (
+            <div className="flex items-center gap-2 text-destructive text-sm">
+              <AlertTriangle className="h-4 w-4" />
+              Exceeds risk limit
+            </div>
+          )}
+        </div>
+      </CardContent>
+
+      <CardFooter className="flex gap-2">
+        <Button
+          variant="outline"
+          className="flex-1"
+          onClick={onClose}
+        >
+          Cancel
+        </Button>
+        <Button
+          className={cn(
+            'flex-1 font-semibold',
+            side === 'buy' ? 'bg-success hover:bg-success/90' : 'bg-destructive hover:bg-destructive/90'
+          )}
+          onClick={handleSubmit}
+          disabled={submitOrder.isPending || !bookId || sizeNum <= 0}
+        >
+          {submitOrder.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            `${side.toUpperCase()} ${sizeNum} ${instrument.split('/')[0]}`
+          )}
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+}
