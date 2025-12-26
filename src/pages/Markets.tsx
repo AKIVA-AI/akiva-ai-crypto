@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { TradingViewChart } from '@/components/charts/TradingViewChart';
+import { TradeTicket } from '@/components/trading/TradeTicket';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { 
   TrendingUp, 
@@ -12,6 +15,7 @@ import {
   Star,
   Activity,
   BarChart2,
+  Zap,
 } from 'lucide-react';
 
 interface MarketTicker {
@@ -39,6 +43,7 @@ export default function Markets() {
   const [selectedSymbol, setSelectedSymbol] = useState('BTC-USDT');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [isTradeTicketOpen, setIsTradeTicketOpen] = useState(false);
 
   const filteredMarkets = MARKET_DATA.filter(market => {
     const matchesSearch = market.symbol.toLowerCase().includes(searchQuery.toLowerCase());
@@ -60,6 +65,20 @@ export default function Markets() {
             </h1>
             <p className="text-muted-foreground">Real-time market data and price charts</p>
           </div>
+          <Sheet open={isTradeTicketOpen} onOpenChange={setIsTradeTicketOpen}>
+            <SheetTrigger asChild>
+              <Button className="gap-2">
+                <Zap className="h-4 w-4" />
+                Trade
+              </Button>
+            </SheetTrigger>
+            <SheetContent className="w-full sm:max-w-md p-0 border-l border-border/50">
+              <TradeTicket 
+                defaultInstrument={selectedSymbol.replace('-', '/')} 
+                onClose={() => setIsTradeTicketOpen(false)}
+              />
+            </SheetContent>
+          </Sheet>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -169,6 +188,14 @@ export default function Markets() {
                         ${(selectedMarket.volume24h / 1000000000).toFixed(2)}B
                       </p>
                     </div>
+                    <Button 
+                      size="sm" 
+                      className="gap-1"
+                      onClick={() => setIsTradeTicketOpen(true)}
+                    >
+                      <Zap className="h-3 w-3" />
+                      Trade {selectedSymbol.split('-')[0]}
+                    </Button>
                   </div>
                 </div>
               </div>
