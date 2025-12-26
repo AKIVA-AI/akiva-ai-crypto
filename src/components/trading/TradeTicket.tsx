@@ -178,13 +178,20 @@ export function TradeTicket({ onClose, defaultInstrument = 'BTC/USDT', defaultBo
           <div className="flex items-center gap-2">
             <Badge 
               variant="outline" 
+              className="gap-1 text-xs border-warning/50 text-warning"
+            >
+              <AlertTriangle className="h-3 w-3" />
+              Paper Mode
+            </Badge>
+            <Badge 
+              variant="outline" 
               className={cn(
                 'gap-1 text-xs',
                 isConnected ? 'border-success/50 text-success' : 'border-destructive/50 text-destructive'
               )}
             >
               {isConnected ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-              {isConnected ? 'Live' : 'Off'}
+              {isConnected ? 'Feed' : 'Off'}
             </Badge>
             <Badge variant="outline" className="font-mono">
               {instrument}

@@ -271,7 +271,14 @@ export function ExchangeAPIManager() {
         </div>
       </CardHeader>
       <CardContent>
-        <ScrollArea className="h-[350px]">
+        <Alert className="mb-4 border-warning/50 bg-warning/5">
+          <AlertTriangle className="h-4 w-4 text-warning" />
+          <AlertDescription className="text-warning">
+            <strong>Preview Mode:</strong> API keys are stored locally for UI demonstration only. 
+            Real exchange connections require backend integration.
+          </AlertDescription>
+        </Alert>
+        <ScrollArea className="h-[300px]">
           {configs.length > 0 ? (
             <div className="space-y-3">
               {configs.map((config) => {
@@ -290,17 +297,10 @@ export function ExchangeAPIManager() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {config.isConnected ? (
-                          <Badge className="bg-trading-long/20 text-trading-long gap-1">
-                            <CheckCircle2 className="h-3 w-3" />
-                            Connected
-                          </Badge>
-                        ) : (
-                          <Badge variant="destructive" className="gap-1">
-                            <XCircle className="h-3 w-3" />
-                            Disconnected
-                          </Badge>
-                        )}
+                        <Badge variant="outline" className="gap-1 border-warning/50 text-warning">
+                          <AlertTriangle className="h-3 w-3" />
+                          Local Only
+                        </Badge>
                       </div>
                     </div>
 

@@ -304,10 +304,18 @@ export function AutoTradeTriggers() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="alert">Alert Only</SelectItem>
-                        <SelectItem value="paper_trade">Paper Trade</SelectItem>
-                        <SelectItem value="live_trade">Live Trade</SelectItem>
+                        <SelectItem value="paper_trade">Paper Trade (Simulated)</SelectItem>
+                        <SelectItem value="live_trade" disabled>
+                          <span className="flex items-center gap-2">
+                            Live Trade
+                            <Badge variant="outline" className="text-[10px] px-1">Requires API</Badge>
+                          </span>
+                        </SelectItem>
                       </SelectContent>
                     </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Live trading requires connected exchange APIs with trading permissions.
+                    </p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
