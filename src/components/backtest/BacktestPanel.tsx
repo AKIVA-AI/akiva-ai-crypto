@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useStrategies } from '@/hooks/useStrategies';
 import { useBooks } from '@/hooks/useBooks';
 import { useMutation } from '@tanstack/react-query';
@@ -18,9 +19,11 @@ import {
   DollarSign,
   Percent,
   BarChart3,
-  Activity
+  Activity,
+  LineChart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { BacktestEquityCurve } from './BacktestCharts';
 
 interface BacktestMetrics {
   total_return_pct: number;
@@ -237,89 +240,113 @@ export function BacktestPanel() {
           <>
             <Separator />
             
-            <div className="space-y-4">
+            <Tabs defaultValue="metrics" className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold">Backtest Results</h3>
-                <Badge variant={result.metrics.total_return_pct >= 0 ? 'success' : 'destructive'}>
-                  {result.status}
-                </Badge>
-              </div>
-
-              {/* Key Metrics */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <MetricCard 
-                  label="Total Return"
-                  value={result.metrics.total_return_pct}
-                  icon={result.metrics.total_return_pct >= 0 ? TrendingUp : TrendingDown}
-                  format="percent"
-                />
-                <MetricCard 
-                  label="Sharpe Ratio"
-                  value={result.metrics.sharpe_ratio}
-                  icon={Activity}
-                  format="ratio"
-                />
-                <MetricCard 
-                  label="Max Drawdown"
-                  value={-result.metrics.max_drawdown_pct}
-                  icon={TrendingDown}
-                  format="percent"
-                />
-                <MetricCard 
-                  label="Win Rate"
-                  value={result.metrics.win_rate}
-                  icon={Percent}
-                  format="percent"
-                  positive={result.metrics.win_rate > 50}
-                />
-              </div>
-
-              {/* Secondary Metrics */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <MetricCard 
-                  label="Total Trades"
-                  value={result.metrics.total_trades}
-                  icon={BarChart3}
-                />
-                <MetricCard 
-                  label="Profit Factor"
-                  value={result.metrics.profit_factor}
-                  icon={DollarSign}
-                  format="ratio"
-                />
-                <MetricCard 
-                  label="Avg Trade PnL"
-                  value={result.metrics.avg_trade_pnl}
-                  icon={DollarSign}
-                  format="currency"
-                />
-                <MetricCard 
-                  label="Total Commission"
-                  value={-result.metrics.total_commission}
-                  icon={DollarSign}
-                  format="currency"
-                />
-              </div>
-
-              {/* Signal Stats */}
-              <div className="p-4 rounded-lg bg-muted/30 border">
-                <h4 className="font-medium mb-3">Signal Execution</h4>
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div>
-                    <p className="text-2xl font-bold font-mono">{result.signals_generated}</p>
-                    <p className="text-sm text-muted-foreground">Generated</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold font-mono text-success">{result.signals_executed}</p>
-                    <p className="text-sm text-muted-foreground">Executed</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold font-mono text-destructive">{result.signals_rejected}</p>
-                    <p className="text-sm text-muted-foreground">Rejected</p>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <TabsList>
+                    <TabsTrigger value="metrics" className="gap-1">
+                      <BarChart3 className="h-3 w-3" />
+                      Metrics
+                    </TabsTrigger>
+                    <TabsTrigger value="charts" className="gap-1">
+                      <LineChart className="h-3 w-3" />
+                      Charts
+                    </TabsTrigger>
+                  </TabsList>
+                  <Badge variant={result.metrics.total_return_pct >= 0 ? 'success' : 'destructive'}>
+                    {result.status}
+                  </Badge>
                 </div>
               </div>
-            </div>
+
+              <TabsContent value="metrics" className="space-y-4">
+                {/* Key Metrics */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <MetricCard 
+                    label="Total Return"
+                    value={result.metrics.total_return_pct}
+                    icon={result.metrics.total_return_pct >= 0 ? TrendingUp : TrendingDown}
+                    format="percent"
+                  />
+                  <MetricCard 
+                    label="Sharpe Ratio"
+                    value={result.metrics.sharpe_ratio}
+                    icon={Activity}
+                    format="ratio"
+                  />
+                  <MetricCard 
+                    label="Max Drawdown"
+                    value={-result.metrics.max_drawdown_pct}
+                    icon={TrendingDown}
+                    format="percent"
+                  />
+                  <MetricCard 
+                    label="Win Rate"
+                    value={result.metrics.win_rate}
+                    icon={Percent}
+                    format="percent"
+                    positive={result.metrics.win_rate > 50}
+                  />
+                </div>
+
+                {/* Secondary Metrics */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <MetricCard 
+                    label="Total Trades"
+                    value={result.metrics.total_trades}
+                    icon={BarChart3}
+                  />
+                  <MetricCard 
+                    label="Profit Factor"
+                    value={result.metrics.profit_factor}
+                    icon={DollarSign}
+                    format="ratio"
+                  />
+                  <MetricCard 
+                    label="Avg Trade PnL"
+                    value={result.metrics.avg_trade_pnl}
+                    icon={DollarSign}
+                    format="currency"
+                  />
+                  <MetricCard 
+                    label="Total Commission"
+                    value={-result.metrics.total_commission}
+                    icon={DollarSign}
+                    format="currency"
+                  />
+                </div>
+
+                {/* Signal Stats */}
+                <div className="p-4 rounded-lg bg-muted/30 border">
+                  <h4 className="font-medium mb-3">Signal Execution</h4>
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                      <p className="text-2xl font-bold font-mono">{result.signals_generated}</p>
+                      <p className="text-sm text-muted-foreground">Generated</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold font-mono text-success">{result.signals_executed}</p>
+                      <p className="text-sm text-muted-foreground">Executed</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold font-mono text-destructive">{result.signals_rejected}</p>
+                      <p className="text-sm text-muted-foreground">Rejected</p>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="charts">
+                <BacktestEquityCurve
+                  initialCapital={Number(initialCapital)}
+                  totalReturn={result.metrics.total_return_pct}
+                  maxDrawdown={result.metrics.max_drawdown_pct}
+                  totalTrades={result.metrics.total_trades}
+                  winRate={result.metrics.win_rate}
+                />
+              </TabsContent>
+            </Tabs>
           </>
         )}
       </CardContent>
