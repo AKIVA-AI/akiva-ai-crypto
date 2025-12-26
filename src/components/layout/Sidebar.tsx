@@ -13,12 +13,14 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  Cpu,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { name: 'Engine', href: '/engine', icon: Cpu },
   { name: 'Agents', href: '/agents', icon: Bot },
   { name: 'Strategies', href: '/strategies', icon: LineChart },
   { name: 'Execution', href: '/execution', icon: Crosshair },

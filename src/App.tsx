@@ -14,6 +14,7 @@ import Launch from "./pages/Launch";
 import Treasury from "./pages/Treasury";
 import Observability from "./pages/Observability";
 import Settings from "./pages/Settings";
+import Engine from "./pages/Engine";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -37,6 +38,7 @@ const App = () => (
             <Route path="/treasury" element={<ProtectedRoute><Treasury /></ProtectedRoute>} />
             <Route path="/observability" element={<ProtectedRoute><Observability /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            <Route path="/engine" element={<ProtectedRoute><Engine /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
