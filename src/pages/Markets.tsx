@@ -1,25 +1,16 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, lazy, Suspense } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { TradingViewChart } from '@/components/charts/TradingViewChart';
 import { TradeTicket } from '@/components/trading/TradeTicket';
 import { LiveOrderBook } from '@/components/trading/LiveOrderBook';
 import { TradeBlotter } from '@/components/trading/TradeBlotter';
 import { PortfolioSummaryWidget } from '@/components/portfolio/PortfolioSummaryWidget';
-import { MarketIntelligencePanel } from '@/components/intelligence/MarketIntelligencePanel';
-import { IntelligenceOverview } from '@/components/intelligence/IntelligenceOverview';
-import { WhaleAlertPanel } from '@/components/intelligence/WhaleAlertPanel';
-import { TradingCopilotPanel } from '@/components/intelligence/TradingCopilotPanel';
-import { ExchangeAPIManager } from '@/components/intelligence/ExchangeAPIManager';
-import { AutoTradeTriggers } from '@/components/intelligence/AutoTradeTriggers';
-import { MobileIntelligenceView } from '@/components/intelligence/MobileIntelligenceView';
-import { BacktestTriggers } from '@/components/intelligence/BacktestTriggers';
-import { TelegramBotManager } from '@/components/intelligence/TelegramBotManager';
-import { DerivativesPanel } from '@/components/intelligence/DerivativesPanel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useLivePriceFeed } from '@/hooks/useLivePriceFeed';
 import { useHyperliquidHealth } from '@/hooks/useHyperliquid';
@@ -36,6 +27,29 @@ import {
   Layers,
 } from 'lucide-react';
 import { WebSocketHealthMonitor } from '@/components/trading/WebSocketHealthMonitor';
+
+// Lazy load heavy Intelligence components
+const MarketIntelligencePanel = lazy(() => import('@/components/intelligence/MarketIntelligencePanel').then(m => ({ default: m.MarketIntelligencePanel })));
+const IntelligenceOverview = lazy(() => import('@/components/intelligence/IntelligenceOverview').then(m => ({ default: m.IntelligenceOverview })));
+const WhaleAlertPanel = lazy(() => import('@/components/intelligence/WhaleAlertPanel').then(m => ({ default: m.WhaleAlertPanel })));
+const TradingCopilotPanel = lazy(() => import('@/components/intelligence/TradingCopilotPanel').then(m => ({ default: m.TradingCopilotPanel })));
+const ExchangeAPIManager = lazy(() => import('@/components/intelligence/ExchangeAPIManager').then(m => ({ default: m.ExchangeAPIManager })));
+const AutoTradeTriggers = lazy(() => import('@/components/intelligence/AutoTradeTriggers').then(m => ({ default: m.AutoTradeTriggers })));
+const MobileIntelligenceView = lazy(() => import('@/components/intelligence/MobileIntelligenceView').then(m => ({ default: m.MobileIntelligenceView })));
+const BacktestTriggers = lazy(() => import('@/components/intelligence/BacktestTriggers').then(m => ({ default: m.BacktestTriggers })));
+const TelegramBotManager = lazy(() => import('@/components/intelligence/TelegramBotManager').then(m => ({ default: m.TelegramBotManager })));
+const DerivativesPanel = lazy(() => import('@/components/intelligence/DerivativesPanel').then(m => ({ default: m.DerivativesPanel })));
+
+// Loading skeleton for lazy components
+const TabLoadingSkeleton = () => (
+  <div className="space-y-4">
+    <Skeleton className="h-32 w-full" />
+    <div className="grid grid-cols-2 gap-4">
+      <Skeleton className="h-24" />
+      <Skeleton className="h-24" />
+    </div>
+  </div>
+);
 
 interface MarketTicker {
   symbol: string;
@@ -335,37 +349,41 @@ export default function Markets() {
               </TabsContent>
 
               <TabsContent value="derivatives">
-                <DerivativesPanel instruments={TRACKED_SYMBOLS.slice(0, 6)} />
+                <Suspense fallback={<TabLoadingSkeleton />}>
+                  <DerivativesPanel instruments={TRACKED_SYMBOLS.slice(0, 6)} />
+                </Suspense>
               </TabsContent>
 
               <TabsContent value="intelligence">
-                <div className="space-y-4">
-                  {/* Mobile-optimized view for smaller screens */}
-                  <div className="block lg:hidden">
-                    <MobileIntelligenceView instruments={TRACKED_SYMBOLS.slice(0, 6)} />
+                <Suspense fallback={<TabLoadingSkeleton />}>
+                  <div className="space-y-4">
+                    {/* Mobile-optimized view for smaller screens */}
+                    <div className="block lg:hidden">
+                      <MobileIntelligenceView instruments={TRACKED_SYMBOLS.slice(0, 6)} />
+                    </div>
+                    
+                    {/* Full desktop layout */}
+                    <div className="hidden lg:block space-y-4">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <IntelligenceOverview instruments={TRACKED_SYMBOLS.slice(0, 6)} />
+                        <MarketIntelligencePanel instruments={TRACKED_SYMBOLS.slice(0, 6)} compact />
+                      </div>
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        <WhaleAlertPanel compact />
+                        <TradingCopilotPanel defaultInstrument={selectedSymbol} compact />
+                        <ExchangeAPIManager />
+                      </div>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <AutoTradeTriggers />
+                        <BacktestTriggers />
+                      </div>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <TelegramBotManager />
+                        <DerivativesPanel instruments={TRACKED_SYMBOLS.slice(0, 6)} compact />
+                      </div>
+                    </div>
                   </div>
-                  
-                  {/* Full desktop layout */}
-                  <div className="hidden lg:block space-y-4">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                      <IntelligenceOverview instruments={TRACKED_SYMBOLS.slice(0, 6)} />
-                      <MarketIntelligencePanel instruments={TRACKED_SYMBOLS.slice(0, 6)} compact />
-                    </div>
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                      <WhaleAlertPanel compact />
-                      <TradingCopilotPanel defaultInstrument={selectedSymbol} compact />
-                      <ExchangeAPIManager />
-                    </div>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                      <AutoTradeTriggers />
-                      <BacktestTriggers />
-                    </div>
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                      <TelegramBotManager />
-                      <DerivativesPanel instruments={TRACKED_SYMBOLS.slice(0, 6)} compact />
-                    </div>
-                  </div>
-                </div>
+                </Suspense>
               </TabsContent>
             </Tabs>
           </div>
