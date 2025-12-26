@@ -78,13 +78,17 @@ export default {
           "6": "hsl(var(--chart-6))",
         },
         // Trading-specific colors
+        trading: {
+          long: "hsl(var(--trading-long))",
+          short: "hsl(var(--trading-short))",
+        },
         long: "hsl(var(--long))",
         short: "hsl(var(--short))",
         neutral: "hsl(var(--neutral))",
-        // Supabase brand color
-        supabase: {
-          DEFAULT: "hsl(var(--supabase))",
-          foreground: "hsl(var(--supabase-foreground))",
+        // Data visualization (cyan family)
+        data: {
+          DEFAULT: "hsl(var(--data))",
+          foreground: "hsl(var(--data-foreground))",
         },
       },
       borderRadius: {

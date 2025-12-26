@@ -44,3 +44,6 @@ verify_jwt = true
 
 [functions.live-trading]
 verify_jwt = true
+
+[functions.hyperliquid]
+verify_jwt = true

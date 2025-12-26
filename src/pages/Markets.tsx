@@ -14,6 +14,7 @@ import { AutoTradeTriggers } from '@/components/intelligence/AutoTradeTriggers';
 import { MobileIntelligenceView } from '@/components/intelligence/MobileIntelligenceView';
 import { BacktestTriggers } from '@/components/intelligence/BacktestTriggers';
 import { TelegramBotManager } from '@/components/intelligence/TelegramBotManager';
+import { DerivativesPanel } from '@/components/intelligence/DerivativesPanel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +22,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { useLivePriceFeed } from '@/hooks/useLivePriceFeed';
+import { useHyperliquidHealth } from '@/hooks/useHyperliquid';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -31,6 +33,7 @@ import {
   Activity,
   Wallet,
   Brain,
+  Layers,
 } from 'lucide-react';
 import { WebSocketHealthMonitor } from '@/components/trading/WebSocketHealthMonitor';
 
@@ -70,6 +73,9 @@ export default function Markets() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [isTradeTicketOpen, setIsTradeTicketOpen] = useState(false);
+
+  // HyperLiquid health check
+  const { data: hlHealth } = useHyperliquidHealth();
 
   // Live WebSocket price feed from Binance
   const { 
@@ -285,9 +291,13 @@ export default function Markets() {
                   <Activity className="h-4 w-4" />
                   Trade Blotter
                 </TabsTrigger>
-              <TabsTrigger value="portfolio" className="gap-2">
+                <TabsTrigger value="portfolio" className="gap-2">
                   <Wallet className="h-4 w-4" />
                   Portfolio
+                </TabsTrigger>
+                <TabsTrigger value="derivatives" className="gap-2">
+                  <Layers className="h-4 w-4" />
+                  Derivatives
                 </TabsTrigger>
                 <TabsTrigger value="intelligence" className="gap-2">
                   <Brain className="h-4 w-4" />
@@ -296,7 +306,24 @@ export default function Markets() {
               </TabsList>
 
               <TabsContent value="orderbook">
-                <LiveOrderBook symbol={selectedSymbol} depth={10} />
+                <div className="space-y-4">
+                  {/* HyperLiquid status badge */}
+                  {hlHealth && (
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className={cn(
+                        "gap-1",
+                        hlHealth.status === 'healthy' ? 'border-success text-success' : 'border-warning text-warning'
+                      )}>
+                        <span className={cn(
+                          "w-2 h-2 rounded-full",
+                          hlHealth.status === 'healthy' ? 'bg-success' : 'bg-warning'
+                        )} />
+                        HyperLiquid: {hlHealth.mode} ({hlHealth.latencyMs}ms)
+                      </Badge>
+                    </div>
+                  )}
+                  <LiveOrderBook symbol={selectedSymbol} depth={10} />
+                </div>
               </TabsContent>
 
               <TabsContent value="blotter">
@@ -305,6 +332,10 @@ export default function Markets() {
 
               <TabsContent value="portfolio">
                 <PortfolioSummaryWidget />
+              </TabsContent>
+
+              <TabsContent value="derivatives">
+                <DerivativesPanel instruments={TRACKED_SYMBOLS.slice(0, 6)} />
               </TabsContent>
 
               <TabsContent value="intelligence">
@@ -331,7 +362,7 @@ export default function Markets() {
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                       <TelegramBotManager />
-                      <MobileIntelligenceView instruments={TRACKED_SYMBOLS.slice(0, 6)} />
+                      <DerivativesPanel instruments={TRACKED_SYMBOLS.slice(0, 6)} compact />
                     </div>
                   </div>
                 </div>

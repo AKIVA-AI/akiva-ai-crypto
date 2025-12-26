@@ -6,35 +6,38 @@
 
 @layer base {
   :root {
-    /* Backgrounds - Deep blue-black with warm undertone */
-    --background: 220 25% 5%;
-    --foreground: 210 40% 96%;
+    /* Backgrounds - warm dark with subtle undertone (from Anthropic Coral) */
+    --background: 30 6% 4%;
+    --foreground: 30 10% 95%;
 
-    --card: 220 25% 8%;
-    --card-foreground: 210 40% 96%;
+    --card: 30 6% 8%;
+    --card-foreground: 30 10% 95%;
 
-    --popover: 220 25% 10%;
-    --popover-foreground: 210 40% 96%;
+    --popover: 30 6% 10%;
+    --popover-foreground: 30 10% 95%;
 
-    /* Primary - Cyan/Teal for data visualization and charts */
-    --primary: 185 75% 50%;
-    --primary-foreground: 220 25% 5%;
+    /* Primary - Coral for CTAs, actions, interactive elements */
+    --primary: 15 75% 55%;
+    --primary-foreground: 0 0% 100%;
+    --primary-600: 15 75% 45%;
+    --primary-500: 15 75% 55%;
+    --primary-100: 15 75% 15%;
 
-    /* Secondary - Blue-gray surfaces */
-    --secondary: 220 20% 14%;
-    --secondary-foreground: 210 40% 90%;
+    /* Secondary - subtle warm surface */
+    --secondary: 30 8% 15%;
+    --secondary-foreground: 30 10% 95%;
 
     /* Muted - Subtle backgrounds */
-    --muted: 220 20% 12%;
-    --muted-foreground: 215 15% 55%;
+    --muted: 30 5% 20%;
+    --muted-foreground: 30 8% 55%;
 
-    /* Accent - Supabase Green for CTAs, success states, interactive elements */
-    --accent: 153 60% 53%;
-    --accent-foreground: 220 25% 5%;
+    /* Accent - Cyan/Teal for data visualization and charts */
+    --accent: 185 75% 50%;
+    --accent-foreground: 30 6% 4%;
 
-    /* Supabase brand green for key highlights */
-    --supabase: 153 60% 53%;
-    --supabase-foreground: 220 25% 5%;
+    /* Data colors - Cyan family for charts and metrics */
+    --data: 185 75% 50%;
+    --data-foreground: 30 6% 4%;
 
     /* Semantic states */
     --destructive: 0 72% 51%;
@@ -44,58 +47,60 @@
     --success-foreground: 0 0% 100%;
 
     --warning: 38 92% 50%;
-    --warning-foreground: 220 25% 5%;
+    --warning-foreground: 30 6% 4%;
 
     /* Borders and inputs */
-    --border: 220 20% 16%;
-    --input: 220 20% 14%;
-    --ring: 185 75% 50%;
+    --border: 30 6% 18%;
+    --input: 30 6% 14%;
+    --ring: 15 75% 55%;
 
     --radius: 0.5rem;
 
     /* Sidebar - Darker depth */
-    --sidebar-background: 220 25% 4%;
-    --sidebar-foreground: 210 30% 90%;
-    --sidebar-primary: 185 75% 50%;
-    --sidebar-primary-foreground: 220 25% 5%;
-    --sidebar-accent: 220 20% 12%;
-    --sidebar-accent-foreground: 210 40% 90%;
-    --sidebar-border: 220 20% 12%;
-    --sidebar-ring: 185 75% 50%;
+    --sidebar-background: 30 6% 3%;
+    --sidebar-foreground: 30 10% 90%;
+    --sidebar-primary: 15 75% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 30 6% 12%;
+    --sidebar-accent-foreground: 30 10% 90%;
+    --sidebar-border: 30 6% 12%;
+    --sidebar-ring: 15 75% 55%;
 
     /* Trading-specific tokens */
+    --trading-long: 145 70% 42%;
+    --trading-short: 0 72% 51%;
     --long: 145 70% 42%;
     --short: 0 72% 51%;
-    --neutral: 215 15% 55%;
+    --neutral: 30 8% 55%;
 
     /* Glow effects */
-    --glow-primary: 185 75% 50%;
-    --glow-accent: 153 60% 53%;
-    --glow-supabase: 153 60% 53%;
+    --glow-primary: 15 75% 55%;
+    --glow-accent: 185 75% 50%;
+    --glow-data: 185 75% 50%;
     --glow-success: 145 70% 42%;
     --glow-destructive: 0 72% 51%;
     
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(185 75% 50%), hsl(200 80% 45%));
-    --gradient-accent: linear-gradient(135deg, hsl(153 60% 53%), hsl(160 65% 48%));
-    --gradient-supabase: linear-gradient(135deg, hsl(153 60% 53%), hsl(165 70% 45%));
-    --gradient-card: linear-gradient(180deg, hsl(220 25% 10%), hsl(220 25% 7%));
-    --gradient-surface: radial-gradient(ellipse 80% 50% at 50% -20%, hsl(185 75% 50% / 0.08), transparent);
+    --gradient-primary: linear-gradient(135deg, hsl(15 75% 55%), hsl(15 85% 60%));
+    --gradient-accent: linear-gradient(135deg, hsl(185 75% 50%), hsl(200 80% 45%));
+    --gradient-data: linear-gradient(135deg, hsl(185 75% 50%), hsl(195 80% 45%));
+    --gradient-card: linear-gradient(180deg, hsl(30 6% 10%), hsl(30 6% 6%));
+    --gradient-surface: radial-gradient(ellipse 80% 50% at 50% -20%, hsl(15 75% 55% / 0.08), transparent);
     --gradient-success: linear-gradient(135deg, hsl(145 70% 42%), hsl(160 70% 38%));
     --gradient-danger: linear-gradient(135deg, hsl(0 72% 51%), hsl(15 80% 45%));
 
-    /* Chart colors */
+    /* Chart colors - Cyan family for consistency */
     --chart-1: 185 75% 50%;
-    --chart-2: 145 70% 42%;
-    --chart-3: 38 92% 50%;
-    --chart-4: 280 70% 55%;
-    --chart-5: 0 72% 51%;
-    --chart-6: 15 75% 55%;
+    --chart-2: 195 80% 45%;
+    --chart-3: 175 70% 48%;
+    --chart-4: 205 75% 52%;
+    --chart-5: 165 65% 45%;
+    --chart-6: 215 70% 55%;
   }
 
   .dark {
-    --background: 220 25% 5%;
-    --foreground: 210 40% 96%;
+    --background: 30 6% 4%;
+    --foreground: 30 10% 95%;
   }
 }
 
@@ -130,7 +135,7 @@
 }
 
 @layer components {
-  /* Glass panels - frosted effect */
+  /* Glass panels - frosted effect with warm undertone */
   .glass-panel {
     @apply bg-card/60 backdrop-blur-xl border border-border/50;
     background: linear-gradient(180deg, hsl(var(--card) / 0.8), hsl(var(--card) / 0.6));
@@ -151,7 +156,7 @@
     border-radius: inherit;
   }
 
-  /* Glow effects */
+  /* Glow effects - coral primary, cyan data */
   .glow-primary {
     box-shadow: 0 0 20px hsl(var(--glow-primary) / 0.25),
                 0 0 40px hsl(var(--glow-primary) / 0.1),
@@ -161,6 +166,11 @@
   .glow-accent {
     box-shadow: 0 0 20px hsl(var(--glow-accent) / 0.25),
                 0 0 40px hsl(var(--glow-accent) / 0.1);
+  }
+
+  .glow-data {
+    box-shadow: 0 0 20px hsl(var(--glow-data) / 0.25),
+                0 0 40px hsl(var(--glow-data) / 0.1);
   }
 
   .glow-success {
@@ -203,7 +213,7 @@
     @apply hover:border-primary/30 hover:shadow-lg;
   }
 
-  .metric-card-accent {
+  .metric-card-data {
     @apply glass-panel rounded-xl p-4 transition-all duration-300;
     @apply border-accent/20 hover:border-accent/40;
   }
@@ -243,7 +253,7 @@
     animation: pulse 1s ease-in-out infinite;
   }
 
-  /* Border glow effect */
+  /* Border glow effect - coral */
   .border-glow {
     position: relative;
   }
@@ -265,15 +275,16 @@
 }
 
 @layer utilities {
-  /* Text gradient */
+  /* Text gradient - coral primary */
   .text-gradient {
     @apply bg-clip-text text-transparent;
     background-image: var(--gradient-primary);
   }
 
-  .text-gradient-accent {
+  /* Text gradient - cyan data */
+  .text-gradient-data {
     @apply bg-clip-text text-transparent;
-    background-image: var(--gradient-accent);
+    background-image: var(--gradient-data);
   }
 
   /* Animations */
@@ -322,17 +333,18 @@
     100% { background-position: 200% 0; }
   }
 
-  /* Border gradient */
+  /* Border gradient - coral */
   .border-gradient {
     border: 1px solid transparent;
     background: linear-gradient(hsl(var(--background)), hsl(var(--background))) padding-box,
                 var(--gradient-primary) border-box;
   }
 
-  .border-gradient-accent {
+  /* Border gradient - cyan */
+  .border-gradient-data {
     border: 1px solid transparent;
     background: linear-gradient(hsl(var(--background)), hsl(var(--background))) padding-box,
-                var(--gradient-accent) border-box;
+                var(--gradient-data) border-box;
   }
 
   /* Surface gradient overlay */
