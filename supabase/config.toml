@@ -14,3 +14,9 @@ verify_jwt = true
 
 [functions.approve-meme-launch]
 verify_jwt = true
+
+[functions.send-alert-notification]
+verify_jwt = false
+
+[functions.analyze-signal]
+verify_jwt = true
