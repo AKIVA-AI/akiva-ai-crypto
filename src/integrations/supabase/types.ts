@@ -14,16 +14,837 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      alerts: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          is_resolved: boolean
+          message: string
+          metadata: Json
+          severity: Database["public"]["Enums"]["alert_severity"]
+          source: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          is_resolved?: boolean
+          message: string
+          metadata?: Json
+          severity?: Database["public"]["Enums"]["alert_severity"]
+          source: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          is_resolved?: boolean
+          message?: string
+          metadata?: Json
+          severity?: Database["public"]["Enums"]["alert_severity"]
+          source?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      audit_events: {
+        Row: {
+          action: string
+          after_state: Json | null
+          before_state: Json | null
+          book_id: string | null
+          created_at: string
+          id: string
+          ip_address: string | null
+          resource_id: string | null
+          resource_type: string
+          severity: Database["public"]["Enums"]["alert_severity"]
+          user_email: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          after_state?: Json | null
+          before_state?: Json | null
+          book_id?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          resource_id?: string | null
+          resource_type: string
+          severity?: Database["public"]["Enums"]["alert_severity"]
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          after_state?: Json | null
+          before_state?: Json | null
+          book_id?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          resource_id?: string | null
+          resource_type?: string
+          severity?: Database["public"]["Enums"]["alert_severity"]
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_events_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      books: {
+        Row: {
+          capital_allocated: number
+          created_at: string
+          current_exposure: number
+          id: string
+          max_drawdown_limit: number
+          name: string
+          risk_tier: number
+          status: Database["public"]["Enums"]["book_status"]
+          type: Database["public"]["Enums"]["book_type"]
+          updated_at: string
+        }
+        Insert: {
+          capital_allocated?: number
+          created_at?: string
+          current_exposure?: number
+          id?: string
+          max_drawdown_limit?: number
+          name: string
+          risk_tier?: number
+          status?: Database["public"]["Enums"]["book_status"]
+          type: Database["public"]["Enums"]["book_type"]
+          updated_at?: string
+        }
+        Update: {
+          capital_allocated?: number
+          created_at?: string
+          current_exposure?: number
+          id?: string
+          max_drawdown_limit?: number
+          name?: string
+          risk_tier?: number
+          status?: Database["public"]["Enums"]["book_status"]
+          type?: Database["public"]["Enums"]["book_type"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      circuit_breaker_events: {
+        Row: {
+          action_taken: string
+          book_id: string | null
+          created_at: string
+          id: string
+          metadata: Json
+          trigger_type: string
+          triggered_by: string | null
+        }
+        Insert: {
+          action_taken: string
+          book_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          trigger_type: string
+          triggered_by?: string | null
+        }
+        Update: {
+          action_taken?: string
+          book_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          trigger_type?: string
+          triggered_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circuit_breaker_events_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      global_settings: {
+        Row: {
+          api_base_url: string
+          dex_venues_enabled: boolean
+          global_kill_switch: boolean
+          id: string
+          meme_module_enabled: boolean
+          paper_trading_mode: boolean
+          reduce_only_mode: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          api_base_url?: string
+          dex_venues_enabled?: boolean
+          global_kill_switch?: boolean
+          id?: string
+          meme_module_enabled?: boolean
+          paper_trading_mode?: boolean
+          reduce_only_mode?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          api_base_url?: string
+          dex_venues_enabled?: boolean
+          global_kill_switch?: boolean
+          id?: string
+          meme_module_enabled?: boolean
+          paper_trading_mode?: boolean
+          reduce_only_mode?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      meme_metrics: {
+        Row: {
+          exit_progress: number
+          id: string
+          incident_count: number
+          liquidity_health: number
+          pnl: number
+          project_id: string
+          recorded_at: string
+          slippage: number
+        }
+        Insert: {
+          exit_progress?: number
+          id?: string
+          incident_count?: number
+          liquidity_health?: number
+          pnl?: number
+          project_id: string
+          recorded_at?: string
+          slippage?: number
+        }
+        Update: {
+          exit_progress?: number
+          id?: string
+          incident_count?: number
+          liquidity_health?: number
+          pnl?: number
+          project_id?: string
+          recorded_at?: string
+          slippage?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meme_metrics_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "meme_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meme_projects: {
+        Row: {
+          approved_by: string | null
+          created_at: string
+          go_no_go_approved: boolean
+          holder_concentration: number
+          id: string
+          liquidity_signal: string | null
+          name: string
+          narrative_tags: string[]
+          social_velocity: number
+          stage: Database["public"]["Enums"]["meme_project_stage"]
+          ticker: string
+          updated_at: string
+          viral_score: number
+        }
+        Insert: {
+          approved_by?: string | null
+          created_at?: string
+          go_no_go_approved?: boolean
+          holder_concentration?: number
+          id?: string
+          liquidity_signal?: string | null
+          name: string
+          narrative_tags?: string[]
+          social_velocity?: number
+          stage?: Database["public"]["Enums"]["meme_project_stage"]
+          ticker: string
+          updated_at?: string
+          viral_score?: number
+        }
+        Update: {
+          approved_by?: string | null
+          created_at?: string
+          go_no_go_approved?: boolean
+          holder_concentration?: number
+          id?: string
+          liquidity_signal?: string | null
+          name?: string
+          narrative_tags?: string[]
+          social_velocity?: number
+          stage?: Database["public"]["Enums"]["meme_project_stage"]
+          ticker?: string
+          updated_at?: string
+          viral_score?: number
+        }
+        Relationships: []
+      }
+      meme_tasks: {
+        Row: {
+          category: string
+          completed_by: string | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          is_completed: boolean
+          notes: string | null
+          project_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          completed_by?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          is_completed?: boolean
+          notes?: string | null
+          project_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          completed_by?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          is_completed?: boolean
+          notes?: string | null
+          project_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meme_tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "meme_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          book_id: string
+          created_at: string
+          filled_price: number | null
+          filled_size: number
+          id: string
+          instrument: string
+          latency_ms: number | null
+          price: number | null
+          side: Database["public"]["Enums"]["order_side"]
+          size: number
+          slippage: number | null
+          status: Database["public"]["Enums"]["order_status"]
+          strategy_id: string | null
+          updated_at: string
+          venue_id: string | null
+        }
+        Insert: {
+          book_id: string
+          created_at?: string
+          filled_price?: number | null
+          filled_size?: number
+          id?: string
+          instrument: string
+          latency_ms?: number | null
+          price?: number | null
+          side: Database["public"]["Enums"]["order_side"]
+          size: number
+          slippage?: number | null
+          status?: Database["public"]["Enums"]["order_status"]
+          strategy_id?: string | null
+          updated_at?: string
+          venue_id?: string | null
+        }
+        Update: {
+          book_id?: string
+          created_at?: string
+          filled_price?: number | null
+          filled_size?: number
+          id?: string
+          instrument?: string
+          latency_ms?: number | null
+          price?: number | null
+          side?: Database["public"]["Enums"]["order_side"]
+          size?: number
+          slippage?: number | null
+          status?: Database["public"]["Enums"]["order_status"]
+          strategy_id?: string | null
+          updated_at?: string
+          venue_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_strategy_id_fkey"
+            columns: ["strategy_id"]
+            isOneToOne: false
+            referencedRelation: "strategies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      positions: {
+        Row: {
+          book_id: string
+          created_at: string
+          entry_price: number
+          id: string
+          instrument: string
+          is_open: boolean
+          leverage: number
+          liquidation_price: number | null
+          mark_price: number
+          realized_pnl: number
+          side: Database["public"]["Enums"]["order_side"]
+          size: number
+          strategy_id: string | null
+          unrealized_pnl: number
+          updated_at: string
+          venue_id: string | null
+        }
+        Insert: {
+          book_id: string
+          created_at?: string
+          entry_price: number
+          id?: string
+          instrument: string
+          is_open?: boolean
+          leverage?: number
+          liquidation_price?: number | null
+          mark_price: number
+          realized_pnl?: number
+          side: Database["public"]["Enums"]["order_side"]
+          size: number
+          strategy_id?: string | null
+          unrealized_pnl?: number
+          updated_at?: string
+          venue_id?: string | null
+        }
+        Update: {
+          book_id?: string
+          created_at?: string
+          entry_price?: number
+          id?: string
+          instrument?: string
+          is_open?: boolean
+          leverage?: number
+          liquidation_price?: number | null
+          mark_price?: number
+          realized_pnl?: number
+          side?: Database["public"]["Enums"]["order_side"]
+          size?: number
+          strategy_id?: string | null
+          unrealized_pnl?: number
+          updated_at?: string
+          venue_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "positions_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "positions_strategy_id_fkey"
+            columns: ["strategy_id"]
+            isOneToOne: false
+            referencedRelation: "strategies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "positions_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email: string
+          full_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      risk_breaches: {
+        Row: {
+          book_id: string
+          breach_type: string
+          created_at: string
+          current_value: number
+          description: string
+          id: string
+          is_resolved: boolean
+          limit_value: number
+          recommended_action: string | null
+          resolved_at: string | null
+          severity: Database["public"]["Enums"]["alert_severity"]
+        }
+        Insert: {
+          book_id: string
+          breach_type: string
+          created_at?: string
+          current_value: number
+          description: string
+          id?: string
+          is_resolved?: boolean
+          limit_value: number
+          recommended_action?: string | null
+          resolved_at?: string | null
+          severity?: Database["public"]["Enums"]["alert_severity"]
+        }
+        Update: {
+          book_id?: string
+          breach_type?: string
+          created_at?: string
+          current_value?: number
+          description?: string
+          id?: string
+          is_resolved?: boolean
+          limit_value?: number
+          recommended_action?: string | null
+          resolved_at?: string | null
+          severity?: Database["public"]["Enums"]["alert_severity"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "risk_breaches_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      risk_limits: {
+        Row: {
+          book_id: string
+          created_at: string
+          id: string
+          max_concentration: number
+          max_correlation_exposure: number
+          max_daily_loss: number
+          max_intraday_drawdown: number
+          max_leverage: number
+          updated_at: string
+        }
+        Insert: {
+          book_id: string
+          created_at?: string
+          id?: string
+          max_concentration: number
+          max_correlation_exposure?: number
+          max_daily_loss: number
+          max_intraday_drawdown: number
+          max_leverage: number
+          updated_at?: string
+        }
+        Update: {
+          book_id?: string
+          created_at?: string
+          id?: string
+          max_concentration?: number
+          max_correlation_exposure?: number
+          max_daily_loss?: number
+          max_intraday_drawdown?: number
+          max_leverage?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "risk_limits_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: true
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      strategies: {
+        Row: {
+          asset_class: string
+          book_id: string
+          config_metadata: Json
+          created_at: string
+          id: string
+          intent_schema: Json
+          last_signal_time: string | null
+          max_drawdown: number
+          name: string
+          pnl: number
+          risk_tier: number
+          status: Database["public"]["Enums"]["strategy_status"]
+          timeframe: string
+          updated_at: string
+          venue_scope: string[]
+        }
+        Insert: {
+          asset_class?: string
+          book_id: string
+          config_metadata?: Json
+          created_at?: string
+          id?: string
+          intent_schema?: Json
+          last_signal_time?: string | null
+          max_drawdown?: number
+          name: string
+          pnl?: number
+          risk_tier?: number
+          status?: Database["public"]["Enums"]["strategy_status"]
+          timeframe: string
+          updated_at?: string
+          venue_scope?: string[]
+        }
+        Update: {
+          asset_class?: string
+          book_id?: string
+          config_metadata?: Json
+          created_at?: string
+          id?: string
+          intent_schema?: Json
+          last_signal_time?: string | null
+          max_drawdown?: number
+          name?: string
+          pnl?: number
+          risk_tier?: number
+          status?: Database["public"]["Enums"]["strategy_status"]
+          timeframe?: string
+          updated_at?: string
+          venue_scope?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "strategies_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      strategy_signals: {
+        Row: {
+          created_at: string
+          direction: Database["public"]["Enums"]["order_side"]
+          id: string
+          instrument: string
+          metadata: Json
+          signal_type: string
+          strategy_id: string
+          strength: number
+        }
+        Insert: {
+          created_at?: string
+          direction: Database["public"]["Enums"]["order_side"]
+          id?: string
+          instrument: string
+          metadata?: Json
+          signal_type: string
+          strategy_id: string
+          strength: number
+        }
+        Update: {
+          created_at?: string
+          direction?: Database["public"]["Enums"]["order_side"]
+          id?: string
+          instrument?: string
+          metadata?: Json
+          signal_type?: string
+          strategy_id?: string
+          strength?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "strategy_signals_strategy_id_fkey"
+            columns: ["strategy_id"]
+            isOneToOne: false
+            referencedRelation: "strategies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      venues: {
+        Row: {
+          created_at: string
+          error_rate: number
+          fee_tier: string
+          id: string
+          is_enabled: boolean
+          last_heartbeat: string
+          latency_ms: number
+          max_order_size: number | null
+          name: string
+          restricted_order_types: string[]
+          status: Database["public"]["Enums"]["venue_status"]
+          supported_instruments: string[]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error_rate?: number
+          fee_tier?: string
+          id?: string
+          is_enabled?: boolean
+          last_heartbeat?: string
+          latency_ms?: number
+          max_order_size?: number | null
+          name: string
+          restricted_order_types?: string[]
+          status?: Database["public"]["Enums"]["venue_status"]
+          supported_instruments?: string[]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error_rate?: number
+          fee_tier?: string
+          id?: string
+          is_enabled?: boolean
+          last_heartbeat?: string
+          latency_ms?: number
+          max_order_size?: number | null
+          name?: string
+          restricted_order_types?: string[]
+          status?: Database["public"]["Enums"]["venue_status"]
+          supported_instruments?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_any_role: {
+        Args: {
+          _roles: Database["public"]["Enums"]["app_role"][]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      alert_severity: "info" | "warning" | "critical"
+      app_role:
+        | "admin"
+        | "cio"
+        | "trader"
+        | "research"
+        | "ops"
+        | "auditor"
+        | "viewer"
+      book_status: "active" | "frozen"
+      book_type: "HEDGE" | "PROP" | "MEME"
+      meme_project_stage:
+        | "opportunity"
+        | "build"
+        | "launch"
+        | "post_launch"
+        | "completed"
+      order_side: "buy" | "sell"
+      order_status: "open" | "filled" | "rejected" | "cancelled"
+      strategy_status: "off" | "paper" | "live"
+      venue_status: "healthy" | "degraded" | "offline"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +971,30 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      alert_severity: ["info", "warning", "critical"],
+      app_role: [
+        "admin",
+        "cio",
+        "trader",
+        "research",
+        "ops",
+        "auditor",
+        "viewer",
+      ],
+      book_status: ["active", "frozen"],
+      book_type: ["HEDGE", "PROP", "MEME"],
+      meme_project_stage: [
+        "opportunity",
+        "build",
+        "launch",
+        "post_launch",
+        "completed",
+      ],
+      order_side: ["buy", "sell"],
+      order_status: ["open", "filled", "rejected", "cancelled"],
+      strategy_status: ["off", "paper", "live"],
+      venue_status: ["healthy", "degraded", "offline"],
+    },
   },
 } as const
