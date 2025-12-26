@@ -10,6 +10,8 @@ import { IntelligenceOverview } from '@/components/intelligence/IntelligenceOver
 import { WhaleAlertPanel } from '@/components/intelligence/WhaleAlertPanel';
 import { TradingCopilotPanel } from '@/components/intelligence/TradingCopilotPanel';
 import { ExchangeAPIManager } from '@/components/intelligence/ExchangeAPIManager';
+import { AutoTradeTriggers } from '@/components/intelligence/AutoTradeTriggers';
+import { MobileIntelligenceView } from '@/components/intelligence/MobileIntelligenceView';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -305,14 +307,26 @@ export default function Markets() {
 
               <TabsContent value="intelligence">
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <IntelligenceOverview instruments={TRACKED_SYMBOLS.slice(0, 6)} />
-                    <MarketIntelligencePanel instruments={TRACKED_SYMBOLS.slice(0, 6)} compact />
+                  {/* Mobile-optimized view for smaller screens */}
+                  <div className="block lg:hidden">
+                    <MobileIntelligenceView instruments={TRACKED_SYMBOLS.slice(0, 6)} />
                   </div>
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                    <WhaleAlertPanel compact />
-                    <TradingCopilotPanel defaultInstrument={selectedSymbol} compact />
-                    <ExchangeAPIManager />
+                  
+                  {/* Full desktop layout */}
+                  <div className="hidden lg:block space-y-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      <IntelligenceOverview instruments={TRACKED_SYMBOLS.slice(0, 6)} />
+                      <MarketIntelligencePanel instruments={TRACKED_SYMBOLS.slice(0, 6)} compact />
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                      <WhaleAlertPanel compact />
+                      <TradingCopilotPanel defaultInstrument={selectedSymbol} compact />
+                      <ExchangeAPIManager />
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      <AutoTradeTriggers />
+                      <MobileIntelligenceView instruments={TRACKED_SYMBOLS.slice(0, 6)} />
+                    </div>
                   </div>
                 </div>
               </TabsContent>
