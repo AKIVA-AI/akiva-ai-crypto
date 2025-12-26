@@ -35,3 +35,6 @@ verify_jwt = true
 
 [functions.trading-copilot]
 verify_jwt = true
+
+[functions.telegram-alerts]
+verify_jwt = true

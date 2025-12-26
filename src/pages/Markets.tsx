@@ -12,6 +12,8 @@ import { TradingCopilotPanel } from '@/components/intelligence/TradingCopilotPan
 import { ExchangeAPIManager } from '@/components/intelligence/ExchangeAPIManager';
 import { AutoTradeTriggers } from '@/components/intelligence/AutoTradeTriggers';
 import { MobileIntelligenceView } from '@/components/intelligence/MobileIntelligenceView';
+import { BacktestTriggers } from '@/components/intelligence/BacktestTriggers';
+import { TelegramBotManager } from '@/components/intelligence/TelegramBotManager';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -325,6 +327,10 @@ export default function Markets() {
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                       <AutoTradeTriggers />
+                      <BacktestTriggers />
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      <TelegramBotManager />
                       <MobileIntelligenceView instruments={TRACKED_SYMBOLS.slice(0, 6)} />
                     </div>
                   </div>
