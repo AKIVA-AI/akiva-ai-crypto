@@ -6,19 +6,27 @@ import { RecentEvents } from '@/components/dashboard/RecentEvents';
 import { RiskGauge } from '@/components/dashboard/RiskGauge';
 import { PnLChart } from '@/components/dashboard/PnLChart';
 import { PositionHeatMap } from '@/components/dashboard/PositionHeatMap';
+import { MobileDashboard } from '@/components/mobile/MobileDashboard';
 import { useDashboardMetrics } from '@/hooks/useDashboardMetrics';
 import { useDashboardRealtime } from '@/hooks/useRealtimeSubscriptions';
 import { useTradingShortcuts } from '@/hooks/useTradingShortcuts';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { DollarSign, TrendingUp, Layers, AlertTriangle, Loader2 } from 'lucide-react';
 
 export default function Index() {
   const { data: metrics, isLoading } = useDashboardMetrics();
+  const isMobile = useIsMobile();
   
   // Enable realtime updates for dashboard
   useDashboardRealtime();
   
   // Enable keyboard shortcuts
   useTradingShortcuts();
+
+  // Render mobile-optimized dashboard on small screens
+  if (isMobile) {
+    return <MobileDashboard />;
+  }
 
   return (
     <MainLayout>
