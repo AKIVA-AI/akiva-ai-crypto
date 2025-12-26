@@ -13,6 +13,7 @@ import Risk from "./pages/Risk";
 import Launch from "./pages/Launch";
 import Treasury from "./pages/Treasury";
 import Observability from "./pages/Observability";
+import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -35,6 +36,7 @@ const App = () => (
             <Route path="/launch" element={<ProtectedRoute><Launch /></ProtectedRoute>} />
             <Route path="/treasury" element={<ProtectedRoute><Treasury /></ProtectedRoute>} />
             <Route path="/observability" element={<ProtectedRoute><Observability /></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

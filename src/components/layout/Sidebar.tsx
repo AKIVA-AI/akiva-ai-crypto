@@ -23,9 +23,10 @@ const navigation = [
   { name: 'Strategies', href: '/strategies', icon: LineChart },
   { name: 'Execution', href: '/execution', icon: Crosshair },
   { name: 'Risk', href: '/risk', icon: Shield },
-  { name: 'Token Launch', href: '/launch', icon: Rocket },
+  { name: 'Meme Ventures', href: '/launch', icon: Rocket },
   { name: 'Treasury', href: '/treasury', icon: Wallet },
   { name: 'Observability', href: '/observability', icon: Activity },
+  { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
 const roleColors: Record<string, string> = {
