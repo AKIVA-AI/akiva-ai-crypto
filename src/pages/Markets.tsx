@@ -4,9 +4,9 @@ import { TradingViewChart } from '@/components/charts/TradingViewChart';
 import { TradeTicket } from '@/components/trading/TradeTicket';
 import { LiveOrderBook } from '@/components/trading/LiveOrderBook';
 import { TradeBlotter } from '@/components/trading/TradeBlotter';
-import { BracketOrderTicket } from '@/components/trading/BracketOrderTicket';
 import { PortfolioSummaryWidget } from '@/components/portfolio/PortfolioSummaryWidget';
-import { Card } from '@/components/ui/card';
+import { MarketIntelligencePanel } from '@/components/intelligence/MarketIntelligencePanel';
+import { IntelligenceOverview } from '@/components/intelligence/IntelligenceOverview';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +23,7 @@ import {
   Zap,
   Activity,
   Wallet,
+  Brain,
 } from 'lucide-react';
 import { WebSocketHealthMonitor } from '@/components/trading/WebSocketHealthMonitor';
 
@@ -277,9 +278,13 @@ export default function Markets() {
                   <Activity className="h-4 w-4" />
                   Trade Blotter
                 </TabsTrigger>
-                <TabsTrigger value="portfolio" className="gap-2">
+              <TabsTrigger value="portfolio" className="gap-2">
                   <Wallet className="h-4 w-4" />
                   Portfolio
+                </TabsTrigger>
+                <TabsTrigger value="intelligence" className="gap-2">
+                  <Brain className="h-4 w-4" />
+                  Intelligence
                 </TabsTrigger>
               </TabsList>
 
@@ -293,6 +298,13 @@ export default function Markets() {
 
               <TabsContent value="portfolio">
                 <PortfolioSummaryWidget />
+              </TabsContent>
+
+              <TabsContent value="intelligence">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <IntelligenceOverview instruments={TRACKED_SYMBOLS.slice(0, 6)} />
+                  <MarketIntelligencePanel instruments={TRACKED_SYMBOLS.slice(0, 6)} compact />
+                </div>
               </TabsContent>
             </Tabs>
           </div>
