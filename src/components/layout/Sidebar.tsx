@@ -21,10 +21,11 @@ import { useAuth } from '@/hooks/useAuth';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { name: 'Markets', href: '/markets', icon: BarChart3 },
   { name: 'Engine', href: '/engine', icon: Cpu },
-  { name: 'Analytics', href: '/analytics', icon: BarChart3 },
+  { name: 'Analytics', href: '/analytics', icon: LineChart },
   { name: 'Agents', href: '/agents', icon: Bot },
-  { name: 'Strategies', href: '/strategies', icon: LineChart },
+  { name: 'Strategies', href: '/strategies', icon: Activity },
   { name: 'Execution', href: '/execution', icon: Crosshair },
   { name: 'Risk', href: '/risk', icon: Shield },
   { name: 'Meme Ventures', href: '/launch', icon: Rocket },
