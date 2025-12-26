@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { NotificationChannelManager } from '@/components/settings/NotificationChannelManager';
 import { 
   Settings as SettingsIcon, 
   Server, 
@@ -364,6 +365,9 @@ export default function Settings() {
             </Alert>
           </CardContent>
         </Card>
+
+        {/* Notification Channels */}
+        <NotificationChannelManager />
 
         {/* System Info */}
         <AdminOnly>

@@ -567,6 +567,84 @@ export type Database = {
           },
         ]
       }
+      notification_channels: {
+        Row: {
+          alert_types: string[]
+          created_at: string
+          created_by: string | null
+          id: string
+          is_enabled: boolean
+          name: string
+          type: string
+          updated_at: string
+          webhook_url: string
+        }
+        Insert: {
+          alert_types?: string[]
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_enabled?: boolean
+          name: string
+          type: string
+          updated_at?: string
+          webhook_url: string
+        }
+        Update: {
+          alert_types?: string[]
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_enabled?: boolean
+          name?: string
+          type?: string
+          updated_at?: string
+          webhook_url?: string
+        }
+        Relationships: []
+      }
+      notification_logs: {
+        Row: {
+          alert_id: string | null
+          channel_id: string | null
+          error_message: string | null
+          id: string
+          sent_at: string
+          status: string
+        }
+        Insert: {
+          alert_id?: string | null
+          channel_id?: string | null
+          error_message?: string | null
+          id?: string
+          sent_at?: string
+          status: string
+        }
+        Update: {
+          alert_id?: string | null
+          channel_id?: string | null
+          error_message?: string | null
+          id?: string
+          sent_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_logs_alert_id_fkey"
+            columns: ["alert_id"]
+            isOneToOne: false
+            referencedRelation: "alerts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_logs_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "notification_channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           book_id: string
