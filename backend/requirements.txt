@@ -1,0 +1,36 @@
+# FastAPI and server
+fastapi==0.109.2
+uvicorn[standard]==0.27.1
+python-multipart==0.0.9
+
+# Database
+asyncpg==0.29.0
+supabase==2.3.4
+python-dotenv==1.0.1
+
+# Redis
+redis==5.0.1
+aioredis==2.0.1
+
+# HTTP client
+httpx==0.26.0
+websockets==12.0
+
+# Crypto exchange libraries
+ccxt==4.2.18
+
+# Data processing
+pandas==2.2.0
+numpy==1.26.3
+pydantic==2.6.1
+
+# Scheduling
+apscheduler==3.10.4
+
+# Testing
+pytest==8.0.0
+pytest-asyncio==0.23.4
+pytest-cov==4.1.0
+
+# Logging
+structlog==24.1.0
