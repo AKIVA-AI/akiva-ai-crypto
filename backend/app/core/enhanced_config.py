@@ -26,12 +26,14 @@ import os
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Callable
 from datetime import datetime, UTC
-import hashlib
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 import base64
 
 # FreqTrade configuration imports
 from freqtrade.configuration import Configuration
-from freqtrade.configuration.validate_config_schema import validate_config_schema
+from freqtrade.configuration.config_validation import validate_config_schema
 from freqtrade.constants import MINIMAL_CONFIG
 from freqtrade.exceptions import ConfigurationError, OperationalException
 
@@ -61,6 +63,9 @@ class EnhancedConfigManager:
 
         # Create config directory if it doesn't exist
         self.config_dir.mkdir(parents=True, exist_ok=True)
+
+        # Initialize encryption key
+        self._encryption_key = self._get_or_create_encryption_key()
 
         # Initialize with FreqTrade's validation
         self.freqtrade_validator = ConfigurationValidator()
@@ -423,8 +428,44 @@ class EnhancedConfigManager:
             logger.error(f"Failed to update configuration: {e}")
             raise ConfigurationError(f"Configuration update failed: {e}")
 
+    def _get_or_create_encryption_key(self) -> bytes:
+        """Get or create encryption key for configuration."""
+        key_env = os.getenv('CONFIG_ENCRYPTION_KEY')
+        if key_env:
+            # If key is provided as base64 string, decode it
+            try:
+                return base64.urlsafe_b64decode(key_env)
+            except Exception:
+                # If it's a password, derive key from it
+                return self._derive_key_from_password(key_env)
+
+        # Generate a new key and save it (for development only)
+        key_file = self.config_dir / '.encryption_key'
+        if key_file.exists():
+            with open(key_file, 'rb') as f:
+                return f.read()
+
+        # Generate new key
+        key = Fernet.generate_key()
+        with open(key_file, 'wb') as f:
+            f.write(key)
+
+        logger.warning("Generated new encryption key. In production, set CONFIG_ENCRYPTION_KEY environment variable.")
+        return key
+
+    def _derive_key_from_password(self, password: str) -> bytes:
+        """Derive encryption key from password using PBKDF2."""
+        salt = b'config_salt_2024'  # In production, use a proper random salt
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=salt,
+            iterations=100000,
+        )
+        return base64.urlsafe_b64encode(kdf.derive(password.encode()))
+
     def _encrypt_sensitive_data(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Encrypt sensitive configuration data."""
+        """Encrypt sensitive configuration data using Fernet."""
         sensitive_fields = [
             'exchange.key',
             'exchange.secret',
@@ -435,18 +476,19 @@ class EnhancedConfigManager:
         ]
 
         encrypted_config = config.copy()
+        fernet = Fernet(self._encryption_key)
 
         def encrypt_value(path: str, value: str) -> str:
             """Encrypt a sensitive value."""
             if not value or not isinstance(value, str):
                 return value
 
-            # Simple encryption using base64 + hash (in production, use proper encryption)
-            key = os.getenv('CONFIG_ENCRYPTION_KEY', 'default_key')
-            combined = f"{value}:{key}"
-            hash_obj = hashlib.sha256(combined.encode())
-            encrypted = base64.b64encode(hash_obj.digest()).decode()
-            return f"encrypted:{encrypted}"
+            try:
+                encrypted = fernet.encrypt(value.encode())
+                return f"encrypted:{base64.urlsafe_b64encode(encrypted).decode()}"
+            except Exception as e:
+                logger.error(f"Failed to encrypt value at {path}: {e}")
+                return value
 
         def process_dict(data: Dict[str, Any], current_path: str = "") -> Dict[str, Any]:
             """Recursively process dictionary for encryption."""
@@ -465,10 +507,41 @@ class EnhancedConfigManager:
         return process_dict(encrypted_config)
 
     def _decrypt_sensitive_data(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Decrypt sensitive configuration data."""
-        # In a real implementation, this would properly decrypt the data
-        # For now, we'll just return the config as-is since we're using simple encoding
-        return config
+        """Decrypt sensitive configuration data using Fernet."""
+        decrypted_config = config.copy()
+        fernet = Fernet(self._encryption_key)
+
+        def decrypt_value(path: str, value: str) -> str:
+            """Decrypt a sensitive value."""
+            if not value or not isinstance(value, str):
+                return value
+
+            if value.startswith('encrypted:'):
+                try:
+                    encrypted_data = base64.urlsafe_b64decode(value[10:])  # Remove 'encrypted:' prefix
+                    decrypted = fernet.decrypt(encrypted_data).decode()
+                    return decrypted
+                except Exception as e:
+                    logger.error(f"Failed to decrypt value at {path}: {e}")
+                    return value
+            else:
+                return value
+
+        def process_dict(data: Dict[str, Any], current_path: str = "") -> Dict[str, Any]:
+            """Recursively process dictionary for decryption."""
+            result = {}
+            for key, value in data.items():
+                path = f"{current_path}.{key}" if current_path else key
+
+                if isinstance(value, dict):
+                    result[key] = process_dict(value, path)
+                elif isinstance(value, str):
+                    result[key] = decrypt_value(path, value)
+                else:
+                    result[key] = value
+            return result
+
+        return process_dict(decrypted_config)
 
     def add_config_validator(self, validator: Callable[[Dict[str, Any]], Dict[str, Any]]):
         """Add a custom configuration validator."""
