@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.coinbase-trading]
 verify_jwt = true
+
+[functions.kraken-trading]
+verify_jwt = true

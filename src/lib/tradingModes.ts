@@ -83,7 +83,7 @@ export const VENUES: Record<string, VenueConfig> = {
       options: false,
     },
     usCompliant: true,
-    apiIntegrated: false, // To be integrated
+    apiIntegrated: true, // Now integrated
     description: 'Full-featured US exchange with futures',
   },
   binance: {
