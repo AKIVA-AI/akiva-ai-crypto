@@ -93,7 +93,7 @@ export function TradingCopilotPanel({
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Bot className="h-5 w-5 text-primary" />
-            AI Trading Copilot
+            Crypto CoPilot
             <Badge variant="secondary" className="text-xs gap-1">
               <Sparkles className="h-3 w-3" />
               Powered by AI
