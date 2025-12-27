@@ -9,7 +9,8 @@ import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { NotificationChannelManager } from '@/components/settings/NotificationChannelManager';
-import { 
+import { UserRoleManager } from '@/components/settings/UserRoleManager';
+import {
   Settings as SettingsIcon, 
   Server, 
   Shield, 
@@ -365,6 +366,9 @@ export default function Settings() {
             </Alert>
           </CardContent>
         </Card>
+
+        {/* User Role Management */}
+        <UserRoleManager />
 
         {/* Notification Channels */}
         <NotificationChannelManager />

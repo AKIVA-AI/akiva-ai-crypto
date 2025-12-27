@@ -1,5 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { createChart, IChartApi, CandlestickData, Time, ColorType, CandlestickSeriesPartialOptions } from 'lightweight-charts';
+import { 
+  createChart, 
+  IChartApi, 
+  CandlestickData, 
+  Time, 
+  ColorType,
+  CandlestickSeries,
+  HistogramSeries,
+} from 'lightweight-charts';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Maximize2, Minimize2, RefreshCw } from 'lucide-react';
@@ -96,6 +104,7 @@ export function TradingViewChart({
 }: TradingViewChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
+  // Use any for series refs to avoid type issues with lightweight-charts v5
   const candlestickSeriesRef = useRef<any>(null);
   const volumeSeriesRef = useRef<any>(null);
   
@@ -104,96 +113,104 @@ export function TradingViewChart({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [lastPrice, setLastPrice] = useState<number | null>(null);
   const [priceChange, setPriceChange] = useState<number>(0);
+  const [chartError, setChartError] = useState<string | null>(null);
 
   // Initialize chart
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
-    const chart = createChart(chartContainerRef.current, {
-      layout: {
-        background: { type: ColorType.Solid, color: 'transparent' },
-        textColor: 'hsl(var(--muted-foreground))',
-      },
-      grid: {
-        vertLines: { color: 'hsl(var(--border) / 0.5)' },
-        horzLines: { color: 'hsl(var(--border) / 0.5)' },
-      },
-      crosshair: {
-        mode: 1,
-        vertLine: {
-          color: 'hsl(var(--primary) / 0.5)',
-          width: 1,
-          style: 2,
+    try {
+      const chart = createChart(chartContainerRef.current, {
+        layout: {
+          background: { type: ColorType.Solid, color: 'transparent' },
+          textColor: 'hsl(270 12% 50%)',
         },
-        horzLine: {
-          color: 'hsl(var(--primary) / 0.5)',
-          width: 1,
-          style: 2,
+        grid: {
+          vertLines: { color: 'rgba(139, 92, 246, 0.1)' },
+          horzLines: { color: 'rgba(139, 92, 246, 0.1)' },
         },
-      },
-      rightPriceScale: {
-        borderColor: 'hsl(var(--border))',
+        crosshair: {
+          mode: 1,
+          vertLine: {
+            color: 'rgba(139, 92, 246, 0.5)',
+            width: 1,
+            style: 2,
+          },
+          horzLine: {
+            color: 'rgba(139, 92, 246, 0.5)',
+            width: 1,
+            style: 2,
+          },
+        },
+        rightPriceScale: {
+          borderColor: 'rgba(139, 92, 246, 0.2)',
+          scaleMargins: {
+            top: 0.1,
+            bottom: 0.2,
+          },
+        },
+        timeScale: {
+          borderColor: 'rgba(139, 92, 246, 0.2)',
+          timeVisible: true,
+          secondsVisible: false,
+        },
+        handleScale: {
+          axisPressedMouseMove: true,
+        },
+        handleScroll: {
+          vertTouchDrag: false,
+        },
+      });
+
+      chartRef.current = chart;
+
+      // Add candlestick series using v5 API
+      const candlestickSeries = chart.addSeries(CandlestickSeries, {
+        upColor: '#22c55e',
+        downColor: '#ef4444',
+        borderUpColor: '#22c55e',
+        borderDownColor: '#ef4444',
+        wickUpColor: '#22c55e',
+        wickDownColor: '#ef4444',
+      });
+      candlestickSeriesRef.current = candlestickSeries;
+
+      // Add volume series using v5 API
+      const volumeSeries = chart.addSeries(HistogramSeries, {
+        priceFormat: { type: 'volume' },
+        priceScaleId: '',
+      });
+      volumeSeries.priceScale().applyOptions({
         scaleMargins: {
-          top: 0.1,
-          bottom: 0.2,
+          top: 0.8,
+          bottom: 0,
         },
-      },
-      timeScale: {
-        borderColor: 'hsl(var(--border))',
-        timeVisible: true,
-        secondsVisible: false,
-      },
-      handleScale: {
-        axisPressedMouseMove: true,
-      },
-      handleScroll: {
-        vertTouchDrag: false,
-      },
-    });
+      });
+      volumeSeriesRef.current = volumeSeries;
 
-    chartRef.current = chart;
+      // Handle resize
+      const handleResize = () => {
+        if (chartContainerRef.current) {
+          chart.applyOptions({
+            width: chartContainerRef.current.clientWidth,
+            height: isFullscreen ? window.innerHeight - 100 : height,
+          });
+        }
+      };
 
-    // Add candlestick series (using any to handle API version differences)
-    const candlestickSeries = (chart as any).addCandlestickSeries({
-      upColor: 'hsl(142, 76%, 36%)',
-      downColor: 'hsl(0, 84%, 60%)',
-      borderUpColor: 'hsl(142, 76%, 36%)',
-      borderDownColor: 'hsl(0, 84%, 60%)',
-      wickUpColor: 'hsl(142, 76%, 36%)',
-      wickDownColor: 'hsl(0, 84%, 60%)',
-    });
-    candlestickSeriesRef.current = candlestickSeries;
+      window.addEventListener('resize', handleResize);
+      handleResize();
 
-    // Add volume series
-    const volumeSeries = (chart as any).addHistogramSeries({
-      priceFormat: { type: 'volume' },
-      priceScaleId: '',
-    });
-    volumeSeries.priceScale().applyOptions({
-      scaleMargins: {
-        top: 0.8,
-        bottom: 0,
-      },
-    });
-    volumeSeriesRef.current = volumeSeries;
+      setChartError(null);
 
-    // Handle resize
-    const handleResize = () => {
-      if (chartContainerRef.current) {
-        chart.applyOptions({
-          width: chartContainerRef.current.clientWidth,
-          height: isFullscreen ? window.innerHeight - 100 : height,
-        });
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-    handleResize();
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      chart.remove();
-    };
+      return () => {
+        window.removeEventListener('resize', handleResize);
+        chart.remove();
+      };
+    } catch (error) {
+      console.error('Chart initialization error:', error);
+      setChartError(error instanceof Error ? error.message : 'Failed to initialize chart');
+    }
   }, [height, isFullscreen]);
 
   // Load data when symbol or timeframe changes
@@ -331,11 +348,26 @@ export function TradingViewChart({
         </div>
       )}
 
-      <div 
-        ref={chartContainerRef} 
-        className="w-full"
-        style={{ height: isFullscreen ? 'calc(100vh - 150px)' : height }}
-      />
+      {chartError ? (
+        <div 
+          className="w-full flex items-center justify-center bg-card/50"
+          style={{ height: isFullscreen ? 'calc(100vh - 150px)' : height }}
+        >
+          <div className="text-center text-muted-foreground">
+            <p className="text-sm">Chart unavailable</p>
+            <p className="text-xs mt-1">{chartError}</p>
+            <Button variant="outline" size="sm" className="mt-2" onClick={handleRefresh}>
+              Retry
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div 
+          ref={chartContainerRef} 
+          className="w-full"
+          style={{ height: isFullscreen ? 'calc(100vh - 150px)' : height }}
+        />
+      )}
     </div>
   );
 }

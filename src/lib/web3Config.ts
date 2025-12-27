@@ -1,16 +1,14 @@
 import { createConfig, http } from 'wagmi';
 import { mainnet, base, arbitrum, optimism, polygon } from 'wagmi/chains';
-import { injected, walletConnect, coinbaseWallet } from 'wagmi/connectors';
+import { injected, coinbaseWallet } from 'wagmi/connectors';
 
-// WalletConnect Project ID - this is a publishable key
-const projectId = 'c4f79cc821944d9680842e34466bfb';
-
+// Note: WalletConnect requires a valid project ID from cloud.walletconnect.com
+// For now, we'll use injected wallets and Coinbase only
 export const wagmiConfig = createConfig({
   chains: [mainnet, base, arbitrum, optimism, polygon],
   connectors: [
     injected(),
-    walletConnect({ projectId }),
-    coinbaseWallet({ appName: 'Trading Platform' }),
+    coinbaseWallet({ appName: 'CryptoOps Trading Platform' }),
   ],
   transports: {
     [mainnet.id]: http(),

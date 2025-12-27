@@ -73,8 +73,15 @@ export function useWebSocketManager({
   }, [initialBackoffMs, maxBackoffMs]);
 
   const connect = useCallback(() => {
-    if (!enabledRef.current || wsRef.current?.readyState === WebSocket.OPEN) {
+    const readyState = wsRef.current?.readyState;
+    if (!enabledRef.current || readyState === WebSocket.OPEN || readyState === WebSocket.CONNECTING) {
       return;
+    }
+
+    // Cancel any pending reconnect since we are actively (re)connecting now
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
     }
 
     // Clean up existing connection
@@ -128,12 +135,15 @@ export function useWebSocketManager({
       };
 
       ws.onerror = (error) => {
+        // This error event often has no useful details in browsers; avoid spamming.
         console.error('[WebSocket] Error:', error);
         setState(prev => ({ ...prev, error: 'Connection error' }));
       };
 
       ws.onclose = (event) => {
         console.log(`[WebSocket] Closed: ${event.code} - ${event.reason}`);
+        wsRef.current = null;
+
         setState(prev => ({ ...prev, isConnected: false, isConnecting: false }));
         clearTimers();
         onDisconnect?.();
@@ -141,19 +151,25 @@ export function useWebSocketManager({
         // Attempt reconnection if enabled and not at max attempts
         if (enabledRef.current) {
           setState(prev => {
+            // Guard against multiple scheduled reconnects (can happen with rapid close/error cycles)
+            if (reconnectTimeoutRef.current) {
+              return prev;
+            }
+
             if (prev.reconnectAttempts < maxReconnectAttempts) {
               const delay = calculateBackoff(prev.reconnectAttempts);
               console.log(`[WebSocket] Reconnecting in ${delay}ms (attempt ${prev.reconnectAttempts + 1}/${maxReconnectAttempts})`);
-              
+
               reconnectTimeoutRef.current = setTimeout(() => {
+                reconnectTimeoutRef.current = null;
                 connect();
               }, delay);
 
               return { ...prev, reconnectAttempts: prev.reconnectAttempts + 1 };
-            } else {
-              console.error('[WebSocket] Max reconnection attempts reached');
-              return { ...prev, error: 'Max reconnection attempts reached' };
             }
+
+            console.error('[WebSocket] Max reconnection attempts reached');
+            return { ...prev, error: 'Max reconnection attempts reached' };
           });
         }
       };

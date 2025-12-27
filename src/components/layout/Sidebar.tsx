@@ -17,13 +17,18 @@ import {
   BarChart3,
   History,
   Briefcase,
+  CircleCheck,
+  ArrowLeftRight,
+  Repeat,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { name: 'Trade', href: '/trade', icon: Repeat },
   { name: 'Markets', href: '/markets', icon: BarChart3 },
+  { name: 'Arbitrage', href: '/arbitrage', icon: ArrowLeftRight },
   { name: 'Engine', href: '/engine', icon: Cpu },
   { name: 'Analytics', href: '/analytics', icon: LineChart },
   { name: 'Agents', href: '/agents', icon: Bot },
@@ -35,6 +40,7 @@ const navigation = [
   { name: 'Treasury', href: '/treasury', icon: Wallet },
   { name: 'Observability', href: '/observability', icon: Activity },
   { name: 'Audit Log', href: '/audit', icon: History },
+  { name: 'System Status', href: '/status', icon: CircleCheck },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 

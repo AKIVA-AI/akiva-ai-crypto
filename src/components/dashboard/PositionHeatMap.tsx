@@ -47,36 +47,12 @@ export function PositionHeatMap() {
 
   const { heatMapData, instruments, venueList, totalExposure } = useMemo(() => {
     if (!positions?.length) {
-      // Mock data for demonstration
-      const mockInstruments = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'ARB/USDT'];
-      const mockVenues = venues.length > 0 ? venues : [
-        { id: '1', name: 'Binance' },
-        { id: '2', name: 'Coinbase' },
-        { id: '3', name: 'MEXC' },
-      ];
-      
-      const mockData: HeatMapCell[] = [];
-      mockInstruments.forEach(instrument => {
-        mockVenues.forEach(venue => {
-          const exposure = Math.random() * 50000;
-          const pnl = (Math.random() - 0.5) * 5000;
-          mockData.push({
-            instrument,
-            venue: venue.name,
-            venueId: venue.id,
-            exposure,
-            pnl,
-            riskLevel: exposure > 40000 ? 'critical' : exposure > 25000 ? 'high' : exposure > 10000 ? 'medium' : 'low',
-            positionCount: Math.floor(Math.random() * 3) + 1,
-          });
-        });
-      });
-
+      // Return empty state when no positions
       return {
-        heatMapData: mockData,
-        instruments: mockInstruments,
-        venueList: mockVenues.map(v => v.name),
-        totalExposure: mockData.reduce((sum, cell) => sum + cell.exposure, 0),
+        heatMapData: [],
+        instruments: [],
+        venueList: [],
+        totalExposure: 0,
       };
     }
 

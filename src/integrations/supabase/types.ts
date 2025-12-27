@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      agents: {
+        Row: {
+          capabilities: string[]
+          config: Json
+          cpu_usage: number
+          created_at: string
+          error_message: string | null
+          id: string
+          last_heartbeat: string
+          memory_usage: number
+          name: string
+          status: string
+          type: string
+          updated_at: string
+          uptime: number
+          version: string
+        }
+        Insert: {
+          capabilities?: string[]
+          config?: Json
+          cpu_usage?: number
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          last_heartbeat?: string
+          memory_usage?: number
+          name: string
+          status?: string
+          type: string
+          updated_at?: string
+          uptime?: number
+          version?: string
+        }
+        Update: {
+          capabilities?: string[]
+          config?: Json
+          cpu_usage?: number
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          last_heartbeat?: string
+          memory_usage?: number
+          name?: string
+          status?: string
+          type?: string
+          updated_at?: string
+          uptime?: number
+          version?: string
+        }
+        Relationships: []
+      }
       alerts: {
         Row: {
           created_at: string
@@ -47,6 +98,84 @@ export type Database = {
           severity?: Database["public"]["Enums"]["alert_severity"]
           source?: string
           title?: string
+        }
+        Relationships: []
+      }
+      arbitrage_executions: {
+        Row: {
+          buy_exchange: string
+          buy_order_id: string | null
+          buy_price: number
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          executed_at: string | null
+          gross_profit: number
+          id: string
+          metadata: Json
+          net_profit: number
+          opportunity_id: string
+          quantity: number
+          sell_exchange: string
+          sell_order_id: string | null
+          sell_price: number
+          slippage: number
+          spread_percent: number
+          status: string
+          symbol: string
+          trading_fees: number
+          updated_at: string
+          withdrawal_fee: number
+        }
+        Insert: {
+          buy_exchange: string
+          buy_order_id?: string | null
+          buy_price: number
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          executed_at?: string | null
+          gross_profit: number
+          id?: string
+          metadata?: Json
+          net_profit: number
+          opportunity_id: string
+          quantity: number
+          sell_exchange: string
+          sell_order_id?: string | null
+          sell_price: number
+          slippage?: number
+          spread_percent: number
+          status?: string
+          symbol: string
+          trading_fees?: number
+          updated_at?: string
+          withdrawal_fee?: number
+        }
+        Update: {
+          buy_exchange?: string
+          buy_order_id?: string | null
+          buy_price?: number
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          executed_at?: string | null
+          gross_profit?: number
+          id?: string
+          metadata?: Json
+          net_profit?: number
+          opportunity_id?: string
+          quantity?: number
+          sell_exchange?: string
+          sell_order_id?: string | null
+          sell_price?: number
+          slippage?: number
+          spread_percent?: number
+          status?: string
+          symbol?: string
+          trading_fees?: number
+          updated_at?: string
+          withdrawal_fee?: number
         }
         Relationships: []
       }
@@ -294,6 +423,54 @@ export type Database = {
           },
         ]
       }
+      derivatives_metrics: {
+        Row: {
+          funding_rate: number | null
+          id: string
+          instrument: string
+          liquidations_24h_long: number | null
+          liquidations_24h_short: number | null
+          long_short_ratio: number | null
+          next_funding_time: string | null
+          oi_change_24h: number | null
+          open_interest: number | null
+          recorded_at: string
+          top_trader_long_ratio: number | null
+          top_trader_short_ratio: number | null
+          venue: string
+        }
+        Insert: {
+          funding_rate?: number | null
+          id?: string
+          instrument: string
+          liquidations_24h_long?: number | null
+          liquidations_24h_short?: number | null
+          long_short_ratio?: number | null
+          next_funding_time?: string | null
+          oi_change_24h?: number | null
+          open_interest?: number | null
+          recorded_at?: string
+          top_trader_long_ratio?: number | null
+          top_trader_short_ratio?: number | null
+          venue: string
+        }
+        Update: {
+          funding_rate?: number | null
+          id?: string
+          instrument?: string
+          liquidations_24h_long?: number | null
+          liquidations_24h_short?: number | null
+          long_short_ratio?: number | null
+          next_funding_time?: string | null
+          oi_change_24h?: number | null
+          open_interest?: number | null
+          recorded_at?: string
+          top_trader_long_ratio?: number | null
+          top_trader_short_ratio?: number | null
+          venue?: string
+        }
+        Relationships: []
+      }
       fills: {
         Row: {
           created_at: string
@@ -384,6 +561,90 @@ export type Database = {
           reduce_only_mode?: boolean
           updated_at?: string
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      intelligence_signals: {
+        Row: {
+          confidence: number | null
+          created_at: string
+          direction: string
+          expires_at: string | null
+          id: string
+          instrument: string
+          reasoning: string | null
+          signal_type: string
+          source_data: Json | null
+          strength: number | null
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string
+          direction: string
+          expires_at?: string | null
+          id?: string
+          instrument: string
+          reasoning?: string | null
+          signal_type: string
+          source_data?: Json | null
+          strength?: number | null
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string
+          direction?: string
+          expires_at?: string | null
+          id?: string
+          instrument?: string
+          reasoning?: string | null
+          signal_type?: string
+          source_data?: Json | null
+          strength?: number | null
+        }
+        Relationships: []
+      }
+      market_news: {
+        Row: {
+          created_at: string
+          id: string
+          impact_score: number | null
+          instruments: string[] | null
+          published_at: string
+          raw_content: string | null
+          sentiment_score: number | null
+          source: string
+          summary: string | null
+          tags: string[] | null
+          title: string
+          url: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          impact_score?: number | null
+          instruments?: string[] | null
+          published_at: string
+          raw_content?: string | null
+          sentiment_score?: number | null
+          source: string
+          summary?: string | null
+          tags?: string[] | null
+          title: string
+          url?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          impact_score?: number | null
+          instruments?: string[] | null
+          published_at?: string
+          raw_content?: string | null
+          sentiment_score?: number | null
+          source?: string
+          summary?: string | null
+          tags?: string[] | null
+          title?: string
+          url?: string | null
         }
         Relationships: []
       }
@@ -644,6 +905,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      onchain_metrics: {
+        Row: {
+          active_addresses: number | null
+          exchange_inflow: number | null
+          exchange_outflow: number | null
+          gas_used: number | null
+          holder_concentration: number | null
+          holder_count: number | null
+          id: string
+          instrument: string
+          network: string
+          recorded_at: string
+          smart_money_flow: number | null
+          transaction_count: number | null
+          whale_transactions: number | null
+        }
+        Insert: {
+          active_addresses?: number | null
+          exchange_inflow?: number | null
+          exchange_outflow?: number | null
+          gas_used?: number | null
+          holder_concentration?: number | null
+          holder_count?: number | null
+          id?: string
+          instrument: string
+          network: string
+          recorded_at?: string
+          smart_money_flow?: number | null
+          transaction_count?: number | null
+          whale_transactions?: number | null
+        }
+        Update: {
+          active_addresses?: number | null
+          exchange_inflow?: number | null
+          exchange_outflow?: number | null
+          gas_used?: number | null
+          holder_concentration?: number | null
+          holder_count?: number | null
+          id?: string
+          instrument?: string
+          network?: string
+          recorded_at?: string
+          smart_money_flow?: number | null
+          transaction_count?: number | null
+          whale_transactions?: number | null
+        }
+        Relationships: []
       }
       orders: {
         Row: {
@@ -920,6 +1229,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      social_sentiment: {
+        Row: {
+          id: string
+          influential_posts: Json | null
+          instrument: string
+          mention_count: number | null
+          negative_count: number | null
+          neutral_count: number | null
+          platform: string
+          positive_count: number | null
+          recorded_at: string
+          sentiment_score: number | null
+          velocity: number | null
+        }
+        Insert: {
+          id?: string
+          influential_posts?: Json | null
+          instrument: string
+          mention_count?: number | null
+          negative_count?: number | null
+          neutral_count?: number | null
+          platform: string
+          positive_count?: number | null
+          recorded_at?: string
+          sentiment_score?: number | null
+          velocity?: number | null
+        }
+        Update: {
+          id?: string
+          influential_posts?: Json | null
+          instrument?: string
+          mention_count?: number | null
+          negative_count?: number | null
+          neutral_count?: number | null
+          platform?: string
+          positive_count?: number | null
+          recorded_at?: string
+          sentiment_score?: number | null
+          velocity?: number | null
+        }
+        Relationships: []
       }
       strategies: {
         Row: {
@@ -1208,6 +1559,161 @@ export type Database = {
           restricted_order_types?: string[]
           status?: Database["public"]["Enums"]["venue_status"]
           supported_instruments?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      wallets: {
+        Row: {
+          address: string
+          balance: number
+          created_at: string
+          currency: string
+          id: string
+          is_watch_only: boolean
+          last_synced_at: string | null
+          metadata: Json
+          name: string
+          network: string
+          pending_approvals: number
+          required_signers: number
+          signers: number
+          type: string
+          updated_at: string
+          usd_value: number
+        }
+        Insert: {
+          address: string
+          balance?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          is_watch_only?: boolean
+          last_synced_at?: string | null
+          metadata?: Json
+          name: string
+          network: string
+          pending_approvals?: number
+          required_signers?: number
+          signers?: number
+          type?: string
+          updated_at?: string
+          usd_value?: number
+        }
+        Update: {
+          address?: string
+          balance?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          is_watch_only?: boolean
+          last_synced_at?: string | null
+          metadata?: Json
+          name?: string
+          network?: string
+          pending_approvals?: number
+          required_signers?: number
+          signers?: number
+          type?: string
+          updated_at?: string
+          usd_value?: number
+        }
+        Relationships: []
+      }
+      whale_transactions: {
+        Row: {
+          amount: number
+          block_number: number | null
+          created_at: string
+          direction: string
+          from_address: string
+          gas_price: number | null
+          id: string
+          instrument: string
+          network: string
+          to_address: string
+          tx_hash: string
+          usd_value: number | null
+          wallet_id: string | null
+        }
+        Insert: {
+          amount: number
+          block_number?: number | null
+          created_at?: string
+          direction: string
+          from_address: string
+          gas_price?: number | null
+          id?: string
+          instrument: string
+          network: string
+          to_address: string
+          tx_hash: string
+          usd_value?: number | null
+          wallet_id?: string | null
+        }
+        Update: {
+          amount?: number
+          block_number?: number | null
+          created_at?: string
+          direction?: string
+          from_address?: string
+          gas_price?: number | null
+          id?: string
+          instrument?: string
+          network?: string
+          to_address?: string
+          tx_hash?: string
+          usd_value?: number | null
+          wallet_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whale_transactions_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "whale_wallets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whale_wallets: {
+        Row: {
+          address: string
+          balance: number | null
+          category: string | null
+          created_at: string
+          id: string
+          is_tracked: boolean | null
+          label: string | null
+          last_activity_at: string | null
+          network: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          balance?: number | null
+          category?: string | null
+          created_at?: string
+          id?: string
+          is_tracked?: boolean | null
+          label?: string | null
+          last_activity_at?: string | null
+          network: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          balance?: number | null
+          category?: string | null
+          created_at?: string
+          id?: string
+          is_tracked?: boolean | null
+          label?: string | null
+          last_activity_at?: string | null
+          network?: string
+          notes?: string | null
           updated_at?: string
         }
         Relationships: []

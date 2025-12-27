@@ -1,19 +1,19 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, lazy, Suspense } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { TradingViewChart } from '@/components/charts/TradingViewChart';
-import { TradeTicket } from '@/components/trading/TradeTicket';
+import { UnifiedSpotTrader } from '@/components/trading/UnifiedSpotTrader';
 import { LiveOrderBook } from '@/components/trading/LiveOrderBook';
 import { TradeBlotter } from '@/components/trading/TradeBlotter';
-import { BracketOrderTicket } from '@/components/trading/BracketOrderTicket';
 import { PortfolioSummaryWidget } from '@/components/portfolio/PortfolioSummaryWidget';
-import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useLivePriceFeed } from '@/hooks/useLivePriceFeed';
+import { useHyperliquidHealth } from '@/hooks/useHyperliquid';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -23,8 +23,33 @@ import {
   Zap,
   Activity,
   Wallet,
+  Brain,
+  Layers,
 } from 'lucide-react';
 import { WebSocketHealthMonitor } from '@/components/trading/WebSocketHealthMonitor';
+
+// Lazy load heavy Intelligence components
+const MarketIntelligencePanel = lazy(() => import('@/components/intelligence/MarketIntelligencePanel').then(m => ({ default: m.MarketIntelligencePanel })));
+const IntelligenceOverview = lazy(() => import('@/components/intelligence/IntelligenceOverview').then(m => ({ default: m.IntelligenceOverview })));
+const WhaleAlertPanel = lazy(() => import('@/components/intelligence/WhaleAlertPanel').then(m => ({ default: m.WhaleAlertPanel })));
+const TradingCopilotPanel = lazy(() => import('@/components/intelligence/TradingCopilotPanel').then(m => ({ default: m.TradingCopilotPanel })));
+const ExchangeAPIManager = lazy(() => import('@/components/intelligence/ExchangeAPIManager').then(m => ({ default: m.ExchangeAPIManager })));
+const AutoTradeTriggers = lazy(() => import('@/components/intelligence/AutoTradeTriggers').then(m => ({ default: m.AutoTradeTriggers })));
+const MobileIntelligenceView = lazy(() => import('@/components/intelligence/MobileIntelligenceView').then(m => ({ default: m.MobileIntelligenceView })));
+const BacktestTriggers = lazy(() => import('@/components/intelligence/BacktestTriggers').then(m => ({ default: m.BacktestTriggers })));
+const TelegramBotManager = lazy(() => import('@/components/intelligence/TelegramBotManager').then(m => ({ default: m.TelegramBotManager })));
+const DerivativesPanel = lazy(() => import('@/components/intelligence/DerivativesPanel').then(m => ({ default: m.DerivativesPanel })));
+
+// Loading skeleton for lazy components
+const TabLoadingSkeleton = () => (
+  <div className="space-y-4">
+    <Skeleton className="h-32 w-full" />
+    <div className="grid grid-cols-2 gap-4">
+      <Skeleton className="h-24" />
+      <Skeleton className="h-24" />
+    </div>
+  </div>
+);
 
 interface MarketTicker {
   symbol: string;
@@ -62,6 +87,9 @@ export default function Markets() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [isTradeTicketOpen, setIsTradeTicketOpen] = useState(false);
+
+  // HyperLiquid health check
+  const { data: hlHealth } = useHyperliquidHealth();
 
   // Live WebSocket price feed from Binance
   const { 
@@ -130,11 +158,8 @@ export default function Markets() {
                 Trade
               </Button>
             </SheetTrigger>
-            <SheetContent className="w-full sm:max-w-md p-0 border-l border-border/50">
-              <TradeTicket 
-                defaultInstrument={selectedSymbol.replace('-', '/')} 
-                onClose={() => setIsTradeTicketOpen(false)}
-              />
+            <SheetContent className="w-full sm:max-w-lg p-0 border-l border-border/50 overflow-y-auto">
+              <UnifiedSpotTrader />
             </SheetContent>
           </Sheet>
         </div>
@@ -281,10 +306,35 @@ export default function Markets() {
                   <Wallet className="h-4 w-4" />
                   Portfolio
                 </TabsTrigger>
+                <TabsTrigger value="derivatives" className="gap-2">
+                  <Layers className="h-4 w-4" />
+                  Derivatives
+                </TabsTrigger>
+                <TabsTrigger value="intelligence" className="gap-2">
+                  <Brain className="h-4 w-4" />
+                  Intelligence
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="orderbook">
-                <LiveOrderBook symbol={selectedSymbol} depth={10} />
+                <div className="space-y-4">
+                  {/* HyperLiquid status badge */}
+                  {hlHealth && (
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className={cn(
+                        "gap-1",
+                        hlHealth.status === 'healthy' ? 'border-success text-success' : 'border-warning text-warning'
+                      )}>
+                        <span className={cn(
+                          "w-2 h-2 rounded-full",
+                          hlHealth.status === 'healthy' ? 'bg-success' : 'bg-warning'
+                        )} />
+                        HyperLiquid: {hlHealth.mode} ({hlHealth.latencyMs}ms)
+                      </Badge>
+                    </div>
+                  )}
+                  <LiveOrderBook symbol={selectedSymbol} depth={10} />
+                </div>
               </TabsContent>
 
               <TabsContent value="blotter">
@@ -293,6 +343,44 @@ export default function Markets() {
 
               <TabsContent value="portfolio">
                 <PortfolioSummaryWidget />
+              </TabsContent>
+
+              <TabsContent value="derivatives">
+                <Suspense fallback={<TabLoadingSkeleton />}>
+                  <DerivativesPanel instruments={TRACKED_SYMBOLS.slice(0, 6)} />
+                </Suspense>
+              </TabsContent>
+
+              <TabsContent value="intelligence">
+                <Suspense fallback={<TabLoadingSkeleton />}>
+                  <div className="space-y-4">
+                    {/* Mobile-optimized view for smaller screens */}
+                    <div className="block lg:hidden">
+                      <MobileIntelligenceView instruments={TRACKED_SYMBOLS.slice(0, 6)} />
+                    </div>
+                    
+                    {/* Full desktop layout */}
+                    <div className="hidden lg:block space-y-4">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <IntelligenceOverview instruments={TRACKED_SYMBOLS.slice(0, 6)} />
+                        <MarketIntelligencePanel instruments={TRACKED_SYMBOLS.slice(0, 6)} compact />
+                      </div>
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        <WhaleAlertPanel compact />
+                        <TradingCopilotPanel defaultInstrument={selectedSymbol} compact />
+                        <ExchangeAPIManager />
+                      </div>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <AutoTradeTriggers />
+                        <BacktestTriggers />
+                      </div>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <TelegramBotManager />
+                        <DerivativesPanel instruments={TRACKED_SYMBOLS.slice(0, 6)} compact />
+                      </div>
+                    </div>
+                  </div>
+                </Suspense>
               </TabsContent>
             </Tabs>
           </div>
