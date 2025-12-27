@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 interface WebSocketMessage {
   type: string;
   channel: string;
-  data: any;
+  data: Record<string, unknown>;
   timestamp: string;
 }
 
@@ -94,7 +94,7 @@ export function useWebSocketStream({
     setReconnectAttempts(0);
   }, []);
 
-  const send = useCallback((data: any) => {
+  const send = useCallback((data: unknown) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(data));
     }
@@ -103,6 +103,7 @@ export function useWebSocketStream({
   useEffect(() => {
     connect();
     return () => disconnect();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url]);
 
   return {
@@ -122,18 +123,19 @@ export function useTradingDataStream(backendUrl: string | null) {
 
   const handleMessage = useCallback((message: WebSocketMessage) => {
     switch (message.channel) {
-      case 'positions':
-        queryClient.setQueryData(['positions'], (old: any) => {
+      case 'positions': {
+        queryClient.setQueryData(['positions'], (old: Array<{ id: string }> | undefined) => {
           if (!old) return [message.data];
-          const index = old.findIndex((p: any) => p.id === message.data.id);
+          const index = old.findIndex((p) => p.id === (message.data as { id: string }).id);
           if (index >= 0) {
             const updated = [...old];
-            updated[index] = message.data;
+            updated[index] = message.data as { id: string };
             return updated;
           }
-          return [...old, message.data];
+          return [...old, message.data as { id: string }];
         });
         break;
+      }
 
       case 'orders':
         queryClient.invalidateQueries({ queryKey: ['orders'] });
@@ -142,32 +144,35 @@ export function useTradingDataStream(backendUrl: string | null) {
         }
         break;
 
-      case 'venue_health':
-        queryClient.setQueryData(['venues'], (old: any) => {
+      case 'venue_health': {
+        const venueData = message.data as { venue_id: string; status: string; latency_ms: number; name: string };
+        queryClient.setQueryData(['venues'], (old: Array<{ id: string; status: string; latency_ms: number }> | undefined) => {
           if (!old) return old;
-          return old.map((v: any) => 
-            v.id === message.data.venue_id 
-              ? { ...v, status: message.data.status, latency_ms: message.data.latency_ms }
+          return old.map((v) => 
+            v.id === venueData.venue_id 
+              ? { ...v, status: venueData.status, latency_ms: venueData.latency_ms }
               : v
           );
         });
         
-        if (message.data.status === 'offline') {
-          toast.error(`🔴 ${message.data.name} is OFFLINE`);
-        } else if (message.data.status === 'degraded') {
-          toast.warning(`🟡 ${message.data.name} is DEGRADED`);
+        if (venueData.status === 'offline') {
+          toast.error(`🔴 ${venueData.name} is OFFLINE`);
+        } else if (venueData.status === 'degraded') {
+          toast.warning(`🟡 ${venueData.name} is DEGRADED`);
         }
         break;
+      }
 
-      case 'alerts':
+      case 'alerts': {
         queryClient.invalidateQueries({ queryKey: ['alerts'] });
-        const severity = message.data.severity;
-        if (severity === 'critical') {
-          toast.error(`🚨 ${message.data.title}`, { duration: 10000 });
-        } else if (severity === 'warning') {
-          toast.warning(message.data.title);
+        const alertData = message.data as { severity: string; title: string };
+        if (alertData.severity === 'critical') {
+          toast.error(`🚨 ${alertData.title}`, { duration: 10000 });
+        } else if (alertData.severity === 'warning') {
+          toast.warning(alertData.title);
         }
         break;
+      }
 
       case 'strategy_signals':
         queryClient.invalidateQueries({ queryKey: ['strategy-signals'] });
@@ -218,12 +223,13 @@ export function usePriceTickerStream(backendUrl: string | null, instruments: str
 
   const handleMessage = useCallback((message: WebSocketMessage) => {
     if (message.channel === 'price_tick') {
+      const priceData = message.data as { instrument: string; bid: number; ask: number; last: number };
       setPrices((prev) => ({
         ...prev,
-        [message.data.instrument]: {
-          bid: message.data.bid,
-          ask: message.data.ask,
-          last: message.data.last,
+        [priceData.instrument]: {
+          bid: priceData.bid,
+          ask: priceData.ask,
+          last: priceData.last,
         },
       }));
     }

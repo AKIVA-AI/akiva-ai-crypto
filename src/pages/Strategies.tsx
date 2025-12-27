@@ -211,7 +211,7 @@ export default function Strategies() {
                         </Badge>
                         <span className="text-xs text-muted-foreground">• {strategy.timeframe} • Tier {strategy.risk_tier}</span>
                       </div>
-                      <p className="text-sm text-muted-foreground mb-4">Book: {(strategy as any).books?.name || 'N/A'}</p>
+                      <p className="text-sm text-muted-foreground mb-4">Book: {(strategy as { books?: { name: string } }).books?.name || 'N/A'}</p>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div><p className="text-xs text-muted-foreground">P&L</p><p className={cn('font-mono font-semibold', Number(strategy.pnl) >= 0 ? 'text-success' : 'text-destructive')}>${Number(strategy.pnl).toLocaleString()}</p></div>
                         <div><p className="text-xs text-muted-foreground">Max Drawdown</p><p className="font-mono font-semibold text-destructive">{Number(strategy.max_drawdown).toFixed(1)}%</p></div>

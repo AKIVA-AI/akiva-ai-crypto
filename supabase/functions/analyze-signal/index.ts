@@ -30,7 +30,15 @@ serve(async (req) => {
     console.log(`[analyze-signal] Analysis type: ${analysisType}, signal: ${signalId}, strategy: ${strategyId}`);
 
     // Fetch relevant data based on analysis type
-    let contextData: any = {};
+    interface SignalData { strength?: number }
+    interface ContextData {
+      signal?: SignalData;
+      strategy?: Record<string, unknown>;
+      recentSignals?: Record<string, unknown>[];
+      recentIntents?: Record<string, unknown>[];
+      marketData?: Record<string, unknown>[];
+    }
+    const contextData: ContextData = {};
 
     if (signalId) {
       const { data: signal } = await supabase
@@ -38,7 +46,7 @@ serve(async (req) => {
         .select('*, strategies(name, config_metadata, timeframe, asset_class)')
         .eq('id', signalId)
         .single();
-      contextData.signal = signal;
+      contextData.signal = signal ?? undefined;
     }
 
     if (strategyId) {
@@ -47,7 +55,7 @@ serve(async (req) => {
         .select('*')
         .eq('id', strategyId)
         .single();
-      contextData.strategy = strategy;
+      contextData.strategy = strategy ?? undefined;
 
       // Get recent signals for this strategy
       const { data: recentSignals } = await supabase
@@ -56,7 +64,7 @@ serve(async (req) => {
         .eq('strategy_id', strategyId)
         .order('created_at', { ascending: false })
         .limit(10);
-      contextData.recentSignals = recentSignals;
+      contextData.recentSignals = recentSignals ?? undefined;
 
       // Get recent intents
       const { data: recentIntents } = await supabase
@@ -65,7 +73,7 @@ serve(async (req) => {
         .eq('strategy_id', strategyId)
         .order('created_at', { ascending: false })
         .limit(5);
-      contextData.recentIntents = recentIntents;
+      contextData.recentIntents = recentIntents ?? undefined;
     }
 
     if (instrument) {
@@ -75,7 +83,7 @@ serve(async (req) => {
         .eq('instrument', instrument)
         .order('recorded_at', { ascending: false })
         .limit(20);
-      contextData.marketData = marketData;
+      contextData.marketData = marketData ?? undefined;
     }
 
     // Build prompt based on analysis type

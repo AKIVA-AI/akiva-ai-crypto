@@ -110,7 +110,8 @@ export function BacktestEquityCurve({
         outperformance: ((finalEquity - finalBenchmark) / initialCapital) * 100,
       }
     };
-  }, [initialCapital, totalReturn, maxDrawdown, totalTrades, winRate]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialCapital, totalReturn, winRate]);
 
   return (
     <div className="space-y-6">

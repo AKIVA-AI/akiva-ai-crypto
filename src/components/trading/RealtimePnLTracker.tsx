@@ -14,7 +14,7 @@ interface RealtimePnLTrackerProps {
 // Map position instruments to price feed symbols
 const mapInstrumentToSymbol = (instrument: string): string => {
   // Handle various formats: BTC-USD -> BTC-USDT, BTCUSD -> BTC-USDT
-  const normalized = instrument.replace(/[-\/]/g, '').toUpperCase();
+  const normalized = instrument.replace(/[-/]/g, '').toUpperCase();
   if (normalized.endsWith('USD')) {
     return normalized.replace('USD', '-USDT');
   }

@@ -87,24 +87,26 @@ serve(async (req) => {
     
     console.log(`Token metrics request: action=${action}, chain=${chain}`);
     
-    let result;
+    let result: TokenMetrics | TokenMetrics[];
     
     switch (action) {
-      case 'single':
+      case 'single': {
         if (!tokenAddress) {
           throw new Error('Token address required');
         }
         result = await fetchTokenMetrics(tokenAddress, chain);
         break;
+      }
         
-      case 'batch':
+      case 'batch': {
         if (!tokenAddresses || !Array.isArray(tokenAddresses)) {
           throw new Error('Token addresses array required');
         }
         result = await fetchMultipleTokens(tokenAddresses, chain);
         break;
+      }
         
-      case 'watchlist':
+      case 'watchlist': {
         // Predefined watchlist of popular meme tokens
         const watchlist = [
           '0x6982508145454ce325ddbe47a25d4ec3d2311933', // PEPE
@@ -115,6 +117,7 @@ serve(async (req) => {
         ];
         result = await fetchMultipleTokens(watchlist, chain);
         break;
+      }
         
       default:
         throw new Error(`Unknown action: ${action}`);
