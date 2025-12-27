@@ -222,6 +222,29 @@ function calculateCosts(opportunity: ArbitrageOpportunity): {
   return { tradingFees, withdrawalFee, slippage, totalCost, netProfit };
 }
 
+// In-memory state for kill switch and daily P&L tracking
+let killSwitchActive = false;
+let killSwitchReason = '';
+let killSwitchActivatedAt: number | null = null;
+let dailyPnL = 0;
+let dailyPnLDate = new Date().toDateString();
+let dailyPnLLimit = -500; // Default -$500 daily loss limit
+
+// Reset daily P&L at midnight
+function checkDailyReset() {
+  const today = new Date().toDateString();
+  if (today !== dailyPnLDate) {
+    dailyPnL = 0;
+    dailyPnLDate = today;
+    // Auto-reset kill switch if it was triggered by P&L
+    if (killSwitchActive && killSwitchReason.includes('P&L limit')) {
+      killSwitchActive = false;
+      killSwitchReason = '';
+      killSwitchActivatedAt = null;
+    }
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -231,10 +254,113 @@ serve(async (req) => {
     const { action, params = {} } = await req.json();
     console.log(`[Arbitrage] Action: ${action}`, params);
 
+    // Check for daily reset
+    checkDailyReset();
+
     let result;
 
     switch (action) {
+      case 'kill-switch':
+        // Manage kill switch
+        if (params.action === 'activate') {
+          killSwitchActive = true;
+          killSwitchReason = params.reason || 'Manual activation';
+          killSwitchActivatedAt = Date.now();
+          console.log('[Arbitrage] Kill switch ACTIVATED:', killSwitchReason);
+          
+          // Send Telegram alert
+          const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
+          if (botToken) {
+            const supabase = createClient(
+              Deno.env.get('SUPABASE_URL') ?? '',
+              Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+            );
+            const { data: channels } = await supabase
+              .from('notification_channels')
+              .select('*')
+              .eq('type', 'telegram')
+              .eq('is_enabled', true);
+
+            if (channels) {
+              for (const channel of channels) {
+                const chatIdMatch = channel.webhook_url.match(/telegram:\/\/(.+)/);
+                if (chatIdMatch) {
+                  await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      chat_id: chatIdMatch[1],
+                      text: `🛑 *KILL SWITCH ACTIVATED*\n\nReason: ${killSwitchReason}\nTime: ${new Date().toLocaleTimeString()}\n\n_All arbitrage trading halted_`,
+                      parse_mode: 'Markdown',
+                    }),
+                  });
+                }
+              }
+            }
+          }
+          
+          result = { active: true, reason: killSwitchReason, activatedAt: killSwitchActivatedAt };
+        } else if (params.action === 'deactivate') {
+          killSwitchActive = false;
+          killSwitchReason = '';
+          killSwitchActivatedAt = null;
+          console.log('[Arbitrage] Kill switch DEACTIVATED');
+          result = { active: false };
+        } else {
+          result = { 
+            active: killSwitchActive, 
+            reason: killSwitchReason, 
+            activatedAt: killSwitchActivatedAt 
+          };
+        }
+        break;
+
+      case 'pnl-limits':
+        // Manage daily P&L limits
+        if (params.setLimit !== undefined) {
+          dailyPnLLimit = params.setLimit;
+          console.log('[Arbitrage] Daily P&L limit set to:', dailyPnLLimit);
+        }
+        if (params.updatePnL !== undefined) {
+          dailyPnL += params.updatePnL;
+          console.log('[Arbitrage] Daily P&L updated to:', dailyPnL);
+          
+          // Check if limit breached
+          if (dailyPnL <= dailyPnLLimit) {
+            killSwitchActive = true;
+            killSwitchReason = `Daily P&L limit breached: $${dailyPnL.toFixed(2)} (limit: $${dailyPnLLimit})`;
+            killSwitchActivatedAt = Date.now();
+            console.log('[Arbitrage] Kill switch auto-activated due to P&L limit');
+          }
+        }
+        if (params.reset) {
+          dailyPnL = 0;
+          console.log('[Arbitrage] Daily P&L reset');
+        }
+        result = { 
+          dailyPnL, 
+          dailyPnLLimit, 
+          dailyPnLDate,
+          limitBreached: dailyPnL <= dailyPnLLimit,
+          percentUsed: dailyPnLLimit < 0 ? (dailyPnL / dailyPnLLimit) * 100 : 0,
+        };
+        break;
+
       case 'scan':
+        // Check kill switch before scanning
+        if (killSwitchActive) {
+          result = {
+            opportunities: [],
+            scanned: 0,
+            found: 0,
+            alerted: 0,
+            blocked: true,
+            reason: `Kill switch active: ${killSwitchReason}`,
+            timestamp: Date.now(),
+          };
+          break;
+        }
+        
         // Scan for arbitrage opportunities - now includes 5 pairs
         const symbols = params.symbols || ['BTC/USD', 'ETH/USD', 'SOL/USD', 'AVAX/USD', 'LINK/USD'];
         const minSpread = params.minSpreadPercent || 0.1;
@@ -271,11 +397,29 @@ serve(async (req) => {
           scanned: symbols.length,
           found: profitableOpportunities.length,
           alerted: profitableOpportunities.filter(o => o.spreadPercent >= alertThreshold).length,
+          killSwitchActive,
+          dailyPnL,
+          dailyPnLLimit,
           timestamp: Date.now(),
         };
         break;
 
       case 'auto-execute':
+        // Check kill switch before auto-executing
+        if (killSwitchActive) {
+          result = {
+            scanned: 0,
+            found: 0,
+            qualified: 0,
+            executed: 0,
+            trades: [],
+            blocked: true,
+            reason: `Kill switch active: ${killSwitchReason}`,
+            timestamp: Date.now(),
+          };
+          break;
+        }
+        
         // Auto-execute with safety controls
         const autoSymbols = params.symbols || ['BTC/USD', 'ETH/USD', 'SOL/USD', 'AVAX/USD', 'LINK/USD'];
         const autoMinSpread = params.minSpreadPercent || 0.1;
@@ -343,6 +487,16 @@ serve(async (req) => {
           };
           
           executedTrades.push(execResult);
+          
+          // Update daily P&L
+          dailyPnL += bestOpp.costs.netProfit;
+          
+          // Check P&L limit
+          if (dailyPnL <= dailyPnLLimit) {
+            killSwitchActive = true;
+            killSwitchReason = `Daily P&L limit breached: $${dailyPnL.toFixed(2)}`;
+            killSwitchActivatedAt = Date.now();
+          }
         }
         
         result = {
@@ -353,6 +507,9 @@ serve(async (req) => {
           trades: executedTrades,
           nextScanAfter: Date.now() + cooldownMs,
           settings: { minProfitThreshold, maxPositionSize, cooldownMs },
+          dailyPnL,
+          dailyPnLLimit,
+          killSwitchActive,
           timestamp: Date.now(),
         };
         break;
@@ -374,10 +531,27 @@ serve(async (req) => {
         break;
 
       case 'execute':
+        // Check kill switch before executing
+        if (killSwitchActive) {
+          throw new Error(`Execution blocked: ${killSwitchReason}`);
+        }
+        
         // Execute arbitrage trade (simulation for now)
         if (!params.opportunity) throw new Error('Opportunity required');
         
         console.log('[Arbitrage] Executing trade:', params.opportunity);
+        
+        const execCosts = calculateCosts(params.opportunity);
+        
+        // Update daily P&L
+        dailyPnL += execCosts.netProfit;
+        
+        // Check P&L limit after trade
+        if (dailyPnL <= dailyPnLLimit) {
+          killSwitchActive = true;
+          killSwitchReason = `Daily P&L limit breached: $${dailyPnL.toFixed(2)}`;
+          killSwitchActivatedAt = Date.now();
+        }
         
         result = {
           status: 'SIMULATED',
@@ -396,7 +570,9 @@ serve(async (req) => {
             price: params.opportunity.sellPrice,
             quantity: params.opportunity.volume,
           },
-          realizedProfit: calculateCosts(params.opportunity).netProfit,
+          realizedProfit: execCosts.netProfit,
+          dailyPnL,
+          dailyPnLLimit,
           message: 'Trade simulated - enable live trading for real execution',
         };
         break;
@@ -411,6 +587,17 @@ serve(async (req) => {
           supportedSymbols: ['BTC/USD', 'ETH/USD', 'SOL/USD', 'AVAX/USD', 'LINK/USD'],
           mode: 'us_compliant',
           telegramConfigured: !!Deno.env.get('TELEGRAM_BOT_TOKEN'),
+          killSwitch: {
+            active: killSwitchActive,
+            reason: killSwitchReason,
+            activatedAt: killSwitchActivatedAt,
+          },
+          dailyPnL: {
+            current: dailyPnL,
+            limit: dailyPnLLimit,
+            date: dailyPnLDate,
+            percentUsed: dailyPnLLimit < 0 ? (dailyPnL / dailyPnLLimit) * 100 : 0,
+          },
         };
         break;
 
@@ -442,12 +629,16 @@ serve(async (req) => {
           status: 'TEST_COMPLETED',
           opportunity: testOpportunity,
           costs: testCosts,
+          killSwitchActive,
+          dailyPnL,
+          dailyPnLLimit,
           steps: [
             { step: 1, action: 'Scan exchanges', status: 'completed' },
             { step: 2, action: 'Identify spread', status: 'completed', data: { spread: '0.158%' } },
             { step: 3, action: 'Calculate costs', status: 'completed', data: testCosts },
-            { step: 4, action: 'Send Telegram alert', status: Deno.env.get('TELEGRAM_BOT_TOKEN') ? 'completed' : 'skipped' },
-            { step: 5, action: 'Execute trades', status: 'simulated' },
+            { step: 4, action: 'Check kill switch', status: killSwitchActive ? 'blocked' : 'passed' },
+            { step: 5, action: 'Send Telegram alert', status: Deno.env.get('TELEGRAM_BOT_TOKEN') ? 'completed' : 'skipped' },
+            { step: 6, action: 'Execute trades', status: 'simulated' },
           ],
           buyOrder: {
             exchange: 'coinbase',

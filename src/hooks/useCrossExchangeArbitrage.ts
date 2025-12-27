@@ -168,3 +168,101 @@ export function useAutoExecuteArbitrage() {
     },
   });
 }
+
+// Kill switch hook
+export function useKillSwitch() {
+  const queryClient = useQueryClient();
+
+  const activate = useMutation({
+    mutationFn: (reason: string) =>
+      invokeArbitrage('kill-switch', { action: 'activate', reason }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['arbitrage'] });
+      toast.error('Kill switch activated', {
+        description: 'All arbitrage trading has been halted',
+      });
+    },
+    onError: (error: Error) => {
+      toast.error('Failed to activate kill switch', { description: error.message });
+    },
+  });
+
+  const deactivate = useMutation({
+    mutationFn: () =>
+      invokeArbitrage('kill-switch', { action: 'deactivate' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['arbitrage'] });
+      toast.success('Kill switch deactivated', {
+        description: 'Arbitrage trading resumed',
+      });
+    },
+    onError: (error: Error) => {
+      toast.error('Failed to deactivate kill switch', { description: error.message });
+    },
+  });
+
+  const status = useQuery({
+    queryKey: ['arbitrage', 'kill-switch'],
+    queryFn: () => invokeArbitrage('kill-switch', {}),
+    staleTime: 5000,
+    refetchInterval: 10000,
+  });
+
+  return {
+    isActive: status.data?.active || false,
+    reason: status.data?.reason || '',
+    activatedAt: status.data?.activatedAt,
+    activate,
+    deactivate,
+    isLoading: status.isLoading,
+  };
+}
+
+// Daily P&L limits hook
+export function useDailyPnLLimits() {
+  const queryClient = useQueryClient();
+
+  const setLimit = useMutation({
+    mutationFn: (limit: number) =>
+      invokeArbitrage('pnl-limits', { setLimit: limit }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['arbitrage'] });
+      toast.success('Daily P&L limit updated', {
+        description: `New limit: $${data.dailyPnLLimit}`,
+      });
+    },
+    onError: (error: Error) => {
+      toast.error('Failed to set P&L limit', { description: error.message });
+    },
+  });
+
+  const resetPnL = useMutation({
+    mutationFn: () =>
+      invokeArbitrage('pnl-limits', { reset: true }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['arbitrage'] });
+      toast.success('Daily P&L reset');
+    },
+    onError: (error: Error) => {
+      toast.error('Failed to reset P&L', { description: error.message });
+    },
+  });
+
+  const status = useQuery({
+    queryKey: ['arbitrage', 'pnl-limits'],
+    queryFn: () => invokeArbitrage('pnl-limits', {}),
+    staleTime: 5000,
+    refetchInterval: 10000,
+  });
+
+  return {
+    dailyPnL: status.data?.dailyPnL || 0,
+    dailyPnLLimit: status.data?.dailyPnLLimit || -500,
+    dailyPnLDate: status.data?.dailyPnLDate || '',
+    limitBreached: status.data?.limitBreached || false,
+    percentUsed: status.data?.percentUsed || 0,
+    setLimit,
+    resetPnL,
+    isLoading: status.isLoading,
+  };
+}

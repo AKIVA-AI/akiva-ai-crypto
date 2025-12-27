@@ -9,6 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Input } from '@/components/ui/input';
 import { 
   ArrowLeftRight, 
   TrendingUp, 
@@ -25,10 +26,23 @@ import {
   Pause,
   Settings,
   XCircle,
+  ShieldOff,
+  Shield,
+  Ban,
+  RotateCcw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { useArbitrageMonitor, useExecuteArbitrage, useTestArbitrageExecution, useAutoExecuteArbitrage, ArbitrageOpportunity, AutoExecuteSettings } from '@/hooks/useCrossExchangeArbitrage';
+import { 
+  useArbitrageMonitor, 
+  useExecuteArbitrage, 
+  useTestArbitrageExecution, 
+  useAutoExecuteArbitrage, 
+  useKillSwitch,
+  useDailyPnLLimits,
+  ArbitrageOpportunity, 
+  AutoExecuteSettings 
+} from '@/hooks/useCrossExchangeArbitrage';
 import { useArbitrageHistory, useArbitrageStats, useRecordArbitrageExecution } from '@/hooks/useArbitrageHistory';
 import { VENUES } from '@/lib/tradingModes';
 
@@ -38,6 +52,7 @@ const SUPPORTED_PAIRS = ['BTC/USD', 'ETH/USD', 'SOL/USD', 'AVAX/USD', 'LINK/USD'
 export default function Arbitrage() {
   const [isScanning, setIsScanning] = useState(true);
   const [minSpreadPercent, setMinSpreadPercent] = useState([0.1]);
+  const [pnlLimitInput, setPnlLimitInput] = useState(-500);
   
   // Auto-execute settings state
   const [autoExecuteSettings, setAutoExecuteSettings] = useState<AutoExecuteSettings>({
@@ -55,6 +70,8 @@ export default function Arbitrage() {
   const testExecution = useTestArbitrageExecution();
   const autoExecute = useAutoExecuteArbitrage();
   const recordExecution = useRecordArbitrageExecution();
+  const killSwitch = useKillSwitch();
+  const pnlLimits = useDailyPnLLimits();
   const { data: history = [], isLoading: historyLoading } = useArbitrageHistory(20);
   const { data: stats } = useArbitrageStats();
 
@@ -116,6 +133,31 @@ export default function Arbitrage() {
   return (
     <MainLayout>
       <div className="space-y-6">
+        {/* Kill Switch Banner */}
+        {killSwitch.isActive && (
+          <div className="p-4 rounded-lg bg-destructive/10 border border-destructive animate-pulse">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Ban className="h-6 w-6 text-destructive" />
+                <div>
+                  <p className="font-bold text-destructive">KILL SWITCH ACTIVE</p>
+                  <p className="text-sm text-muted-foreground">{killSwitch.reason}</p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => killSwitch.deactivate.mutate()}
+                disabled={killSwitch.deactivate.isPending}
+                className="gap-2"
+              >
+                <Shield className="h-4 w-4" />
+                Resume Trading
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -128,14 +170,47 @@ export default function Arbitrage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            {/* Kill Switch Button */}
+            <Button
+              variant={killSwitch.isActive ? 'outline' : 'destructive'}
+              size="sm"
+              onClick={() => {
+                if (killSwitch.isActive) {
+                  killSwitch.deactivate.mutate();
+                } else {
+                  killSwitch.activate.mutate('Manual emergency stop');
+                }
+              }}
+              disabled={killSwitch.activate.isPending || killSwitch.deactivate.isPending}
+              className="gap-1"
+            >
+              {killSwitch.isActive ? (
+                <>
+                  <Shield className="h-4 w-4" />
+                  Resume
+                </>
+              ) : (
+                <>
+                  <ShieldOff className="h-4 w-4" />
+                  Kill Switch
+                </>
+              )}
+            </Button>
+            
             <Badge 
               variant="outline" 
               className={cn(
                 'gap-1',
+                killSwitch.isActive ? 'border-destructive text-destructive' :
                 isScanning ? 'border-success text-success' : 'border-muted-foreground'
               )}
             >
-              {isScanning ? (
+              {killSwitch.isActive ? (
+                <>
+                  <Ban className="h-3 w-3" />
+                  Halted
+                </>
+              ) : isScanning ? (
                 <>
                   <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
                   Live Scanning
@@ -151,6 +226,7 @@ export default function Arbitrage() {
               variant={isScanning ? 'outline' : 'default'}
               size="sm"
               onClick={() => setIsScanning(!isScanning)}
+              disabled={killSwitch.isActive}
               className="gap-1"
             >
               {isScanning ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
@@ -249,6 +325,95 @@ export default function Arbitrage() {
               </CardContent>
             </Card>
 
+            {/* Daily P&L Limits */}
+            <Card className={cn(
+              'glass-panel',
+              pnlLimits.limitBreached && 'border-destructive'
+            )}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  Daily P&L Limits
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="text-center p-3 rounded-lg bg-muted/30">
+                  <div className={cn(
+                    'text-2xl font-bold font-mono',
+                    pnlLimits.dailyPnL >= 0 ? 'text-success' : 'text-destructive'
+                  )}>
+                    {pnlLimits.dailyPnL >= 0 ? '+' : ''}${pnlLimits.dailyPnL.toFixed(2)}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Today's P&L</div>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Loss Limit</span>
+                    <span className="font-mono text-destructive">${pnlLimits.dailyPnLLimit}</span>
+                  </div>
+                  <Progress 
+                    value={Math.min(100, pnlLimits.percentUsed)} 
+                    className={cn(
+                      'h-2',
+                      pnlLimits.percentUsed >= 80 && '[&>div]:bg-destructive'
+                    )}
+                  />
+                  <div className="text-xs text-muted-foreground text-right">
+                    {pnlLimits.percentUsed.toFixed(0)}% of limit used
+                  </div>
+                </div>
+                
+                {pnlLimits.limitBreached && (
+                  <div className="p-2 rounded-lg bg-destructive/10 border border-destructive/30">
+                    <div className="flex items-start gap-2">
+                      <Ban className="h-4 w-4 text-destructive mt-0.5" />
+                      <div className="text-xs">
+                        <p className="font-medium text-destructive">Limit Breached</p>
+                        <p className="text-muted-foreground">
+                          Trading halted. Reset P&L or wait for new day.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                <Separator />
+                
+                <div className="space-y-2">
+                  <Label className="text-sm">Set Loss Limit</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      value={pnlLimitInput}
+                      onChange={(e) => setPnlLimitInput(Number(e.target.value))}
+                      max={0}
+                      className="font-mono"
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => pnlLimits.setLimit.mutate(pnlLimitInput)}
+                      disabled={pnlLimits.setLimit.isPending}
+                    >
+                      Set
+                    </Button>
+                  </div>
+                </div>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full gap-2"
+                  onClick={() => pnlLimits.resetPnL.mutate()}
+                  disabled={pnlLimits.resetPnL.isPending}
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Reset Daily P&L
+                </Button>
+              </CardContent>
+            </Card>
+
             {/* Settings */}
             <Card className="glass-panel">
               <CardHeader className="pb-2">
@@ -283,6 +448,7 @@ export default function Arbitrage() {
                   </div>
                   <Switch
                     checked={autoExecuteSettings.enabled}
+                    disabled={killSwitch.isActive}
                     onCheckedChange={(checked) => 
                       setAutoExecuteSettings(prev => ({ ...prev, enabled: checked }))
                     }
