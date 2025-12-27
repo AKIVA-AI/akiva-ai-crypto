@@ -128,7 +128,7 @@ export function AICopilotSidebar({ isOpen, onToggle }: AICopilotSidebarProps) {
               <PanelRightOpen className="h-5 w-5" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="left">Open AI Copilot</TooltipContent>
+          <TooltipContent side="left">Open Crypto CoPilot</TooltipContent>
         </Tooltip>
       </div>
     );
@@ -143,7 +143,7 @@ export function AICopilotSidebar({ isOpen, onToggle }: AICopilotSidebarProps) {
             <Bot className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h2 className="font-semibold text-sm">AI Copilot</h2>
+            <h2 className="font-semibold text-sm">Crypto CoPilot</h2>
             <div className="flex items-center gap-1">
               <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
               <span className="text-xs text-muted-foreground">Online</span>
@@ -185,7 +185,7 @@ export function AICopilotSidebar({ isOpen, onToggle }: AICopilotSidebarProps) {
               <div className="h-14 w-14 mx-auto rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-4">
                 <Sparkles className="h-7 w-7 text-primary" />
               </div>
-              <h3 className="font-semibold text-lg mb-1">AI Trading Copilot</h3>
+              <h3 className="font-semibold text-lg mb-1">Crypto CoPilot</h3>
               <p className="text-sm text-muted-foreground">
                 Real-time market intelligence, analysis, and trading insights.
               </p>
