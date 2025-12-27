@@ -38,8 +38,8 @@ type AuditEvent = {
   user_email: string | null;
   book_id: string | null;
   severity: 'info' | 'warning' | 'critical';
-  before_state: any;
-  after_state: any;
+  before_state: Record<string, unknown> | null;
+  after_state: Record<string, unknown> | null;
   ip_address: string | null;
   created_at: string;
 };

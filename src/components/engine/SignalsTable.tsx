@@ -67,7 +67,7 @@ export function SignalsTable({ strategyId, limit = 20 }: SignalsTableProps) {
                       {formatDistanceToNow(new Date(signal.created_at), { addSuffix: true })}
                     </TableCell>
                     <TableCell className="font-medium">
-                      {(signal.strategies as any)?.name || 'Unknown'}
+                      {(signal.strategies as { name: string } | null)?.name || 'Unknown'}
                     </TableCell>
                     <TableCell className="font-mono">{signal.instrument}</TableCell>
                     <TableCell>

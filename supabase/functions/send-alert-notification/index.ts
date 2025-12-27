@@ -59,7 +59,7 @@ serve(async (req) => {
         continue;
       }
 
-      let webhookPayload: any;
+      let webhookPayload: Record<string, unknown> = {};
       let success = false;
       let errorMessage = '';
 

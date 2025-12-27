@@ -62,7 +62,7 @@ export function PositionHeatMap() {
     const venueSet = new Set<string>();
 
     positions.forEach(pos => {
-      const venueName = (pos.venue as any)?.name || 'Unknown';
+      const venueName = (pos.venue as { name: string } | null)?.name || 'Unknown';
       const key = `${pos.instrument}-${venueName}`;
       
       instrumentSet.add(pos.instrument);

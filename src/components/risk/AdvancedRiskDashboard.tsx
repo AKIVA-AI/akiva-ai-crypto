@@ -263,7 +263,7 @@ export default function AdvancedRiskDashboard() {
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <div className="text-2xl font-bold text-destructive">
-                        {stressData ? stressData.filter((s: any) => s.var_breached).length : 0}
+                        {stressData ? stressData.filter((s) => s.var_breached).length : 0}
                       </div>
                     )}
                     <p className="text-xs text-muted-foreground">Scenarios breaching VaR limits</p>
@@ -301,7 +301,7 @@ export default function AdvancedRiskDashboard() {
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {counterpartyData && Object.entries(counterpartyData).map(([venue, data]: [string, any]) => (
+                      {counterpartyData && Object.entries(counterpartyData).map(([venue, data]) => (
                         <div key={venue} className="flex items-center justify-between">
                           <div className="flex-1">
                             <div className="flex items-center justify-between mb-1">

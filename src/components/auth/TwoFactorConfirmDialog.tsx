@@ -71,8 +71,9 @@ export function TwoFactorConfirmDialog({
       await onConfirm();
       onOpenChange(false);
       toast.success(`${action} confirmed successfully`);
-    } catch (err: any) {
-      setError(err.message || 'Verification failed');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Verification failed';
+      setError(errorMessage);
     } finally {
       setIsVerifying(false);
     }

@@ -166,8 +166,8 @@ export function OrderHistoryTable() {
         o.price || 'Market',
         o.filled_size,
         o.status,
-        (o as any).venues?.name || '-',
-        (o as any).books?.name || '-',
+        (o as unknown as { venues?: { name: string } | null }).venues?.name || '-',
+        (o as unknown as { books?: { name: string } | null }).books?.name || '-',
       ]);
 
       const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
@@ -411,7 +411,7 @@ export function OrderHistoryTable() {
                         </Badge>
                       </td>
                       <td className="p-4 text-sm text-muted-foreground">
-                        {(order as any).venues?.name || '-'}
+                        {(order as unknown as { venues?: { name: string } | null }).venues?.name || '-'}
                       </td>
                     </tr>
                   );

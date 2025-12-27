@@ -2,18 +2,19 @@ import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import type { RealtimePayload, AlertPayload, VenuePayload, BookPayload, StrategyPayload, OrderPayload, MemeMetricsPayload } from '@/types';
 
-interface UseRealtimeOptions {
+interface UseRealtimeOptions<T = Record<string, unknown>> {
   table: string;
   event?: 'INSERT' | 'UPDATE' | 'DELETE' | '*';
   filter?: string;
-  onInsert?: (payload: any) => void;
-  onUpdate?: (payload: any) => void;
-  onDelete?: (payload: any) => void;
+  onInsert?: (payload: RealtimePayload<T>) => void;
+  onUpdate?: (payload: RealtimePayload<T>) => void;
+  onDelete?: (payload: RealtimePayload<T>) => void;
   invalidateQueries?: string[];
 }
 
-export function useRealtimeSubscription({
+export function useRealtimeSubscription<T = Record<string, unknown>>({
   table,
   event = '*',
   filter,
@@ -21,7 +22,7 @@ export function useRealtimeSubscription({
   onUpdate,
   onDelete,
   invalidateQueries = [],
-}: UseRealtimeOptions) {
+}: UseRealtimeOptions<T>) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -29,15 +30,16 @@ export function useRealtimeSubscription({
     
     const channel = supabase
       .channel(channelName)
-      .on<Record<string, any>>(
-        'postgres_changes' as any,
+      .on(
+        'postgres_changes' as 'system',
         {
           event,
           schema: 'public',
           table,
-        },
-        (payload: any) => {
-          console.log(`[Realtime] ${table}:`, payload.eventType, payload);
+        } as Parameters<typeof channel.on>[1],
+        (payload: unknown) => {
+          const typedPayload = payload as RealtimePayload<T>;
+          console.log(`[Realtime] ${table}:`, typedPayload.eventType, typedPayload);
 
           // Invalidate queries
           invalidateQueries.forEach((key) => {
@@ -45,12 +47,12 @@ export function useRealtimeSubscription({
           });
 
           // Call specific handlers
-          if (payload.eventType === 'INSERT') {
-            onInsert?.(payload);
-          } else if (payload.eventType === 'UPDATE') {
-            onUpdate?.(payload);
-          } else if (payload.eventType === 'DELETE') {
-            onDelete?.(payload);
+          if (typedPayload.eventType === 'INSERT') {
+            onInsert?.(typedPayload);
+          } else if (typedPayload.eventType === 'UPDATE') {
+            onUpdate?.(typedPayload);
+          } else if (typedPayload.eventType === 'DELETE') {
+            onDelete?.(typedPayload);
           }
         }
       )
@@ -68,29 +70,30 @@ export function useRealtimeSubscription({
 export function useVenueHealthRealtime() {
   const queryClient = useQueryClient();
 
-  useRealtimeSubscription({
+  useRealtimeSubscription<VenuePayload>({
     table: 'venue_health',
     invalidateQueries: ['venues', 'venue-health'],
     onInsert: (payload) => {
       const status = payload.new?.status;
-      if (status === 'down' || status === 'degraded') {
+      if (status === 'degraded' || status === 'offline') {
         toast.warning(`Venue health alert: ${status.toUpperCase()}`);
       }
     },
   });
 
-  useRealtimeSubscription({
+  useRealtimeSubscription<VenuePayload>({
     table: 'venues',
     invalidateQueries: ['venues'],
     onUpdate: (payload) => {
-      if (payload.new?.status !== payload.old?.status) {
+      const oldStatus = (payload.old as VenuePayload | null)?.status;
+      if (payload.new?.status !== oldStatus) {
         const name = payload.new?.name || 'Unknown venue';
         const status = payload.new?.status;
-        if (status === 'down') {
+        if (status === 'offline') {
           toast.error(`🔴 ${name} is DOWN`);
         } else if (status === 'degraded') {
           toast.warning(`🟡 ${name} is DEGRADED`);
-        } else if (status === 'healthy' && payload.old?.status !== 'healthy') {
+        } else if (status === 'healthy' && oldStatus !== 'healthy') {
           toast.success(`🟢 ${name} is back HEALTHY`);
         }
       }
@@ -100,7 +103,7 @@ export function useVenueHealthRealtime() {
 
 // Alerts Realtime
 export function useAlertsRealtime() {
-  useRealtimeSubscription({
+  useRealtimeSubscription<AlertPayload>({
     table: 'alerts',
     event: 'INSERT',
     invalidateQueries: ['alerts', 'unread-alerts'],
@@ -133,7 +136,7 @@ export function usePositionsRealtime() {
 
 // Orders Realtime
 export function useOrdersRealtime() {
-  useRealtimeSubscription({
+  useRealtimeSubscription<OrderPayload>({
     table: 'orders',
     invalidateQueries: ['orders', 'pending-orders'],
     onInsert: (payload) => {
@@ -144,7 +147,7 @@ export function useOrdersRealtime() {
     },
     onUpdate: (payload) => {
       const order = payload.new;
-      const oldOrder = payload.old;
+      const oldOrder = payload.old as OrderPayload | null;
       if (order?.status === 'filled' && oldOrder?.status !== 'filled') {
         toast.success(`Order filled: ${order.instrument}`);
       } else if (order?.status === 'rejected') {
@@ -156,12 +159,12 @@ export function useOrdersRealtime() {
 
 // Meme Metrics Realtime
 export function useMemeMetricsRealtime() {
-  useRealtimeSubscription({
+  useRealtimeSubscription<MemeMetricsPayload>({
     table: 'meme_metrics',
     invalidateQueries: ['meme-metrics', 'meme-projects'],
     onInsert: (payload) => {
       const metrics = payload.new;
-      if (metrics?.liquidity_health < 30) {
+      if (metrics && metrics.liquidity_health < 30) {
         toast.error(`⚠️ Critical liquidity on meme project`);
       }
     },
@@ -170,15 +173,15 @@ export function useMemeMetricsRealtime() {
 
 // Books Realtime
 export function useBooksRealtime() {
-  useRealtimeSubscription({
+  useRealtimeSubscription<BookPayload>({
     table: 'books',
     invalidateQueries: ['books', 'dashboard-metrics'],
     onUpdate: (payload) => {
       const book = payload.new;
-      const oldBook = payload.old;
-      if (book?.status === 'halted' && oldBook?.status !== 'halted') {
+      const oldBook = payload.old as BookPayload | null;
+      if (book?.status === 'frozen' && oldBook?.status !== 'frozen') {
         toast.error(`📕 Book "${book.name}" HALTED`);
-      } else if (book?.status === 'active' && oldBook?.status === 'halted') {
+      } else if (book?.status === 'active' && oldBook?.status === 'frozen') {
         toast.success(`📗 Book "${book.name}" resumed`);
       }
     },
@@ -187,15 +190,15 @@ export function useBooksRealtime() {
 
 // Strategies Realtime
 export function useStrategiesRealtime() {
-  useRealtimeSubscription({
+  useRealtimeSubscription<StrategyPayload>({
     table: 'strategies',
     invalidateQueries: ['strategies', 'active-strategies'],
     onUpdate: (payload) => {
       const strategy = payload.new;
-      const oldStrategy = payload.old;
+      const oldStrategy = payload.old as StrategyPayload | null;
       if (strategy?.status !== oldStrategy?.status) {
-        const statusEmoji = strategy.status === 'live' ? '🟢' : strategy.status === 'paper' ? '🟡' : '⚫';
-        toast.info(`${statusEmoji} Strategy "${strategy.name}" → ${strategy.status.toUpperCase()}`);
+        const statusEmoji = strategy?.status === 'live' ? '🟢' : strategy?.status === 'paper' ? '🟡' : '⚫';
+        toast.info(`${statusEmoji} Strategy "${strategy?.name}" → ${strategy?.status?.toUpperCase()}`);
       }
     },
   });

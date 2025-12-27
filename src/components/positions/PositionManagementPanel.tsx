@@ -31,8 +31,10 @@ import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { WebSocketHealthMonitor } from '@/components/trading/WebSocketHealthMonitor';
 
+import type { Position } from '@/hooks/usePositions';
+
 interface StopLossModalProps {
-  position: any;
+  position: Position;
   onSave: (stopLoss: number, takeProfit: number) => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -157,7 +159,7 @@ function StopLossTakeProfitModal({ position, onSave, open, onOpenChange }: StopL
 
 // Partial Close Modal
 interface PartialCloseModalProps {
-  position: any;
+  position: Position;
   livePrice: number;
   onClose: (percent: number) => void;
   open: boolean;
@@ -268,9 +270,9 @@ export function PositionManagementPanel() {
   const { data: positions = [], isLoading } = usePositions();
   const queryClient = useQueryClient();
   const [closingPositions, setClosingPositions] = useState<Set<string>>(new Set());
-  const [editingPosition, setEditingPosition] = useState<any>(null);
+  const [editingPosition, setEditingPosition] = useState<Position | null>(null);
   const [stopLossModalOpen, setStopLossModalOpen] = useState(false);
-  const [partialClosePosition, setPartialClosePosition] = useState<any>(null);
+  const [partialClosePosition, setPartialClosePosition] = useState<Position | null>(null);
   const [partialCloseModalOpen, setPartialCloseModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
 

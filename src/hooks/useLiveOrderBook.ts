@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useWebSocketManager } from './useWebSocketManager';
+import type { OrderBookData } from '@/types';
 
 export interface OrderBookLevel {
   price: number;
@@ -33,7 +34,7 @@ const toBinanceSymbol = (symbol: string): string => {
 export function useLiveOrderBook({ symbol, depth = 10, enabled = true }: UseLiveOrderBookOptions) {
   const [orderBook, setOrderBook] = useState<OrderBook | null>(null);
 
-  const processOrderBook = useCallback((data: any): OrderBook => {
+  const processOrderBook = useCallback((data: OrderBookData): OrderBook => {
     const bids: OrderBookLevel[] = [];
     const asks: OrderBookLevel[] = [];
     
@@ -74,7 +75,7 @@ export function useLiveOrderBook({ symbol, depth = 10, enabled = true }: UseLive
     };
   }, [depth]);
 
-  const handleMessage = useCallback((data: any) => {
+  const handleMessage = useCallback((data: OrderBookData) => {
     setOrderBook(processOrderBook(data));
   }, [processOrderBook]);
 

@@ -85,7 +85,7 @@ export function PositionsTable() {
                   </td>
                   <td className="py-3 text-right">{Number(pos.leverage || 1)}x</td>
                   <td className="py-3 text-right text-muted-foreground">
-                    {(pos as any).venues?.name || 'N/A'}
+                    {(pos as unknown as { venues?: { name: string } | null }).venues?.name || 'N/A'}
                   </td>
                 </tr>
               );

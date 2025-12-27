@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useWebSocketManager, WebSocketState } from './useWebSocketManager';
+import type { BinanceTickerMessage } from '@/types';
 
 export interface LivePrice {
   symbol: string;
@@ -45,7 +46,7 @@ export function useLivePriceFeed({ symbols, enabled = true }: UseLivePriceFeedOp
     return `wss://stream.binance.com:9443/stream?streams=${streams}`;
   }, [symbols]);
 
-  const handleMessage = useCallback((message: any) => {
+  const handleMessage = useCallback((message: BinanceTickerMessage) => {
     if (message.data) {
       const ticker = message.data;
       const symbol = fromBinanceSymbol(ticker.s);

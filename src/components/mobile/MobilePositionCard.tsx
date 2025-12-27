@@ -13,10 +13,12 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import type { Position } from '@/hooks/usePositions';
+
 interface MobilePositionCardProps {
-  position: any;
+  position: Position;
   onClose: (id: string) => Promise<void>;
-  onSetStopLoss: (position: any) => void;
+  onSetStopLoss: (position: Position) => void;
   isClosing?: boolean;
 }
 

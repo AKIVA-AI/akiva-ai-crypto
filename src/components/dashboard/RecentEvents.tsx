@@ -62,7 +62,7 @@ export function RecentEvents() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-medium text-sm">{alert.title}</span>
-                    <Badge variant={alert.severity as any} className="text-xs">
+                    <Badge variant={alert.severity === 'critical' ? 'destructive' : alert.severity === 'warning' ? 'secondary' : 'default'} className="text-xs">
                       {alert.severity}
                     </Badge>
                   </div>

@@ -158,7 +158,7 @@ export function BracketOrderTicket({ onClose, defaultInstrument = 'BTC/USDT' }: 
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       onClose?.();
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error('Bracket order failed', { description: error.message });
     },
   });

@@ -107,7 +107,7 @@ export function useToggleStrategy() {
         target_status: targetStatus,
       });
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data: { strategy?: { status: string } }) => {
       queryClient.invalidateQueries({ queryKey: ['strategies'] });
       queryClient.invalidateQueries({ queryKey: ['alerts'] });
       queryClient.invalidateQueries({ queryKey: ['audit-events'] });

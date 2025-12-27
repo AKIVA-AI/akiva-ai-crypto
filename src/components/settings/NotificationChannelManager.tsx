@@ -25,6 +25,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { NotificationLog } from '@/types';
 
 interface NotificationChannel {
   id: string;
@@ -343,7 +344,7 @@ export function NotificationChannelManager() {
           <div className="mt-6">
             <h4 className="text-sm font-medium mb-3">Recent Notifications</h4>
             <div className="space-y-2">
-              {recentLogs.slice(0, 5).map((log: any) => (
+              {recentLogs.slice(0, 5).map((log: NotificationLog) => (
                 <div
                   key={log.id}
                   className="flex items-center justify-between p-2 rounded bg-muted/30 text-sm"

@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useToast } from '@/hooks/use-toast';
+import type { AlertPayload, RiskBreachPayload, CircuitBreakerPayload } from '@/types';
 
 interface AlertConfig {
   enableSound: boolean;
@@ -61,7 +62,7 @@ export function useAlertNotifications(config: Partial<AlertConfig> = {}) {
     }
   }, [mergedConfig.enableDesktopNotifications]);
 
-  const handleAlert = useCallback((payload: any) => {
+  const handleAlert = useCallback((payload: { new: AlertPayload | null }) => {
     const alert = payload.new;
     if (!alert) return;
 
@@ -105,7 +106,7 @@ export function useAlertNotifications(config: Partial<AlertConfig> = {}) {
     queryClient.invalidateQueries({ queryKey: ['alerts'] });
   }, [mergedConfig.criticalOnly, playSound, showDesktopNotification, queryClient]);
 
-  const handleRiskBreach = useCallback((payload: any) => {
+  const handleRiskBreach = useCallback((payload: { new: RiskBreachPayload | null }) => {
     const breach = payload.new;
     if (!breach) return;
 
@@ -127,7 +128,7 @@ export function useAlertNotifications(config: Partial<AlertConfig> = {}) {
     queryClient.invalidateQueries({ queryKey: ['risk-breaches'] });
   }, [playSound, showDesktopNotification, queryClient]);
 
-  const handleCircuitBreaker = useCallback((payload: any) => {
+  const handleCircuitBreaker = useCallback((payload: { new: CircuitBreakerPayload | null }) => {
     const event = payload.new;
     if (!event) return;
 
@@ -156,30 +157,30 @@ export function useAlertNotifications(config: Partial<AlertConfig> = {}) {
     // Subscribe to alerts
     const alertsChannel = supabase
       .channel('alerts-notifications')
-      .on<any>(
-        'postgres_changes' as any,
+      .on(
+        'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'alerts' },
-        handleAlert
+        (payload) => handleAlert(payload as unknown as { new: AlertPayload | null })
       )
       .subscribe();
 
     // Subscribe to risk breaches
     const riskChannel = supabase
       .channel('risk-breach-notifications')
-      .on<any>(
-        'postgres_changes' as any,
+      .on(
+        'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'risk_breaches' },
-        handleRiskBreach
+        (payload) => handleRiskBreach(payload as unknown as { new: RiskBreachPayload | null })
       )
       .subscribe();
 
     // Subscribe to circuit breaker events
     const circuitChannel = supabase
       .channel('circuit-breaker-notifications')
-      .on<any>(
-        'postgres_changes' as any,
+      .on(
+        'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'circuit_breaker_events' },
-        handleCircuitBreaker
+        (payload) => handleCircuitBreaker(payload as unknown as { new: CircuitBreakerPayload | null })
       )
       .subscribe();
 

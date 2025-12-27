@@ -152,7 +152,7 @@ export function TradeTicket({ onClose, defaultInstrument = 'BTC/USDT', defaultBo
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       onClose?.();
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error('Order failed', { description: error.message });
     },
   });

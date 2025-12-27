@@ -90,7 +90,7 @@ export function IntentsTable({ bookId, limit = 20 }: IntentsTableProps) {
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">
-                          {(intent.books as any)?.name || 'Unknown'}
+                          {(intent.books as { name: string } | null)?.name || 'Unknown'}
                         </Badge>
                       </TableCell>
                       <TableCell className="font-mono">{intent.instrument}</TableCell>

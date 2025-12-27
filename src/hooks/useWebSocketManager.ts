@@ -16,7 +16,7 @@ interface UseWebSocketManagerOptions {
   initialBackoffMs?: number;
   maxBackoffMs?: number;
   pingIntervalMs?: number;
-  onMessage?: (data: any) => void;
+  onMessage?: (data: unknown) => void;
   onConnect?: () => void;
   onDisconnect?: () => void;
 }
@@ -198,7 +198,7 @@ export function useWebSocketManager({
     console.log('[WebSocket] Disconnected manually');
   }, [clearTimers]);
 
-  const send = useCallback((data: any) => {
+  const send = useCallback((data: unknown) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(typeof data === 'string' ? data : JSON.stringify(data));
       return true;

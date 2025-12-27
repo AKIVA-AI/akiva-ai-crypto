@@ -104,9 +104,9 @@ export function TradingViewChart({
 }: TradingViewChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
-  // Use any for series refs to avoid type issues with lightweight-charts v5
-  const candlestickSeriesRef = useRef<any>(null);
-  const volumeSeriesRef = useRef<any>(null);
+  // Series refs - using ISeriesApi type for proper typing
+  const candlestickSeriesRef = useRef<ReturnType<IChartApi['addSeries']> | null>(null);
+  const volumeSeriesRef = useRef<ReturnType<IChartApi['addSeries']> | null>(null);
   
   const [currentSymbol, setCurrentSymbol] = useState(symbol);
   const [timeframe, setTimeframe] = useState('60');

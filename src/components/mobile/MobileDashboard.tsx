@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { usePositions } from '@/hooks/usePositions';
+import { usePositions, type Position } from '@/hooks/usePositions';
 import { useDashboardMetrics } from '@/hooks/useDashboardMetrics';
 import { MobilePositionCard } from './MobilePositionCard';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,7 +31,7 @@ export function MobileDashboard() {
   const queryClient = useQueryClient();
 
   const [closingPositions, setClosingPositions] = useState<Set<string>>(new Set());
-  const [stopLossModal, setStopLossModal] = useState<{ open: boolean; position: any | null }>({ open: false, position: null });
+  const [stopLossModal, setStopLossModal] = useState<{ open: boolean; position: Position | null }>({ open: false, position: null });
   const [stopLossPercent, setStopLossPercent] = useState(5);
   const [takeProfitPercent, setTakeProfitPercent] = useState(10);
   const [refreshing, setRefreshing] = useState(false);
