@@ -36,11 +36,11 @@ interface ExchangeConfig {
 }
 
 const EXCHANGES = [
-  { id: 'binance', name: 'Binance', icon: '🟡' },
-  { id: 'bybit', name: 'Bybit', icon: '🟠' },
-  { id: 'okx', name: 'OKX', icon: '⚫' },
-  { id: 'coinbase', name: 'Coinbase', icon: '🔵' },
-  { id: 'kraken', name: 'Kraken', icon: '🟣' },
+  { id: 'coinbase', name: 'Coinbase Advanced', icon: '🔵', recommended: true, usCompliant: true },
+  { id: 'kraken', name: 'Kraken', icon: '🟣', usCompliant: true },
+  { id: 'binance', name: 'Binance', icon: '🟡', usCompliant: false, warning: 'Not available in US' },
+  { id: 'bybit', name: 'Bybit', icon: '🟠', usCompliant: false, warning: 'Not available in US' },
+  { id: 'okx', name: 'OKX', icon: '⚫', usCompliant: false, warning: 'Not available in US' },
 ];
 
 const PERMISSION_OPTIONS = [
@@ -118,7 +118,7 @@ export function ExchangeAPIManager() {
   };
 
   const getExchangeInfo = (exchangeId: string) => {
-    return EXCHANGES.find(e => e.id === exchangeId) || { name: exchangeId, icon: '🔗' };
+    return EXCHANGES.find(e => e.id === exchangeId) || { name: exchangeId, icon: '🔗', recommended: false, usCompliant: false };
   };
 
   const togglePermission = (permission: string) => {
@@ -175,6 +175,16 @@ export function ExchangeAPIManager() {
                           <span className="flex items-center gap-2">
                             <span>{ex.icon}</span>
                             {ex.name}
+                            {ex.recommended && (
+                              <Badge variant="outline" className="text-xs border-primary text-primary ml-1">
+                                Recommended
+                              </Badge>
+                            )}
+                            {ex.warning && (
+                              <Badge variant="outline" className="text-xs border-warning text-warning ml-1">
+                                {ex.warning}
+                              </Badge>
+                            )}
                           </span>
                         </SelectItem>
                       ))}

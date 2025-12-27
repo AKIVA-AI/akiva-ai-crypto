@@ -44,18 +44,25 @@ const features: { category: string; items: Feature[] }[] = [
         details: 'Connected to Binance public WebSocket API',
       },
       {
+        name: 'Coinbase Integration',
+        description: 'US-compliant exchange for spot trading',
+        status: 'functional',
+        icon: <TrendingUp className="h-4 w-4" />,
+        details: 'Coinbase Advanced Trade API integrated - credentials configured',
+      },
+      {
         name: 'Trade Ticket',
         description: 'Order entry interface with book selection',
         status: 'functional',
         icon: <TrendingUp className="h-4 w-4" />,
-        details: 'Orders saved to database, execution simulated',
+        details: 'Orders saved to database, execution simulated or live via Coinbase',
       },
       {
         name: 'Order Execution',
         description: 'Actual order placement on exchanges',
-        status: 'simulated',
+        status: 'functional',
         icon: <Zap className="h-4 w-4" />,
-        details: 'Uses simulateFill() - requires exchange API keys for live trading',
+        details: 'Coinbase Advanced Trade API ready - switch paper_trading_mode to enable live',
       },
       {
         name: 'Position Tracking',
@@ -333,12 +340,14 @@ export default function SystemStatus() {
           </CardHeader>
           <CardContent>
             <div className="grid md:grid-cols-2 gap-4">
-              <div className="p-3 rounded-lg border border-border/50 bg-card/50">
-                <h4 className="font-semibold mb-2">Exchange APIs</h4>
+              <div className="p-3 rounded-lg border border-success/30 bg-success/5">
+                <h4 className="font-semibold mb-2 text-success flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4" /> Exchange APIs (Configured)
+                </h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• Binance API Key (read + trade)</li>
-                  <li>• Bybit API Key (optional)</li>
-                  <li>• OKX API Key (optional)</li>
+                  <li className="text-success">✓ Coinbase Advanced Trade (US-compliant)</li>
+                  <li className="text-success">✓ Binance API (data only, non-US)</li>
+                  <li>• Kraken API (optional)</li>
                 </ul>
               </div>
               <div className="p-3 rounded-lg border border-border/50 bg-card/50">
@@ -349,17 +358,19 @@ export default function SystemStatus() {
                   <li>• CryptoPanic (news feed)</li>
                 </ul>
               </div>
-              <div className="p-3 rounded-lg border border-border/50 bg-card/50">
-                <h4 className="font-semibold mb-2">Notifications</h4>
+              <div className="p-3 rounded-lg border border-success/30 bg-success/5">
+                <h4 className="font-semibold mb-2 text-success flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4" /> Notifications (Configured)
+                </h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• Telegram Bot Token</li>
+                  <li className="text-success">✓ Telegram Bot Token</li>
                   <li>• Discord Webhook (optional)</li>
                 </ul>
               </div>
               <div className="p-3 rounded-lg border border-border/50 bg-card/50">
                 <h4 className="font-semibold mb-2">Infrastructure</h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• Supabase Pro (leaked passwords)</li>
+                  <li className="text-success">✓ Lovable Cloud (active)</li>
                   <li>• Custom domain (optional)</li>
                 </ul>
               </div>

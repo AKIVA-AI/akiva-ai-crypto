@@ -47,3 +47,6 @@ verify_jwt = true
 
 [functions.hyperliquid]
 verify_jwt = false
+
+[functions.coinbase-trading]
+verify_jwt = true
