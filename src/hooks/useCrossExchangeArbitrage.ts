@@ -69,6 +69,21 @@ export function useArbitrageStatus() {
   });
 }
 
+// Test arbitrage execution flow
+export function useTestArbitrageExecution() {
+  return useMutation({
+    mutationFn: () => invokeArbitrage('test'),
+    onSuccess: (data) => {
+      toast.success('Test execution completed', {
+        description: `Net profit: $${data.netProfit?.toFixed(2) || '0.00'}`,
+      });
+    },
+    onError: (error: Error) => {
+      toast.error('Test failed', { description: error.message });
+    },
+  });
+}
+
 // Analyze specific opportunity
 export function useAnalyzeOpportunity() {
   return useMutation({

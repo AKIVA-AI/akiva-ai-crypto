@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { useArbitrageMonitor, useExecuteArbitrage, ArbitrageOpportunity } from '@/hooks/useCrossExchangeArbitrage';
+import { useArbitrageMonitor, useExecuteArbitrage, useTestArbitrageExecution, ArbitrageOpportunity } from '@/hooks/useCrossExchangeArbitrage';
 import { useArbitrageHistory, useArbitrageStats, useRecordArbitrageExecution } from '@/hooks/useArbitrageHistory';
 import { VENUES } from '@/lib/tradingModes';
 
@@ -40,6 +40,7 @@ export default function Arbitrage() {
 
   const { opportunities, isScanning: loading, lastScan, status, refetch } = useArbitrageMonitor(isScanning);
   const executeArbitrage = useExecuteArbitrage();
+  const testExecution = useTestArbitrageExecution();
   const recordExecution = useRecordArbitrageExecution();
   const { data: history = [], isLoading: historyLoading } = useArbitrageHistory(20);
   const { data: stats } = useArbitrageStats();
@@ -136,6 +137,20 @@ export default function Arbitrage() {
             <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-1">
               <RefreshCw className="h-4 w-4" />
               Refresh
+            </Button>
+            <Button 
+              variant="secondary" 
+              size="sm" 
+              onClick={() => testExecution.mutate()}
+              disabled={testExecution.isPending}
+              className="gap-1"
+            >
+              {testExecution.isPending ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <Target className="h-4 w-4" />
+              )}
+              Test Flow
             </Button>
           </div>
         </div>

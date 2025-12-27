@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -26,6 +27,62 @@ interface ArbitrageOpportunity {
   volume: number;
   confidence: number;
   timestamp: number;
+}
+
+// Send Telegram notification for arbitrage opportunity
+async function sendTelegramAlert(opportunity: ArbitrageOpportunity, costs: any): Promise<void> {
+  const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
+  if (!botToken) return;
+
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  );
+
+  // Get configured Telegram channels
+  const { data: channels } = await supabase
+    .from('notification_channels')
+    .select('*')
+    .eq('type', 'telegram')
+    .eq('is_enabled', true);
+
+  if (!channels || channels.length === 0) return;
+
+  const message = `
+🔄 *Arbitrage Opportunity Detected*
+
+📊 *${opportunity.symbol}*
+💰 Spread: *${opportunity.spreadPercent.toFixed(3)}%*
+
+📈 Buy: ${opportunity.buyExchange.toUpperCase()} @ $${opportunity.buyPrice.toFixed(2)}
+📉 Sell: ${opportunity.sellExchange.toUpperCase()} @ $${opportunity.sellPrice.toFixed(2)}
+
+💵 Gross Profit: $${opportunity.estimatedProfit.toFixed(2)}
+📊 Net Profit: $${costs.netProfit.toFixed(2)}
+🎯 Confidence: ${(opportunity.confidence * 100).toFixed(0)}%
+
+_Detected at ${new Date().toLocaleTimeString()}_
+  `.trim();
+
+  for (const channel of channels) {
+    const chatIdMatch = channel.webhook_url.match(/telegram:\/\/(.+)/);
+    if (chatIdMatch) {
+      try {
+        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatIdMatch[1],
+            text: message,
+            parse_mode: 'Markdown',
+          }),
+        });
+        console.log('[Arbitrage] Telegram alert sent');
+      } catch (e) {
+        console.error('[Arbitrage] Telegram send failed:', e);
+      }
+    }
+  }
 }
 
 // Fetch prices from multiple exchanges
@@ -201,10 +258,19 @@ serve(async (req) => {
           opp => opp.costs.netProfit > 0
         );
         
+        // Send Telegram alerts for high-value opportunities (>0.5% spread)
+        const alertThreshold = params.alertThreshold || 0.5;
+        for (const opp of profitableOpportunities) {
+          if (opp.spreadPercent >= alertThreshold) {
+            await sendTelegramAlert(opp, opp.costs);
+          }
+        }
+        
         result = {
           opportunities: profitableOpportunities,
           scanned: symbols.length,
           found: profitableOpportunities.length,
+          alerted: profitableOpportunities.filter(o => o.spreadPercent >= alertThreshold).length,
           timestamp: Date.now(),
         };
         break;
@@ -262,6 +328,61 @@ serve(async (req) => {
           },
           supportedSymbols: ['BTC/USD', 'ETH/USD', 'SOL/USD', 'AVAX/USD', 'LINK/USD'],
           mode: 'us_compliant',
+          telegramConfigured: !!Deno.env.get('TELEGRAM_BOT_TOKEN'),
+        };
+        break;
+
+      case 'test':
+        // Test the full arbitrage flow with simulated data
+        console.log('[Arbitrage] Running test execution flow');
+        
+        const testOpportunity: ArbitrageOpportunity = {
+          id: `test_${Date.now()}`,
+          symbol: 'BTC/USD',
+          buyExchange: 'coinbase',
+          sellExchange: 'kraken',
+          buyPrice: 95000,
+          sellPrice: 95150,
+          spread: 150,
+          spreadPercent: 0.158,
+          estimatedProfit: 15,
+          volume: 0.1,
+          confidence: 0.85,
+          timestamp: Date.now(),
+        };
+        
+        const testCosts = calculateCosts(testOpportunity);
+        
+        // Send test Telegram alert
+        await sendTelegramAlert(testOpportunity, testCosts);
+        
+        result = {
+          status: 'TEST_COMPLETED',
+          opportunity: testOpportunity,
+          costs: testCosts,
+          steps: [
+            { step: 1, action: 'Scan exchanges', status: 'completed' },
+            { step: 2, action: 'Identify spread', status: 'completed', data: { spread: '0.158%' } },
+            { step: 3, action: 'Calculate costs', status: 'completed', data: testCosts },
+            { step: 4, action: 'Send Telegram alert', status: Deno.env.get('TELEGRAM_BOT_TOKEN') ? 'completed' : 'skipped' },
+            { step: 5, action: 'Execute trades', status: 'simulated' },
+          ],
+          buyOrder: {
+            exchange: 'coinbase',
+            orderId: `test_buy_${Date.now()}`,
+            status: 'SIMULATED_FILL',
+            price: testOpportunity.buyPrice,
+            quantity: testOpportunity.volume,
+          },
+          sellOrder: {
+            exchange: 'kraken',
+            orderId: `test_sell_${Date.now()}`,
+            status: 'SIMULATED_FILL',
+            price: testOpportunity.sellPrice,
+            quantity: testOpportunity.volume,
+          },
+          netProfit: testCosts.netProfit,
+          message: 'Test execution completed successfully',
         };
         break;
 
