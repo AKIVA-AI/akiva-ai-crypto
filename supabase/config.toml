@@ -53,3 +53,9 @@ verify_jwt = true
 
 [functions.kraken-trading]
 verify_jwt = true
+
+[functions.binance-us-trading]
+verify_jwt = true
+
+[functions.cross-exchange-arbitrage]
+verify_jwt = true
