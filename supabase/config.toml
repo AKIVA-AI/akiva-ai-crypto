@@ -19,43 +19,43 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.analyze-signal]
-verify_jwt = true
+verify_jwt = false
 
 [functions.token-metrics]
 verify_jwt = false
 
 [functions.trading-api]
-verify_jwt = true
+verify_jwt = false
 
 [functions.market-intelligence]
-verify_jwt = true
+verify_jwt = false
 
 [functions.whale-alerts]
-verify_jwt = true
+verify_jwt = false
 
 [functions.trading-copilot]
-verify_jwt = true
+verify_jwt = false
 
 [functions.telegram-alerts]
-verify_jwt = true
+verify_jwt = false
 
 [functions.derivatives-data]
-verify_jwt = true
+verify_jwt = false
 
 [functions.live-trading]
-verify_jwt = true
+verify_jwt = false
 
 [functions.hyperliquid]
 verify_jwt = false
 
 [functions.coinbase-trading]
-verify_jwt = true
+verify_jwt = false
 
 [functions.kraken-trading]
-verify_jwt = true
+verify_jwt = false
 
 [functions.binance-us-trading]
-verify_jwt = true
+verify_jwt = false
 
 [functions.cross-exchange-arbitrage]
-verify_jwt = true
+verify_jwt = false
