@@ -19,12 +19,14 @@ import {
   Briefcase,
   CircleCheck,
   ArrowLeftRight,
+  Repeat,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { name: 'Trade', href: '/trade', icon: Repeat },
   { name: 'Markets', href: '/markets', icon: BarChart3 },
   { name: 'Arbitrage', href: '/arbitrage', icon: ArrowLeftRight },
   { name: 'Engine', href: '/engine', icon: Cpu },

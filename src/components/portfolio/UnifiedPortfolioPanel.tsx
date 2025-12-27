@@ -1,20 +1,18 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Wallet,
-  TrendingUp,
-  RefreshCw,
   AlertTriangle,
   CheckCircle2,
   PieChart,
   ArrowRightLeft,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { useUnifiedPortfolio, ExchangeBalance } from '@/hooks/useUnifiedPortfolio';
 import { VENUES } from '@/lib/tradingModes';
 
@@ -48,10 +46,26 @@ export function UnifiedPortfolioPanel() {
             Unified Portfolio
           </span>
           <div className="flex items-center gap-2">
+            {portfolio.priceConnectionStatus === 'connected' ? (
+              <Badge variant="outline" className="text-[10px] h-5 border-success text-success gap-1">
+                <Wifi className="h-2.5 w-2.5" />
+                Live Prices
+              </Badge>
+            ) : portfolio.priceConnectionStatus === 'connecting' ? (
+              <Badge variant="outline" className="text-[10px] h-5 border-warning text-warning gap-1 animate-pulse">
+                <Wifi className="h-2.5 w-2.5" />
+                Connecting...
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-[10px] h-5 border-muted-foreground text-muted-foreground gap-1">
+                <WifiOff className="h-2.5 w-2.5" />
+                Offline
+              </Badge>
+            )}
             {portfolio.hasRealData ? (
               <Badge variant="outline" className="text-xs border-success text-success gap-1">
                 <CheckCircle2 className="h-3 w-3" />
-                Live Data
+                Live
               </Badge>
             ) : (
               <Badge variant="outline" className="text-xs border-warning text-warning gap-1">

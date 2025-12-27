@@ -1,8 +1,9 @@
-import { useQuery } from '@tanstack/react-query';
 import { useCoinbaseBalances } from '@/hooks/useCoinbaseTrading';
 import { useKrakenBalances } from '@/hooks/useKrakenTrading';
 import { useBinanceUSAccount } from '@/hooks/useBinanceUSTrading';
+import { useLivePriceFeed, LivePrice } from '@/hooks/useLivePriceFeed';
 import { VENUES } from '@/lib/tradingModes';
+import { useMemo } from 'react';
 
 export interface ExchangeBalance {
   exchange: string;
@@ -32,17 +33,19 @@ export interface AggregatedPortfolio {
   }[];
   isLoading: boolean;
   hasRealData: boolean;
+  livePrices: Map<string, LivePrice>;
+  priceConnectionStatus: 'connected' | 'connecting' | 'disconnected';
 }
 
-// Approximate USD prices for common assets (fallback)
-const ASSET_PRICES: Record<string, number> = {
+// Static fallback prices (used when WebSocket not connected)
+const FALLBACK_PRICES: Record<string, number> = {
   USD: 1,
   USDT: 1,
   USDC: 1,
   BTC: 95000,
   ETH: 3400,
   SOL: 190,
-  XBT: 95000, // Kraken uses XBT for BTC
+  XBT: 95000,
   XXBT: 95000,
   ZUSD: 1,
   XXRP: 2.2,
@@ -55,10 +58,29 @@ const ASSET_PRICES: Record<string, number> = {
   DOT: 7,
 };
 
-function getUsdValue(asset: string, amount: number): number {
-  const normalizedAsset = asset.toUpperCase().replace(/^X+|Z+$/g, '');
-  const price = ASSET_PRICES[normalizedAsset] || ASSET_PRICES[asset.toUpperCase()] || 0;
-  return amount * price;
+function normalizeAsset(asset: string): string {
+  const normalized = asset.toUpperCase().replace(/^X+|Z+$/g, '');
+  return normalized === 'XBT' ? 'BTC' : normalized;
+}
+
+function getUsdValue(asset: string, amount: number, livePrices: Map<string, LivePrice>): number {
+  const normalized = normalizeAsset(asset);
+  
+  // Stablecoins always $1
+  if (['USD', 'USDT', 'USDC', 'ZUSD'].includes(normalized)) {
+    return amount;
+  }
+  
+  // Try to get live price from WebSocket
+  const symbol = `${normalized}-USDT`;
+  const livePrice = livePrices.get(symbol);
+  if (livePrice) {
+    return amount * livePrice.price;
+  }
+  
+  // Fallback to static prices
+  const fallbackPrice = FALLBACK_PRICES[normalized] || FALLBACK_PRICES[asset.toUpperCase()] || 0;
+  return amount * fallbackPrice;
 }
 
 export function useUnifiedPortfolio(): AggregatedPortfolio {
@@ -66,46 +88,94 @@ export function useUnifiedPortfolio(): AggregatedPortfolio {
   const { data: krakenData, isLoading: krakenLoading } = useKrakenBalances();
   const { data: binanceData, isLoading: binanceLoading } = useBinanceUSAccount();
 
+  // Collect unique assets to subscribe to price feeds
+  const allAssets = useMemo(() => {
+    const assets = new Set<string>();
+    
+    (coinbaseData?.balances || []).forEach((b: any) => {
+      const normalized = normalizeAsset(b.currency);
+      if (!['USD', 'USDT', 'USDC'].includes(normalized)) {
+        assets.add(`${normalized}-USDT`);
+      }
+    });
+    
+    Object.keys(krakenData?.balances || {}).forEach((asset) => {
+      const normalized = normalizeAsset(asset);
+      if (!['USD', 'USDT', 'USDC', 'ZUSD'].includes(normalized)) {
+        assets.add(`${normalized}-USDT`);
+      }
+    });
+    
+    (binanceData?.balances || []).forEach((b: any) => {
+      const normalized = normalizeAsset(b.asset);
+      if (!['USD', 'USDT', 'USDC'].includes(normalized)) {
+        assets.add(`${normalized}-USDT`);
+      }
+    });
+    
+    return Array.from(assets);
+  }, [coinbaseData, krakenData, binanceData]);
+
+  // Subscribe to live price feeds
+  const { prices, isConnected, isConnecting } = useLivePriceFeed({
+    symbols: allAssets.length > 0 ? allAssets : ['BTC-USDT', 'ETH-USDT'],
+    enabled: true,
+  });
+
+  const livePricesMap = useMemo(() => {
+    const map = new Map<string, LivePrice>();
+    Object.entries(prices).forEach(([symbol, price]) => {
+      map.set(symbol, price);
+    });
+    return map;
+  }, [prices]);
+
   const isLoading = coinbaseLoading || krakenLoading || binanceLoading;
 
-  // Parse Coinbase balances
-  const coinbaseBalances: ExchangeBalance[] = (coinbaseData?.balances || []).map((b: any) => ({
-    exchange: 'coinbase',
-    exchangeName: VENUES.coinbase?.name || 'Coinbase',
-    asset: b.currency,
-    available: parseFloat(b.available) || 0,
-    locked: parseFloat(b.hold) || 0,
-    total: parseFloat(b.total) || parseFloat(b.available) + parseFloat(b.hold) || 0,
-    usdValue: getUsdValue(b.currency, parseFloat(b.total) || parseFloat(b.available) || 0),
-    isSimulated: coinbaseData?.simulation || false,
-  })).filter((b: ExchangeBalance) => b.total > 0);
+  // Parse Coinbase balances with live prices
+  const coinbaseBalances: ExchangeBalance[] = useMemo(() => 
+    (coinbaseData?.balances || []).map((b: any) => ({
+      exchange: 'coinbase',
+      exchangeName: VENUES.coinbase?.name || 'Coinbase',
+      asset: b.currency,
+      available: parseFloat(b.available) || 0,
+      locked: parseFloat(b.hold) || 0,
+      total: parseFloat(b.total) || parseFloat(b.available) + parseFloat(b.hold) || 0,
+      usdValue: getUsdValue(b.currency, parseFloat(b.total) || parseFloat(b.available) || 0, livePricesMap),
+      isSimulated: coinbaseData?.simulation || false,
+    })).filter((b: ExchangeBalance) => b.total > 0),
+  [coinbaseData, livePricesMap]);
 
-  // Parse Kraken balances
-  const krakenBalances: ExchangeBalance[] = Object.entries(krakenData?.balances || {}).map(([asset, amount]) => ({
-    exchange: 'kraken',
-    exchangeName: VENUES.kraken?.name || 'Kraken',
-    asset: asset,
-    available: parseFloat(amount as string) || 0,
-    locked: 0,
-    total: parseFloat(amount as string) || 0,
-    usdValue: getUsdValue(asset, parseFloat(amount as string) || 0),
-    isSimulated: krakenData?.simulation || false,
-  })).filter((b: ExchangeBalance) => b.total > 0);
+  // Parse Kraken balances with live prices
+  const krakenBalances: ExchangeBalance[] = useMemo(() =>
+    Object.entries(krakenData?.balances || {}).map(([asset, amount]) => ({
+      exchange: 'kraken',
+      exchangeName: VENUES.kraken?.name || 'Kraken',
+      asset: asset,
+      available: parseFloat(amount as string) || 0,
+      locked: 0,
+      total: parseFloat(amount as string) || 0,
+      usdValue: getUsdValue(asset, parseFloat(amount as string) || 0, livePricesMap),
+      isSimulated: krakenData?.simulation || false,
+    })).filter((b: ExchangeBalance) => b.total > 0),
+  [krakenData, livePricesMap]);
 
-  // Parse Binance.US balances
-  const binanceBalances: ExchangeBalance[] = (binanceData?.balances || []).map((b: any) => ({
-    exchange: 'binance_us',
-    exchangeName: VENUES.binance_us?.name || 'Binance.US',
-    asset: b.asset,
-    available: parseFloat(b.free) || 0,
-    locked: parseFloat(b.locked) || 0,
-    total: (parseFloat(b.free) || 0) + (parseFloat(b.locked) || 0),
-    usdValue: getUsdValue(b.asset, (parseFloat(b.free) || 0) + (parseFloat(b.locked) || 0)),
-    isSimulated: binanceData?.simulated || false,
-  })).filter((b: ExchangeBalance) => b.total > 0);
+  // Parse Binance.US balances with live prices
+  const binanceBalances: ExchangeBalance[] = useMemo(() =>
+    (binanceData?.balances || []).map((b: any) => ({
+      exchange: 'binance_us',
+      exchangeName: VENUES.binance_us?.name || 'Binance.US',
+      asset: b.asset,
+      available: parseFloat(b.free) || 0,
+      locked: parseFloat(b.locked) || 0,
+      total: (parseFloat(b.free) || 0) + (parseFloat(b.locked) || 0),
+      usdValue: getUsdValue(b.asset, (parseFloat(b.free) || 0) + (parseFloat(b.locked) || 0), livePricesMap),
+      isSimulated: binanceData?.simulated || false,
+    })).filter((b: ExchangeBalance) => b.total > 0),
+  [binanceData, livePricesMap]);
 
   // Group by exchange
-  const exchanges = [
+  const exchanges = useMemo(() => [
     {
       exchange: 'coinbase',
       name: VENUES.coinbase?.name || 'Coinbase',
@@ -127,32 +197,34 @@ export function useUnifiedPortfolio(): AggregatedPortfolio {
       isSimulated: binanceData?.simulated || false,
       balances: binanceBalances,
     },
-  ].filter(e => e.balances.length > 0);
+  ].filter(e => e.balances.length > 0), [coinbaseBalances, krakenBalances, binanceBalances, coinbaseData, krakenData, binanceData]);
 
   // Aggregate by asset
-  const allBalances = [...coinbaseBalances, ...krakenBalances, ...binanceBalances];
-  const assetMap = new Map<string, { totalAmount: number; totalUsd: number; byExchange: { exchange: string; amount: number; usd: number }[] }>();
+  const assets = useMemo(() => {
+    const allBalances = [...coinbaseBalances, ...krakenBalances, ...binanceBalances];
+    const assetMap = new Map<string, { totalAmount: number; totalUsd: number; byExchange: { exchange: string; amount: number; usd: number }[] }>();
 
-  allBalances.forEach(b => {
-    // Normalize asset name
-    const normalizedAsset = b.asset.toUpperCase().replace(/^X+|Z+$/g, '');
-    const key = normalizedAsset === 'XBT' ? 'BTC' : normalizedAsset;
-    
-    if (!assetMap.has(key)) {
-      assetMap.set(key, { totalAmount: 0, totalUsd: 0, byExchange: [] });
-    }
-    const entry = assetMap.get(key)!;
-    entry.totalAmount += b.total;
-    entry.totalUsd += b.usdValue;
-    entry.byExchange.push({ exchange: b.exchange, amount: b.total, usd: b.usdValue });
-  });
+    allBalances.forEach(b => {
+      const key = normalizeAsset(b.asset);
+      
+      if (!assetMap.has(key)) {
+        assetMap.set(key, { totalAmount: 0, totalUsd: 0, byExchange: [] });
+      }
+      const entry = assetMap.get(key)!;
+      entry.totalAmount += b.total;
+      entry.totalUsd += b.usdValue;
+      entry.byExchange.push({ exchange: b.exchange, amount: b.total, usd: b.usdValue });
+    });
 
-  const assets = Array.from(assetMap.entries())
-    .map(([asset, data]) => ({ asset, ...data }))
-    .sort((a, b) => b.totalUsd - a.totalUsd);
+    return Array.from(assetMap.entries())
+      .map(([asset, data]) => ({ asset, ...data }))
+      .sort((a, b) => b.totalUsd - a.totalUsd);
+  }, [coinbaseBalances, krakenBalances, binanceBalances]);
 
   const totalUsdValue = exchanges.reduce((sum, e) => sum + e.totalUsd, 0);
   const hasRealData = exchanges.some(e => !e.isSimulated);
+
+  const priceConnectionStatus = isConnected ? 'connected' : isConnecting ? 'connecting' : 'disconnected';
 
   return {
     totalUsdValue,
@@ -160,5 +232,7 @@ export function useUnifiedPortfolio(): AggregatedPortfolio {
     assets,
     isLoading,
     hasRealData,
+    livePrices: livePricesMap,
+    priceConnectionStatus,
   };
 }
