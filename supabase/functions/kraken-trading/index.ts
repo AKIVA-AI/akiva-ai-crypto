@@ -204,8 +204,15 @@ serve(async (req) => {
     const path = url.pathname.split('/').pop();
 
     let body: any = {};
-    if (req.method === 'POST') {
-      body = await req.json();
+    if (req.method !== 'GET') {
+      const raw = await req.text();
+      if (raw) {
+        try {
+          body = JSON.parse(raw);
+        } catch {
+          body = {};
+        }
+      }
     }
 
     switch (path) {
