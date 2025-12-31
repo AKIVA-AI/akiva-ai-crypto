@@ -6,96 +6,96 @@
 
 @layer base {
   :root {
-    /* Backgrounds - Deep purple-black like Kraken Pro */
-    --background: 265 35% 3%;
-    --foreground: 270 20% 96%;
+    /* Backgrounds - Supabase-inspired neutral dark with subtle purple tint */
+    --background: 240 6% 6%;
+    --foreground: 240 5% 96%;
 
-    --card: 265 30% 7%;
-    --card-foreground: 270 20% 96%;
+    --card: 240 6% 9%;
+    --card-foreground: 240 5% 96%;
 
-    --popover: 265 28% 9%;
-    --popover-foreground: 270 20% 96%;
+    --popover: 240 6% 10%;
+    --popover-foreground: 240 5% 96%;
 
-    /* Primary - Vibrant Kraken Purple (boosted saturation) */
-    --primary: 265 95% 62%;
+    /* Primary - Refined Purple accent */
+    --primary: 265 85% 58%;
     --primary-foreground: 0 0% 100%;
-    --primary-600: 265 95% 52%;
-    --primary-500: 265 95% 62%;
-    --primary-100: 265 60% 18%;
+    --primary-600: 265 85% 48%;
+    --primary-500: 265 85% 58%;
+    --primary-100: 265 40% 18%;
 
-    /* Secondary - Rich purple surface */
-    --secondary: 265 25% 12%;
-    --secondary-foreground: 270 20% 96%;
+    /* Secondary - Subtle elevated surface */
+    --secondary: 240 6% 12%;
+    --secondary-foreground: 240 5% 96%;
 
-    /* Muted - Subtle purple-grey backgrounds */
-    --muted: 265 18% 16%;
-    --muted-foreground: 270 12% 50%;
+    /* Muted - Neutral grays */
+    --muted: 240 5% 16%;
+    --muted-foreground: 240 5% 55%;
 
-    /* Accent - Bright Electric Lilac */
-    --accent: 275 80% 72%;
-    --accent-foreground: 265 35% 3%;
+    /* Accent - Soft purple highlight */
+    --accent: 265 60% 65%;
+    --accent-foreground: 0 0% 100%;
 
-    /* Data colors - Vibrant Cyan for charts (strong contrast) */
-    --data: 185 90% 48%;
-    --data-foreground: 265 35% 3%;
+    /* Data colors - Clean cyan for charts */
+    --data: 185 75% 50%;
+    --data-foreground: 240 6% 6%;
 
     /* Semantic states */
-    --destructive: 0 78% 55%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 155 80% 42%;
+    --success: 142 70% 45%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 45 100% 55%;
-    --warning-foreground: 265 35% 3%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 240 6% 6%;
 
-    /* Borders and inputs - purple tint */
-    --border: 265 25% 16%;
-    --input: 265 25% 10%;
-    --ring: 265 95% 62%;
+    /* Borders and inputs - Clean subtle borders */
+    --border: 240 5% 18%;
+    --input: 240 6% 12%;
+    --ring: 265 85% 58%;
 
     --radius: 0.5rem;
 
-    /* Sidebar - Deeper purple */
-    --sidebar-background: 265 40% 2%;
-    --sidebar-foreground: 270 20% 92%;
-    --sidebar-primary: 265 95% 62%;
+    /* Sidebar - Slightly darker */
+    --sidebar-background: 240 6% 5%;
+    --sidebar-foreground: 240 5% 90%;
+    --sidebar-primary: 265 85% 58%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 265 30% 10%;
-    --sidebar-accent-foreground: 270 20% 92%;
-    --sidebar-border: 265 25% 10%;
-    --sidebar-ring: 265 95% 62%;
+    --sidebar-accent: 240 6% 12%;
+    --sidebar-accent-foreground: 240 5% 90%;
+    --sidebar-border: 240 5% 14%;
+    --sidebar-ring: 265 85% 58%;
 
     /* Trading-specific tokens */
-    --trading-long: 155 80% 42%;
-    --trading-short: 0 78% 55%;
-    --long: 155 80% 42%;
-    --short: 0 78% 55%;
-    --neutral: 270 12% 50%;
+    --trading-long: 142 70% 45%;
+    --trading-short: 0 72% 51%;
+    --long: 142 70% 45%;
+    --short: 0 72% 51%;
+    --neutral: 240 5% 55%;
 
-    /* Glow effects - Intense purple-centric */
-    --glow-primary: 265 95% 62%;
-    --glow-accent: 275 80% 72%;
-    --glow-data: 185 90% 48%;
-    --glow-success: 155 80% 42%;
-    --glow-destructive: 0 78% 55%;
+    /* Glow effects - Subtle purple */
+    --glow-primary: 265 85% 58%;
+    --glow-accent: 265 60% 65%;
+    --glow-data: 185 75% 50%;
+    --glow-success: 142 70% 45%;
+    --glow-destructive: 0 72% 51%;
     
-    /* Gradients - Rich purple spectrum */
-    --gradient-primary: linear-gradient(135deg, hsl(265 95% 62%), hsl(285 90% 58%));
-    --gradient-accent: linear-gradient(135deg, hsl(275 80% 72%), hsl(295 75% 68%));
-    --gradient-data: linear-gradient(135deg, hsl(185 90% 48%), hsl(200 85% 52%));
-    --gradient-card: linear-gradient(180deg, hsl(265 30% 9%), hsl(265 30% 5%));
-    --gradient-surface: radial-gradient(ellipse 100% 60% at 50% -30%, hsl(265 95% 62% / 0.18), transparent);
-    --gradient-success: linear-gradient(135deg, hsl(155 80% 42%), hsl(170 75% 38%));
-    --gradient-danger: linear-gradient(135deg, hsl(0 78% 55%), hsl(350 85% 50%));
+    /* Gradients - Cleaner, more subtle */
+    --gradient-primary: linear-gradient(135deg, hsl(265 85% 58%), hsl(280 80% 55%));
+    --gradient-accent: linear-gradient(135deg, hsl(265 60% 65%), hsl(280 55% 62%));
+    --gradient-data: linear-gradient(135deg, hsl(185 75% 50%), hsl(195 70% 52%));
+    --gradient-card: linear-gradient(180deg, hsl(240 6% 10%), hsl(240 6% 8%));
+    --gradient-surface: radial-gradient(ellipse 80% 50% at 50% -20%, hsl(265 85% 58% / 0.08), transparent);
+    --gradient-success: linear-gradient(135deg, hsl(142 70% 45%), hsl(155 65% 42%));
+    --gradient-danger: linear-gradient(135deg, hsl(0 72% 51%), hsl(350 75% 48%));
 
-    /* Chart colors - Vibrant palette */
-    --chart-1: 265 95% 62%;
-    --chart-2: 185 90% 48%;
-    --chart-3: 275 80% 72%;
-    --chart-4: 155 80% 42%;
-    --chart-5: 200 85% 52%;
-    --chart-6: 295 75% 60%;
+    /* Chart colors */
+    --chart-1: 265 85% 58%;
+    --chart-2: 185 75% 50%;
+    --chart-3: 265 60% 65%;
+    --chart-4: 142 70% 45%;
+    --chart-5: 195 70% 52%;
+    --chart-6: 280 60% 58%;
   }
 
   .dark {
@@ -135,64 +135,56 @@
 }
 
 @layer components {
-  /* Glass panels - frosted purple effect */
+  /* Glass panels - Clean Supabase-style with subtle purple tint */
   .glass-panel {
-    @apply bg-card/70 backdrop-blur-xl border border-border/50;
-    background: linear-gradient(180deg, hsl(var(--card) / 0.85), hsl(var(--card) / 0.65));
-    box-shadow: 0 4px 30px hsl(var(--primary) / 0.05),
-                inset 0 1px 0 hsl(var(--primary) / 0.08);
+    @apply bg-card border border-border;
+    box-shadow: 0 1px 3px hsl(0 0% 0% / 0.12),
+                0 1px 2px hsl(0 0% 0% / 0.08);
   }
 
   .glass-strong {
-    @apply bg-card/90 backdrop-blur-2xl border border-border;
-    box-shadow: 0 8px 40px hsl(var(--primary) / 0.08);
+    @apply bg-card border border-border;
+    box-shadow: 0 4px 12px hsl(0 0% 0% / 0.15);
   }
 
-  /* Matte texture overlay */
+  /* Matte texture overlay - very subtle */
   .matte::after {
     content: '';
     position: absolute;
     inset: 0;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-    opacity: 0.02;
+    opacity: 0.015;
     pointer-events: none;
     border-radius: inherit;
   }
 
-  /* Enhanced purple glow effects */
+  /* Refined glow effects - subtle purple */
   .glow-primary {
-    box-shadow: 0 0 25px hsl(var(--glow-primary) / 0.35),
-                0 0 50px hsl(var(--glow-primary) / 0.15),
-                0 0 80px hsl(var(--glow-primary) / 0.08),
-                inset 0 0 25px hsl(var(--glow-primary) / 0.06);
+    box-shadow: 0 0 20px hsl(var(--glow-primary) / 0.15),
+                0 0 40px hsl(var(--glow-primary) / 0.08);
   }
 
   .glow-accent {
-    box-shadow: 0 0 25px hsl(var(--glow-accent) / 0.35),
-                0 0 50px hsl(var(--glow-accent) / 0.15),
-                0 0 80px hsl(var(--glow-accent) / 0.08);
+    box-shadow: 0 0 20px hsl(var(--glow-accent) / 0.15),
+                0 0 40px hsl(var(--glow-accent) / 0.08);
   }
 
   .glow-data {
-    box-shadow: 0 0 25px hsl(var(--glow-data) / 0.35),
-                0 0 50px hsl(var(--glow-data) / 0.15),
-                0 0 80px hsl(var(--glow-data) / 0.08);
+    box-shadow: 0 0 20px hsl(var(--glow-data) / 0.15),
+                0 0 40px hsl(var(--glow-data) / 0.08);
   }
 
   .glow-success {
-    box-shadow: 0 0 25px hsl(var(--glow-success) / 0.35),
-                0 0 50px hsl(var(--glow-success) / 0.15);
+    box-shadow: 0 0 15px hsl(var(--glow-success) / 0.2);
   }
 
   .glow-danger {
-    box-shadow: 0 0 25px hsl(var(--glow-destructive) / 0.35),
-                0 0 50px hsl(var(--glow-destructive) / 0.15);
+    box-shadow: 0 0 15px hsl(var(--glow-destructive) / 0.2);
   }
 
   /* Subtle ambient glow for cards */
   .glow-ambient {
-    box-shadow: 0 0 60px hsl(var(--primary) / 0.06),
-                0 0 120px hsl(var(--primary) / 0.03);
+    box-shadow: 0 0 40px hsl(var(--primary) / 0.04);
   }
 
   /* Purple ambient lighting on hover */
