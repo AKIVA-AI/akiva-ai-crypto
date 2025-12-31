@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Dialog,
   DialogContent,
@@ -27,7 +28,9 @@ import {
   Zap,
   Target,
   Percent,
-  ArrowRightLeft
+  ArrowRightLeft,
+  ShieldAlert,
+  Globe
 } from 'lucide-react';
 import { 
   useFundingOpportunities, 
@@ -38,6 +41,7 @@ import {
   FundingPosition
 } from '@/hooks/useFundingArbitrage';
 import { formatDistanceToNow } from 'date-fns';
+import { useTradingMode } from '@/hooks/useTradingMode';
 
 interface FundingArbitragePanelProps {
   compact?: boolean;
@@ -49,10 +53,20 @@ export function FundingArbitragePanel({ compact = false }: FundingArbitragePanel
   const [tradeSize, setTradeSize] = useState('1000');
   const [showExecuteDialog, setShowExecuteDialog] = useState(false);
 
+  const { mode } = useTradingMode();
+  const isUSMode = mode === 'us';
+
   const { data: oppData, isLoading: loadingOpps, refetch: refetchOpps } = useFundingOpportunities();
   const { data: positions, isLoading: loadingPositions } = useActiveFundingPositions();
   const executeMutation = useExecuteFundingArb();
   const closeMutation = useCloseFundingPosition();
+
+  // Auto-refresh every 30 seconds for international users
+  useEffect(() => {
+    if (isUSMode) return;
+    const interval = setInterval(() => refetchOpps(), 30000);
+    return () => clearInterval(interval);
+  }, [isUSMode, refetchOpps]);
 
   const handleExecute = () => {
     if (!selectedOpp) return;
@@ -190,7 +204,42 @@ export function FundingArbitragePanel({ compact = false }: FundingArbitragePanel
     </div>
   );
 
+  // US Mode restriction message
+  const USRestrictionMessage = () => (
+    <Alert className="border-yellow-500/50 bg-yellow-500/10">
+      <ShieldAlert className="h-5 w-5 text-yellow-500" />
+      <AlertTitle className="text-yellow-500">US Trading Mode Active</AlertTitle>
+      <AlertDescription className="text-muted-foreground">
+        Funding rate arbitrage requires perpetual futures, which are not available to US users due to regulatory restrictions. 
+        This feature is only available in <span className="font-medium text-foreground">International Mode</span>.
+        <div className="mt-3 flex items-center gap-2 text-xs">
+          <Globe className="h-4 w-4" />
+          <span>Switch to International Mode in Settings to access this feature.</span>
+        </div>
+      </AlertDescription>
+    </Alert>
+  );
+
   if (compact) {
+    if (isUSMode) {
+      return (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Percent className="h-5 w-5 text-primary" />
+              Funding Arbitrage
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2 text-sm text-yellow-500">
+              <ShieldAlert className="h-4 w-4" />
+              <span>Not available in US Mode</span>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
     return (
       <Card>
         <CardHeader className="pb-2">
@@ -236,6 +285,23 @@ export function FundingArbitragePanel({ compact = false }: FundingArbitragePanel
               No actionable opportunities
             </p>
           )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Full panel for US users - show restriction
+  if (isUSMode) {
+    return (
+      <Card className="h-full">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Percent className="h-5 w-5 text-primary" />
+            Funding Rate Arbitrage
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <USRestrictionMessage />
         </CardContent>
       </Card>
     );
