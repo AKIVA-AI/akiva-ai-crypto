@@ -168,6 +168,8 @@ This document audits each page's functionality status, identifying what's real v
 - Dashboard, Positions, Strategies, Risk, Engine, Agents, Settings
 - Meme Ventures approval workflow
 - Crypto CoPilot
+- Treasury (watch-only wallets from DB)
+- Operations Center (NEW)
 
 ### Needs API Keys (3 features)
 - Live trading on Coinbase/Kraken
@@ -177,6 +179,46 @@ This document audits each page's functionality status, identifying what's real v
 ### Simulated Data (2 features)
 - On-chain token metrics
 - Arbitrage opportunities
+
+---
+
+## Operations Center (/operations)
+**Status**: ✅ NEW - Fully Functional
+
+| Feature | Status | Backend |
+|---------|--------|---------|
+| Edge function health | ✅ Real | Live health checks |
+| Data source status | ✅ Real | Shows configured vs not |
+| Venue monitoring | ✅ Real | Supabase `venues` table |
+| Python backend status | ⚠️ Manual | Requires separate deployment |
+| Agent status | ✅ Real | Supabase `agents` table |
+
+---
+
+## Treasury (/treasury)
+**Status**: ✅ Fully Functional (Watch-Only)
+
+| Feature | Status | Backend |
+|---------|--------|---------|
+| Wallet list | ✅ Real | Supabase `wallets` table |
+| Balance display | ✅ Real | Stored in DB |
+| Multi-sig info | ✅ Real | Stored in DB |
+| Send/Receive | ⚠️ Watch-only | Buttons exist, no execution |
+| Real balance sync | ⚠️ Manual | Requires on-chain integration |
+
+**Note**: Treasury is watch-only. Wallets can be added to DB but balances are manually entered. Real on-chain sync would require Moralis/Alchemy integration.
+
+---
+
+## Wallet Connection
+**Status**: ✅ Functional via Web3Modal
+
+| Feature | Status | Backend |
+|---------|--------|---------|
+| Connect wallet | ✅ Real | Web3Modal + wagmi |
+| Network switching | ✅ Real | Supports ETH, Base, Arbitrum, etc. |
+| Balance display | ✅ Real | On-chain via wagmi |
+| Transaction signing | ⚠️ Not implemented | Would need smart contract integration |
 
 ---
 
@@ -191,3 +233,25 @@ All CoPilot quick actions call `trading-copilot` edge function which:
   - Suggested actions (BUY/SELL/HOLD)
   - Risk level
   - Confidence score
+
+---
+
+## Key Architecture Notes
+
+### Python Agents
+- **Do NOT auto-start** in Lovable
+- Require separate deployment (Docker/Northflank/Railway)
+- Agent table stores config/status only
+- Python backend handles: strategy execution, risk calculations, ML models
+
+### HyperLiquid Compliance
+- **Non-US only** - not available to US users
+- Edge function exists with simulated mode
+- For US users: Use Coinbase or Kraken instead
+- Consider geo-blocking or compliance warnings in production
+
+### Data Flow
+1. **Price Data**: Binance WebSocket → Frontend (real-time)
+2. **Signals**: Edge functions → Supabase `intelligence_signals` → Frontend
+3. **Orders**: Frontend → Edge function → Exchange API (if keys configured)
+4. **Agents**: Python backend → Supabase (if deployed separately)

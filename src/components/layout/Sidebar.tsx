@@ -20,6 +20,7 @@ import {
   CircleCheck,
   ArrowLeftRight,
   Repeat,
+  Radio,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
@@ -38,6 +39,7 @@ const navigation = [
   { name: 'Risk', href: '/risk', icon: Shield },
   { name: 'Meme Ventures', href: '/launch', icon: Rocket },
   { name: 'Treasury', href: '/treasury', icon: Wallet },
+  { name: 'Operations', href: '/operations', icon: Radio },
   { name: 'Observability', href: '/observability', icon: Activity },
   { name: 'Audit Log', href: '/audit', icon: History },
   { name: 'System Status', href: '/status', icon: CircleCheck },
