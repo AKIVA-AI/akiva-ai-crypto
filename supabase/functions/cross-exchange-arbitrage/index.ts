@@ -85,6 +85,164 @@ _Detected at ${new Date().toLocaleTimeString()}_
   }
 }
 
+// Fetch account balances from exchanges
+interface ExchangeBalance {
+  exchange: string;
+  currency: string;
+  available: number;
+  total: number;
+  timestamp: number;
+}
+
+async function fetchBalances(): Promise<ExchangeBalance[]> {
+  const balances: ExchangeBalance[] = [];
+  
+  // Coinbase balance
+  const coinbaseKey = Deno.env.get('COINBASE_API_KEY');
+  const coinbaseSecret = Deno.env.get('COINBASE_API_SECRET');
+  if (coinbaseKey && coinbaseSecret) {
+    try {
+      const timestamp = Math.floor(Date.now() / 1000).toString();
+      const method = 'GET';
+      const requestPath = '/accounts';
+      const body = '';
+      
+      // Create signature
+      const message = timestamp + method + requestPath + body;
+      const key = await crypto.subtle.importKey(
+        'raw',
+        new TextEncoder().encode(coinbaseSecret),
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+      );
+      const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(message));
+      const signatureBase64 = btoa(String.fromCharCode(...new Uint8Array(signature)));
+      
+      const response = await fetch('https://api.exchange.coinbase.com/accounts', {
+        headers: {
+          'CB-ACCESS-KEY': coinbaseKey,
+          'CB-ACCESS-SIGN': signatureBase64,
+          'CB-ACCESS-TIMESTAMP': timestamp,
+          'CB-ACCESS-PASSPHRASE': Deno.env.get('COINBASE_API_PASSPHRASE') || '',
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const accounts = await response.json();
+        for (const account of accounts) {
+          if (parseFloat(account.balance) > 0 || ['USD', 'USDC', 'BTC', 'ETH'].includes(account.currency)) {
+            balances.push({
+              exchange: 'coinbase',
+              currency: account.currency,
+              available: parseFloat(account.available),
+              total: parseFloat(account.balance),
+              timestamp: Date.now(),
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.log('[Arbitrage] Coinbase balance fetch failed:', e);
+    }
+  }
+  
+  // Kraken balance
+  const krakenKey = Deno.env.get('KRAKEN_API_KEY');
+  const krakenSecret = Deno.env.get('KRAKEN_API_SECRET');
+  if (krakenKey && krakenSecret) {
+    try {
+      const nonce = Date.now().toString();
+      const postData = `nonce=${nonce}`;
+      const path = '/0/private/Balance';
+      
+      // Create signature for Kraken
+      const sha256Hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(nonce + postData));
+      const message = new Uint8Array([...new TextEncoder().encode(path), ...new Uint8Array(sha256Hash)]);
+      const secretBytes = Uint8Array.from(atob(krakenSecret), c => c.charCodeAt(0));
+      const key = await crypto.subtle.importKey('raw', secretBytes, { name: 'HMAC', hash: 'SHA-512' }, false, ['sign']);
+      const signature = await crypto.subtle.sign('HMAC', key, message);
+      const signatureBase64 = btoa(String.fromCharCode(...new Uint8Array(signature)));
+      
+      const response = await fetch('https://api.kraken.com/0/private/Balance', {
+        method: 'POST',
+        headers: {
+          'API-Key': krakenKey,
+          'API-Sign': signatureBase64,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: postData,
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.result) {
+          for (const [currency, balance] of Object.entries(data.result)) {
+            const amount = parseFloat(balance as string);
+            if (amount > 0) {
+              balances.push({
+                exchange: 'kraken',
+                currency: currency.replace(/^[XZ]/, ''), // Kraken prefixes
+                available: amount,
+                total: amount,
+                timestamp: Date.now(),
+              });
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.log('[Arbitrage] Kraken balance fetch failed:', e);
+    }
+  }
+  
+  // Binance.US balance
+  const binanceKey = Deno.env.get('BINANCE_US_API_KEY');
+  const binanceSecret = Deno.env.get('BINANCE_US_API_SECRET');
+  if (binanceKey && binanceSecret) {
+    try {
+      const timestamp = Date.now();
+      const queryString = `timestamp=${timestamp}`;
+      
+      const key = await crypto.subtle.importKey(
+        'raw',
+        new TextEncoder().encode(binanceSecret),
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+      );
+      const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(queryString));
+      const signatureHex = Array.from(new Uint8Array(signature)).map(b => b.toString(16).padStart(2, '0')).join('');
+      
+      const response = await fetch(`https://api.binance.us/api/v3/account?${queryString}&signature=${signatureHex}`, {
+        headers: { 'X-MBX-APIKEY': binanceKey },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        for (const balance of data.balances || []) {
+          const free = parseFloat(balance.free);
+          const total = free + parseFloat(balance.locked);
+          if (total > 0 || ['USD', 'USDT', 'USDC', 'BTC', 'ETH'].includes(balance.asset)) {
+            balances.push({
+              exchange: 'binance_us',
+              currency: balance.asset,
+              available: free,
+              total: total,
+              timestamp: Date.now(),
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.log('[Arbitrage] Binance.US balance fetch failed:', e);
+    }
+  }
+  
+  return balances;
+}
+
 // Fetch prices from multiple exchanges
 async function fetchPrices(symbol: string): Promise<PriceData[]> {
   const prices: PriceData[] = [];
@@ -791,6 +949,41 @@ serve(async (req) => {
           },
           positionSizing: positionSizingRules,
           warningAlertsSent,
+        };
+        break;
+
+      case 'balances':
+        // Fetch balances from all connected exchanges
+        console.log('[Arbitrage] Fetching exchange balances');
+        const allBalances = await fetchBalances();
+        
+        // Calculate total USD value and per-exchange summary
+        const exchangeSummary: Record<string, { usdAvailable: number; assets: ExchangeBalance[] }> = {};
+        let totalUsdAvailable = 0;
+        
+        for (const balance of allBalances) {
+          if (!exchangeSummary[balance.exchange]) {
+            exchangeSummary[balance.exchange] = { usdAvailable: 0, assets: [] };
+          }
+          exchangeSummary[balance.exchange].assets.push(balance);
+          
+          // Estimate USD value for major assets
+          if (['USD', 'USDC', 'USDT'].includes(balance.currency)) {
+            exchangeSummary[balance.exchange].usdAvailable += balance.available;
+            totalUsdAvailable += balance.available;
+          }
+        }
+        
+        result = {
+          balances: allBalances,
+          summary: exchangeSummary,
+          totalUsdAvailable,
+          timestamp: Date.now(),
+          exchangesConnected: {
+            coinbase: !!Deno.env.get('COINBASE_API_KEY'),
+            kraken: !!Deno.env.get('KRAKEN_API_KEY'),
+            binance_us: !!Deno.env.get('BINANCE_US_API_KEY'),
+          },
         };
         break;
 

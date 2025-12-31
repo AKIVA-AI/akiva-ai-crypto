@@ -45,6 +45,7 @@ import {
   useKillSwitch,
   useDailyPnLLimits,
   usePnLAnalytics,
+  useExchangeBalances,
   ArbitrageOpportunity, 
   AutoExecuteSettings 
 } from '@/hooks/useCrossExchangeArbitrage';
@@ -84,6 +85,7 @@ export default function Arbitrage() {
   const recordExecution = useRecordArbitrageExecution();
   const killSwitch = useKillSwitch();
   const pnlLimits = useDailyPnLLimits();
+  const { data: balances } = useExchangeBalances(isScanning);
   const { data: history = [], isLoading: historyLoading } = useArbitrageHistory(20);
   const { data: stats } = useArbitrageStats();
 
@@ -374,6 +376,40 @@ export default function Arbitrage() {
                     </div>
                   </div>
                 ))}
+              </CardContent>
+            </Card>
+
+            {/* Available Capital */}
+            <Card className="glass-panel">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  Available Capital
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-center p-3 rounded-lg bg-muted/30">
+                  <div className="text-2xl font-bold font-mono text-primary">
+                    ${(balances?.totalUsdAvailable || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Total USD Available</div>
+                </div>
+                {balances?.summary && Object.entries(balances.summary).map(([exchange, data]: [string, any]) => (
+                  <div key={exchange} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <span>{VENUES[exchange]?.icon}</span>
+                      <span className="capitalize">{VENUES[exchange]?.name || exchange}</span>
+                    </div>
+                    <span className="font-mono">
+                      ${data.usdAvailable.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                ))}
+                {(!balances?.summary || Object.keys(balances.summary).length === 0) && (
+                  <div className="text-center text-xs text-muted-foreground py-2">
+                    Configure API keys to view balances
+                  </div>
+                )}
               </CardContent>
             </Card>
 

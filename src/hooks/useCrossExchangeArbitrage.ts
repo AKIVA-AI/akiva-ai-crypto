@@ -2,6 +2,27 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+// Balance types
+export interface ExchangeBalance {
+  exchange: string;
+  currency: string;
+  available: number;
+  total: number;
+  timestamp: number;
+}
+
+export interface BalanceSummary {
+  balances: ExchangeBalance[];
+  summary: Record<string, { usdAvailable: number; assets: ExchangeBalance[] }>;
+  totalUsdAvailable: number;
+  timestamp: number;
+  exchangesConnected: {
+    coinbase: boolean;
+    kraken: boolean;
+    binance_us: boolean;
+  };
+}
+
 const invokeArbitrage = async (action: string, params: Record<string, any> = {}) => {
   const { data, error } = await supabase.functions.invoke('cross-exchange-arbitrage', {
     body: { action, params },
@@ -352,4 +373,15 @@ export function usePositionSizing() {
     updateRules,
     isLoading: status.isLoading,
   };
+}
+
+// Fetch exchange balances
+export function useExchangeBalances(enabled: boolean = true) {
+  return useQuery<BalanceSummary>({
+    queryKey: ['arbitrage', 'balances'],
+    queryFn: () => invokeArbitrage('balances', {}),
+    staleTime: 30 * 1000, // 30 seconds
+    refetchInterval: enabled ? 60 * 1000 : false, // Refresh every minute
+    enabled,
+  });
 }
