@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
-import { useMemeProjects, useMemeTasks } from '@/hooks/useControlPlane';
+import { useMemeProjects, useMemeTasks, useCreateMemeProject } from '@/hooks/useControlPlane';
 import { MemeProjectCard } from '@/components/meme/MemeProjectCard';
 import { MemeScorePanel } from '@/components/meme/MemeScorePanel';
 import { MemeApprovalPanel } from '@/components/meme/MemeApprovalPanel';
@@ -8,22 +8,39 @@ import { MemePipelineView } from '@/components/meme/MemePipelineView';
 import { TokenMonitorPanel } from '@/components/blockchain/TokenMonitorPanel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Rocket, LayoutGrid, Columns3, Plus, CheckCircle2, Clock, AlertCircle, Activity } from 'lucide-react';
+import { Rocket, LayoutGrid, Columns3, Plus, CheckCircle2, Clock, AlertCircle, Loader2 } from 'lucide-react';
 import { Database } from '@/integrations/supabase/types';
 
 type MemeProject = Database['public']['Tables']['meme_projects']['Row'];
 
 export default function Launch() {
   const { data: projects = [], isLoading: projectsLoading } = useMemeProjects();
+  const createProject = useCreateMemeProject();
   const [selectedProject, setSelectedProject] = useState<MemeProject | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'pipeline'>('pipeline');
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [newProject, setNewProject] = useState({ name: '', ticker: '', tags: '' });
   
   const { data: tasks = [] } = useMemeTasks(selectedProject?.id);
 
   const handleSelectProject = (project: MemeProject) => {
     setSelectedProject(project);
+  };
+
+  const handleCreateProject = async () => {
+    if (!newProject.name || !newProject.ticker) return;
+    await createProject.mutateAsync({
+      name: newProject.name,
+      ticker: newProject.ticker,
+      narrative_tags: newProject.tags.split(',').map(t => t.trim()).filter(Boolean),
+    });
+    setIsCreateOpen(false);
+    setNewProject({ name: '', ticker: '', tags: '' });
   };
 
   // Stats
@@ -71,10 +88,56 @@ export default function Launch() {
                 <LayoutGrid className="h-3.5 w-3.5" />
               </button>
             </div>
-            <Button size="sm" className="gap-1.5 h-8">
-              <Plus className="h-3.5 w-3.5" />
-              New Project
-            </Button>
+            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" className="gap-1.5 h-8">
+                  <Plus className="h-3.5 w-3.5" />
+                  New Project
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create Meme Project</DialogTitle>
+                  <DialogDescription>Add a new meme coin venture to the pipeline</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label>Project Name</Label>
+                    <Input
+                      value={newProject.name}
+                      onChange={(e) => setNewProject(p => ({ ...p, name: e.target.value }))}
+                      placeholder="e.g., DogWifHat"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Ticker Symbol</Label>
+                    <Input
+                      value={newProject.ticker}
+                      onChange={(e) => setNewProject(p => ({ ...p, ticker: e.target.value.toUpperCase() }))}
+                      placeholder="e.g., WIF"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Narrative Tags (comma-separated)</Label>
+                    <Input
+                      value={newProject.tags}
+                      onChange={(e) => setNewProject(p => ({ ...p, tags: e.target.value }))}
+                      placeholder="e.g., dog, solana, community"
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
+                  <Button 
+                    onClick={handleCreateProject} 
+                    disabled={createProject.isPending || !newProject.name || !newProject.ticker}
+                  >
+                    {createProject.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Create Project
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
 

@@ -22,9 +22,30 @@ serve(async (req) => {
     const path = url.pathname.split('/').pop();
 
     // Parse body for POST requests
-    let body = {};
+    let body: Record<string, unknown> = {};
     if (req.method === 'POST') {
-      body = await req.json();
+      try {
+        body = await req.json();
+      } catch {
+        // Empty body is fine for some requests
+      }
+    }
+
+    // Handle health_check action from body (for Operations page health checks)
+    if (body.action === 'health_check') {
+      const { data: settings } = await supabase.from('global_settings').select('*').single();
+      const { count: venueCount } = await supabase.from('venues').select('*', { count: 'exact', head: true }).eq('is_enabled', true);
+      const { count: posCount } = await supabase.from('positions').select('*', { count: 'exact', head: true }).eq('is_open', true);
+
+      return new Response(JSON.stringify({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        paper_mode: settings?.paper_trading_mode ?? true,
+        kill_switch: settings?.global_kill_switch ?? false,
+        enabled_venues: venueCount,
+        open_positions: posCount,
+        version: '1.0.0',
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // Route handlers

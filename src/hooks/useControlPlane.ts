@@ -1,5 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export function useGlobalSettings() {
   return useQuery({
@@ -103,6 +104,60 @@ export function useMemeTasks(projectId?: string) {
       const { data, error } = await query;
       if (error) throw error;
       return data;
+    },
+  });
+}
+
+export function useCreateMemeProject() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (project: { name: string; ticker: string; narrative_tags?: string[] }) => {
+      const { data, error } = await supabase
+        .from('meme_projects')
+        .insert({
+          name: project.name,
+          ticker: project.ticker.toUpperCase(),
+          narrative_tags: project.narrative_tags || [],
+          stage: 'opportunity',
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['meme-projects'] });
+      toast.success('Meme project created');
+    },
+    onError: (error) => {
+      toast.error(`Failed to create project: ${error.message}`);
+    },
+  });
+}
+
+export function useUpdateMemeProject() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: { id: string; [key: string]: unknown }) => {
+      const { data, error } = await supabase
+        .from('meme_projects')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['meme-projects'] });
+      toast.success('Project updated');
+    },
+    onError: (error) => {
+      toast.error(`Failed to update: ${error.message}`);
     },
   });
 }
