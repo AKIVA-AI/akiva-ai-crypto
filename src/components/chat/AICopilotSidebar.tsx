@@ -2,7 +2,6 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useTradingCopilot } from '@/hooks/useTradingCopilot';
 import { cn } from '@/lib/utils';
@@ -204,95 +203,97 @@ export function AICopilotSidebar({ isOpen, onToggle }: AICopilotSidebarProps) {
       </div>
 
       {/* Messages Area */}
-      <ScrollArea ref={scrollRef} className="flex-1 p-4">
-        {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full min-h-[300px]">
-            <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-5 shadow-lg">
-              <Sparkles className="h-8 w-8 text-primary" />
+      <div ref={scrollRef} className="flex-1 overflow-y-auto">
+        <div className="p-4 pb-2">
+          {messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center min-h-[300px]">
+              <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-5 shadow-lg">
+                <Sparkles className="h-8 w-8 text-primary" />
+              </div>
+              <h3 className="font-semibold text-lg mb-2">Crypto CoPilot</h3>
+              <p className="text-sm text-muted-foreground text-center max-w-[280px] leading-relaxed">
+                Ask me about market conditions, trading strategies, risk analysis, or portfolio insights.
+              </p>
             </div>
-            <h3 className="font-semibold text-lg mb-2">Crypto CoPilot</h3>
-            <p className="text-sm text-muted-foreground text-center max-w-[280px] leading-relaxed">
-              Ask me about market conditions, trading strategies, risk analysis, or portfolio insights.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {messages.map((msg, idx) => (
-              <div
-                key={idx}
-                className={cn(
-                  'flex gap-3',
-                  msg.role === 'user' ? 'justify-end' : 'justify-start'
-                )}
-              >
-                {msg.role === 'assistant' && (
-                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <Bot className="h-4 w-4 text-primary" />
-                  </div>
-                )}
+          ) : (
+            <div className="space-y-4 pb-4">
+              {messages.map((msg, idx) => (
                 <div
+                  key={idx}
                   className={cn(
-                    'max-w-[85%] rounded-2xl p-3.5 space-y-2',
-                    msg.role === 'user'
-                      ? 'bg-primary text-primary-foreground rounded-br-md'
-                      : 'bg-muted rounded-bl-md'
+                    'flex gap-3',
+                    msg.role === 'user' ? 'justify-end' : 'justify-start'
                   )}
                 >
-                  <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
-
-                  {msg.role === 'assistant' && msg.insights && (
-                    <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border/30">
-                      {msg.insights.suggested_actions.map((action) => (
-                        <Badge
-                          key={action}
-                          variant="outline"
-                          className={cn(
-                            'text-xs',
-                            action === 'BUY' && 'text-success border-success/40 bg-success/10',
-                            action === 'SELL' && 'text-destructive border-destructive/40 bg-destructive/10',
-                            action === 'HOLD' && 'text-muted-foreground bg-muted'
-                          )}
-                        >
-                          {action === 'BUY' && <TrendingUp className="h-3 w-3 mr-1" />}
-                          {action === 'SELL' && <TrendingDown className="h-3 w-3 mr-1" />}
-                          {action}
-                        </Badge>
-                      ))}
-                      <Badge variant="outline" className={cn('text-xs', getRiskBadgeClass(msg.insights.risk_level))}>
-                        <AlertTriangle className="h-3 w-3 mr-1" />
-                        {msg.insights.risk_level}
-                      </Badge>
+                  {msg.role === 'assistant' && (
+                    <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                      <Bot className="h-4 w-4 text-primary" />
                     </div>
                   )}
+                  <div
+                    className={cn(
+                      'max-w-[85%] rounded-2xl p-3.5 space-y-2',
+                      msg.role === 'user'
+                        ? 'bg-primary text-primary-foreground rounded-br-md'
+                        : 'bg-muted rounded-bl-md'
+                    )}
+                  >
+                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
 
-                  <span className="text-xs opacity-50 block">
-                    {formatDistanceToNow(msg.timestamp, { addSuffix: true })}
-                  </span>
-                </div>
-                {msg.role === 'user' && (
-                  <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center shrink-0 mt-0.5">
-                    <User className="h-4 w-4 text-primary-foreground" />
-                  </div>
-                )}
-              </div>
-            ))}
+                    {msg.role === 'assistant' && msg.insights && (
+                      <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border/30">
+                        {msg.insights.suggested_actions.map((action) => (
+                          <Badge
+                            key={action}
+                            variant="outline"
+                            className={cn(
+                              'text-xs',
+                              action === 'BUY' && 'text-success border-success/40 bg-success/10',
+                              action === 'SELL' && 'text-destructive border-destructive/40 bg-destructive/10',
+                              action === 'HOLD' && 'text-muted-foreground bg-muted'
+                            )}
+                          >
+                            {action === 'BUY' && <TrendingUp className="h-3 w-3 mr-1" />}
+                            {action === 'SELL' && <TrendingDown className="h-3 w-3 mr-1" />}
+                            {action}
+                          </Badge>
+                        ))}
+                        <Badge variant="outline" className={cn('text-xs', getRiskBadgeClass(msg.insights.risk_level))}>
+                          <AlertTriangle className="h-3 w-3 mr-1" />
+                          {msg.insights.risk_level}
+                        </Badge>
+                      </div>
+                    )}
 
-            {isTyping && (
-              <div className="flex gap-3">
-                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  <Bot className="h-4 w-4 text-primary" />
+                    <span className="text-xs opacity-50 block">
+                      {formatDistanceToNow(msg.timestamp, { addSuffix: true })}
+                    </span>
+                  </div>
+                  {msg.role === 'user' && (
+                    <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center shrink-0 mt-0.5">
+                      <User className="h-4 w-4 text-primary-foreground" />
+                    </div>
+                  )}
                 </div>
-                <div className="bg-muted rounded-2xl rounded-bl-sm px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                    <span className="text-sm text-muted-foreground">Analyzing...</span>
+              ))}
+
+              {isTyping && (
+                <div className="flex gap-3">
+                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <Bot className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="bg-muted rounded-2xl rounded-bl-sm px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                      <span className="text-sm text-muted-foreground">Analyzing...</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
-      </ScrollArea>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Input Area */}
       <div className="p-4 border-t border-border shrink-0 bg-card/80 backdrop-blur-sm space-y-3">
