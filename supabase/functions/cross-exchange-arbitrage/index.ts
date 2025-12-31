@@ -97,17 +97,17 @@ interface ExchangeBalance {
 async function fetchBalances(): Promise<ExchangeBalance[]> {
   const balances: ExchangeBalance[] = [];
   
-  // Coinbase balance
+  // Coinbase Advanced Trade API (no passphrase needed)
   const coinbaseKey = Deno.env.get('COINBASE_API_KEY');
   const coinbaseSecret = Deno.env.get('COINBASE_API_SECRET');
   if (coinbaseKey && coinbaseSecret) {
     try {
       const timestamp = Math.floor(Date.now() / 1000).toString();
       const method = 'GET';
-      const requestPath = '/accounts';
+      const requestPath = '/api/v3/brokerage/accounts';
       const body = '';
       
-      // Create signature
+      // Create signature for Advanced Trade API
       const message = timestamp + method + requestPath + body;
       const key = await crypto.subtle.importKey(
         'raw',
@@ -117,31 +117,35 @@ async function fetchBalances(): Promise<ExchangeBalance[]> {
         ['sign']
       );
       const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(message));
-      const signatureBase64 = btoa(String.fromCharCode(...new Uint8Array(signature)));
+      const signatureHex = Array.from(new Uint8Array(signature)).map(b => b.toString(16).padStart(2, '0')).join('');
       
-      const response = await fetch('https://api.exchange.coinbase.com/accounts', {
+      const response = await fetch('https://api.coinbase.com/api/v3/brokerage/accounts', {
         headers: {
           'CB-ACCESS-KEY': coinbaseKey,
-          'CB-ACCESS-SIGN': signatureBase64,
+          'CB-ACCESS-SIGN': signatureHex,
           'CB-ACCESS-TIMESTAMP': timestamp,
-          'CB-ACCESS-PASSPHRASE': Deno.env.get('COINBASE_API_PASSPHRASE') || '',
           'Content-Type': 'application/json',
         },
       });
       
       if (response.ok) {
-        const accounts = await response.json();
+        const data = await response.json();
+        const accounts = data.accounts || [];
         for (const account of accounts) {
-          if (parseFloat(account.balance) > 0 || ['USD', 'USDC', 'BTC', 'ETH'].includes(account.currency)) {
+          const available = parseFloat(account.available_balance?.value || '0');
+          const total = parseFloat(account.hold?.value || '0') + available;
+          if (total > 0 || ['USD', 'USDC', 'BTC', 'ETH'].includes(account.currency)) {
             balances.push({
               exchange: 'coinbase',
               currency: account.currency,
-              available: parseFloat(account.available),
-              total: parseFloat(account.balance),
+              available: available,
+              total: total,
               timestamp: Date.now(),
             });
           }
         }
+      } else {
+        console.log('[Arbitrage] Coinbase response:', response.status, await response.text());
       }
     } catch (e) {
       console.log('[Arbitrage] Coinbase balance fetch failed:', e);
