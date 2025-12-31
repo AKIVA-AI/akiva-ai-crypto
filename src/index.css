@@ -6,7 +6,7 @@
 
 @layer base {
   :root {
-    /* Backgrounds - Supabase-inspired neutral dark with subtle purple tint */
+    /* Backgrounds - Neutral dark (Supabase-style) */
     --background: 240 6% 6%;
     --foreground: 240 5% 96%;
 
@@ -16,12 +16,13 @@
     --popover: 240 6% 10%;
     --popover-foreground: 240 5% 96%;
 
-    /* Primary - Refined Purple accent */
-    --primary: 265 85% 58%;
+    /* Primary - Vibrant Purple (like Supabase's green intensity) */
+    --primary: 265 90% 55%;
     --primary-foreground: 0 0% 100%;
-    --primary-600: 265 85% 48%;
-    --primary-500: 265 85% 58%;
-    --primary-100: 265 40% 18%;
+    --primary-600: 265 90% 45%;
+    --primary-500: 265 90% 55%;
+    --primary-400: 265 85% 65%;
+    --primary-100: 265 50% 20%;
 
     /* Secondary - Subtle elevated surface */
     --secondary: 240 6% 12%;
