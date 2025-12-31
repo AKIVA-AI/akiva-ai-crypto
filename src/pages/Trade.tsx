@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { UnifiedSpotTrader } from '@/components/trading/UnifiedSpotTrader';
+import { PositionProtectionPanel } from '@/components/trading/PositionProtectionPanel';
+import { OrderFlowPanel } from '@/components/trading/OrderFlowPanel';
+import { RiskSimulator } from '@/components/risk/RiskSimulator';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,6 +15,8 @@ import {
   Clock,
   ExternalLink,
   AlertCircle,
+  Shield,
+  Activity,
 } from 'lucide-react';
 import { useArbitrageMonitor } from '@/hooks/useCrossExchangeArbitrage';
 import { Link } from 'react-router-dom';
@@ -46,10 +51,17 @@ export default function Trade() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
           {/* Main Trading Panel */}
-          <div className="lg:col-span-2">
+          <div className="xl:col-span-2 space-y-4">
             <UnifiedSpotTrader />
+            <OrderFlowPanel symbol={selectedSymbol} />
+          </div>
+
+          {/* Risk & Protection Panel */}
+          <div className="space-y-4">
+            <PositionProtectionPanel />
+            <RiskSimulator />
           </div>
 
           {/* Right Sidebar - Quick Actions & Opportunities */}
