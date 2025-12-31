@@ -78,102 +78,147 @@ serve(async (req) => {
 });
 
 async function scanFundingOpportunities(supabase: any): Promise<Response> {
-  // Fetch latest derivatives metrics for funding rates
-  const { data: derivativesData, error: derivError } = await supabase
-    .from('derivatives_metrics')
-    .select('*')
-    .order('recorded_at', { ascending: false });
-
-  if (derivError) throw derivError;
-
-  // Group by instrument and get latest for each
-  const latestByInstrument = new Map<string, any>();
-  for (const row of derivativesData || []) {
-    if (!latestByInstrument.has(row.instrument)) {
-      latestByInstrument.set(row.instrument, row);
-    }
-  }
-
-  // Fetch spot prices from tradeable instruments
-  const { data: instruments } = await supabase
-    .from('tradeable_instruments')
-    .select('*')
-    .eq('is_active', true)
-    .in('product_type', ['spot', 'futures']);
-
-  // Calculate opportunities
+  console.log('[Funding Arb] Starting scan...');
+  
   const opportunities: FundingOpportunity[] = [];
 
-  for (const [instrument, metrics] of latestByInstrument) {
-    const fundingRate = metrics.funding_rate || 0;
-    
-    // Skip if funding rate is negligible
-    if (Math.abs(fundingRate) < 0.0001) continue;
-
-    // Annualized funding (3 funding periods per day * 365 days)
-    const fundingRateAnnualized = fundingRate * 3 * 365 * 100;
-
-    // Find matching spot instrument
-    const spotInstrument = (instruments || []).find(
-      (i: any) => i.symbol === instrument && i.product_type === 'spot'
-    );
-
-    // Simulate spot price (in production, fetch from market data)
-    const spotPrice = 100; // Placeholder
-    const perpPrice = 100 * (1 + fundingRate);
-
-    // Determine direction
-    // Negative funding = shorts pay longs = long perp, short spot
-    // Positive funding = longs pay shorts = short perp, long spot
-    const direction: FundingOpportunity['direction'] = 
-      fundingRate > 0 ? 'long_spot_short_perp' : 'short_spot_long_perp';
-
-    // Estimate fees (maker fee on both legs)
-    const totalFees = 0.001 * 2; // 0.1% each side
-
-    // Net APY after fees
-    const estimatedApy = Math.abs(fundingRateAnnualized) - (totalFees * 365 * 100);
-
-    // Risk assessment
-    let riskLevel: FundingOpportunity['riskLevel'] = 'low';
-    if (Math.abs(fundingRate) > 0.01) riskLevel = 'high'; // Extreme funding often reverts
-    else if (Math.abs(fundingRate) > 0.005) riskLevel = 'medium';
-
-    // Calculate spread between spot and perp
-    const netSpread = Math.abs(perpPrice - spotPrice) / spotPrice * 100;
-
-    // Is this actionable? (positive expected return after fees)
-    const isActionable = estimatedApy > 5; // At least 5% APY to be worth it
-
-    opportunities.push({
-      symbol: instrument,
-      spotVenue: spotInstrument?.venue || 'coinbase',
-      perpVenue: metrics.venue || 'hyperliquid',
-      spotPrice,
-      perpPrice,
-      fundingRate,
-      fundingRateAnnualized,
-      nextFundingTime: metrics.next_funding_time || new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
-      direction,
-      estimatedApy,
-      riskLevel,
-      netSpread,
-      isActionable
+  try {
+    // Fetch live funding rates from Hyperliquid
+    console.log('[Funding Arb] Fetching Hyperliquid funding rates...');
+    const hyperliquidMeta = await fetch('https://api.hyperliquid.xyz/info', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'meta' })
     });
+    
+    const hyperliquidFunding = await fetch('https://api.hyperliquid.xyz/info', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'metaAndAssetCtxs' })
+    });
+
+    if (!hyperliquidFunding.ok || !hyperliquidMeta.ok) {
+      console.error('[Funding Arb] Failed to fetch Hyperliquid data');
+      throw new Error('Failed to fetch Hyperliquid funding rates');
+    }
+
+    const [metaData, assetData] = await Promise.all([
+      hyperliquidMeta.json(),
+      hyperliquidFunding.json()
+    ]);
+
+    console.log(`[Funding Arb] Received ${assetData?.[1]?.length || 0} assets from Hyperliquid`);
+
+    // assetData is [meta, assetCtxs[]]
+    const assets = assetData?.[1] || [];
+    const universeInfo = assetData?.[0]?.universe || metaData?.universe || [];
+
+    for (let i = 0; i < assets.length; i++) {
+      const asset = assets[i];
+      const info = universeInfo[i];
+      
+      if (!asset || !info) continue;
+
+      const symbol = info.name || `ASSET-${i}`;
+      const fundingRate = parseFloat(asset.funding) || 0;
+      const markPrice = parseFloat(asset.markPx) || 0;
+      const oraclePrice = parseFloat(asset.oraclePx) || 0;
+      const openInterest = parseFloat(asset.openInterest) || 0;
+
+      // Skip if no meaningful funding rate
+      if (Math.abs(fundingRate) < 0.00001 || markPrice === 0) continue;
+
+      // Hyperliquid funding is hourly, annualize it (24 * 365)
+      const fundingRateAnnualized = fundingRate * 24 * 365 * 100;
+
+      // Determine direction
+      const direction: FundingOpportunity['direction'] = 
+        fundingRate > 0 ? 'long_spot_short_perp' : 'short_spot_long_perp';
+
+      // Estimate fees (maker fee on both legs)
+      const totalFees = 0.0002 * 2; // 0.02% maker fee on Hyperliquid each side
+
+      // Net APY after fees
+      const estimatedApy = Math.abs(fundingRateAnnualized) - (totalFees * 24 * 365 * 100);
+
+      // Risk assessment based on funding magnitude
+      let riskLevel: FundingOpportunity['riskLevel'] = 'low';
+      if (Math.abs(fundingRate) > 0.001) riskLevel = 'high'; // >0.1% hourly = extreme
+      else if (Math.abs(fundingRate) > 0.0003) riskLevel = 'medium';
+
+      // Calculate basis spread
+      const netSpread = markPrice > 0 ? Math.abs(markPrice - oraclePrice) / oraclePrice * 100 : 0;
+
+      // Is this actionable? (at least 10% APY to be worth it)
+      const isActionable = estimatedApy > 10 && openInterest > 100000;
+
+      opportunities.push({
+        symbol: symbol + '-PERP',
+        spotVenue: 'coinbase',
+        perpVenue: 'hyperliquid',
+        spotPrice: oraclePrice,
+        perpPrice: markPrice,
+        fundingRate,
+        fundingRateAnnualized,
+        nextFundingTime: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // Hourly funding
+        direction,
+        estimatedApy,
+        riskLevel,
+        netSpread,
+        isActionable
+      });
+    }
+
+    console.log(`[Funding Arb] Found ${opportunities.length} total, ${opportunities.filter(o => o.isActionable).length} actionable`);
+
+  } catch (fetchError) {
+    console.error('[Funding Arb] Fetch error:', fetchError);
+    
+    // Fallback to database if API fails
+    const { data: derivativesData } = await supabase
+      .from('derivatives_metrics')
+      .select('*')
+      .order('recorded_at', { ascending: false });
+
+    for (const metrics of derivativesData || []) {
+      const fundingRate = metrics.funding_rate || 0;
+      if (Math.abs(fundingRate) < 0.0001) continue;
+
+      const fundingRateAnnualized = fundingRate * 3 * 365 * 100;
+      const direction: FundingOpportunity['direction'] = 
+        fundingRate > 0 ? 'long_spot_short_perp' : 'short_spot_long_perp';
+      const estimatedApy = Math.abs(fundingRateAnnualized) - (0.002 * 365 * 100);
+
+      opportunities.push({
+        symbol: metrics.instrument,
+        spotVenue: 'coinbase',
+        perpVenue: metrics.venue || 'hyperliquid',
+        spotPrice: 100,
+        perpPrice: 100 * (1 + fundingRate),
+        fundingRate,
+        fundingRateAnnualized,
+        nextFundingTime: metrics.next_funding_time || new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
+        direction,
+        estimatedApy,
+        riskLevel: Math.abs(fundingRate) > 0.01 ? 'high' : Math.abs(fundingRate) > 0.005 ? 'medium' : 'low',
+        netSpread: 0,
+        isActionable: estimatedApy > 5
+      });
+    }
   }
 
   // Sort by estimated APY descending
   opportunities.sort((a, b) => b.estimatedApy - a.estimatedApy);
 
-  // Store opportunities as intelligence signals
-  for (const opp of opportunities.filter(o => o.isActionable)) {
+  // Store actionable opportunities as intelligence signals
+  for (const opp of opportunities.filter(o => o.isActionable).slice(0, 10)) {
     await supabase.from('intelligence_signals').upsert({
       instrument: opp.symbol,
       direction: opp.direction === 'long_spot_short_perp' ? 'bullish' : 'bearish',
       signal_type: 'funding_arbitrage',
-      strength: Math.min(1, opp.estimatedApy / 50), // Normalize to 0-1
+      strength: Math.min(1, opp.estimatedApy / 100),
       confidence: opp.riskLevel === 'low' ? 0.9 : opp.riskLevel === 'medium' ? 0.7 : 0.5,
-      reasoning: `Funding rate ${(opp.fundingRate * 100).toFixed(4)}% (${opp.fundingRateAnnualized.toFixed(1)}% APY). ${opp.direction.replace(/_/g, ' ')}.`,
+      reasoning: `Funding rate ${(opp.fundingRate * 100).toFixed(4)}% hourly (${opp.fundingRateAnnualized.toFixed(1)}% APY). ${opp.direction.replace(/_/g, ' ')}.`,
       source_data: opp,
       expires_at: opp.nextFundingTime
     }, { onConflict: 'instrument,signal_type' });
@@ -181,7 +226,7 @@ async function scanFundingOpportunities(supabase: any): Promise<Response> {
 
   return new Response(
     JSON.stringify({ 
-      opportunities,
+      opportunities: opportunities.slice(0, 20), // Return top 20
       actionable: opportunities.filter(o => o.isActionable).length,
       total: opportunities.length
     }),
