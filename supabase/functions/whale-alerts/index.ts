@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 interface WhaleAlertRequest {
-  action: 'track_wallet' | 'untrack_wallet' | 'get_transactions' | 'get_wallets' | 'simulate_whale_activity' | 'fetch_real_alerts' | 'generate_signals';
+  action: 'track_wallet' | 'untrack_wallet' | 'get_transactions' | 'get_wallets' | 'simulate_whale_activity' | 'fetch_real_alerts' | 'generate_signals' | 'health_check';
   wallet_address?: string;
   label?: string;
   network?: string;
@@ -190,6 +190,17 @@ serve(async (req) => {
         
         return new Response(
           JSON.stringify({ success: true, signals }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'health_check': {
+        const { count } = await supabase
+          .from('whale_wallets')
+          .select('*', { count: 'exact', head: true })
+          .eq('is_tracked', true);
+        return new Response(
+          JSON.stringify({ success: true, status: 'healthy', tracked_wallets: count || 0 }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }

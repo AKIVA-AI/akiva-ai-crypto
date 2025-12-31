@@ -71,3 +71,6 @@ verify_jwt = false
 
 [functions.real-news-feed]
 verify_jwt = false
+
+[functions.scheduled-monitor]
+verify_jwt = false

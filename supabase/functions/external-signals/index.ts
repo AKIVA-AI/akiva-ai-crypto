@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 interface ExternalSignalRequest {
-  action: 'list_sources' | 'fetch_signals' | 'fetch_all' | 'get_aggregated' | 'configure_source' | 'get_status';
+  action: 'list_sources' | 'fetch_signals' | 'fetch_all' | 'get_aggregated' | 'configure_source' | 'get_status' | 'health_check';
   source?: string;
   instruments?: string[];
   config?: any;
@@ -201,6 +201,18 @@ serve(async (req) => {
 
         return new Response(
           JSON.stringify({ success: true, message: `${source} configured` }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'health_check': {
+        const sources = Object.entries(SIGNAL_SOURCES).map(([key, val]) => ({
+          id: key,
+          name: val.name,
+          configured: val.env_key ? !!Deno.env.get(val.env_key) : true,
+        }));
+        return new Response(
+          JSON.stringify({ success: true, status: 'healthy', sources }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }

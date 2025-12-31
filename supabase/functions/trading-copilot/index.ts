@@ -27,7 +27,23 @@ serve(async (req) => {
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')!;
 
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const { message, context, conversation_history = [] } = await req.json() as CopilotRequest;
+    const body = await req.json().catch(() => ({}));
+    const { message, context, conversation_history = [] } = body as CopilotRequest;
+
+    // Handle health check
+    if (body.action === 'health_check') {
+      return new Response(
+        JSON.stringify({ success: true, status: 'healthy' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!message) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Message is required' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
 
     console.log(`[trading-copilot] Query: ${message.substring(0, 100)}...`);
 

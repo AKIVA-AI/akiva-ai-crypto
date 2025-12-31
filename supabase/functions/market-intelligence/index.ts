@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 interface IntelligenceRequest {
-  action: 'fetch_news' | 'fetch_sentiment' | 'fetch_derivatives' | 'analyze_signals' | 'get_intelligence_summary';
+  action: 'fetch_news' | 'fetch_sentiment' | 'fetch_derivatives' | 'analyze_signals' | 'get_intelligence_summary' | 'health_check';
   instruments?: string[];
   timeframe?: string;
 }
@@ -89,6 +89,13 @@ serve(async (req) => {
         
         return new Response(
           JSON.stringify({ success: true, summary }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'health_check': {
+        return new Response(
+          JSON.stringify({ success: true, status: 'healthy', features: ['news', 'sentiment', 'derivatives', 'signals'] }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }

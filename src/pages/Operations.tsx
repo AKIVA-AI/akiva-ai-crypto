@@ -50,6 +50,7 @@ export default function Operations() {
         'market-intelligence',
         'whale-alerts',
         'external-signals',
+        'scheduled-monitor',
       ];
       
       const results: Record<string, { status: string; latencyMs: number }> = {};
