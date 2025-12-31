@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -9,7 +9,6 @@ import { cn } from '@/lib/utils';
 import {
   Bot,
   Send,
-  Trash2,
   Sparkles,
   TrendingUp,
   TrendingDown,
@@ -23,6 +22,8 @@ import {
   Activity,
   Zap,
   Brain,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useLocation } from 'react-router-dom';
@@ -42,8 +43,9 @@ interface AICopilotSidebarProps {
 
 export function AICopilotSidebar({ isOpen, onToggle }: AICopilotSidebarProps) {
   const [input, setInput] = useState('');
+  const [isExpanded, setIsExpanded] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const location = useLocation();
 
   const {
@@ -54,6 +56,10 @@ export function AICopilotSidebar({ isOpen, onToggle }: AICopilotSidebarProps) {
     clearMessages,
   } = useTradingCopilot();
 
+  // Sidebar width based on expanded state
+  const sidebarWidth = isExpanded ? 'w-[520px]' : 'w-[380px]';
+  const sidebarWidthPx = isExpanded ? 520 : 380;
+
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     if (scrollRef.current) {
@@ -61,12 +67,21 @@ export function AICopilotSidebar({ isOpen, onToggle }: AICopilotSidebarProps) {
     }
   }, [messages, isTyping]);
 
-  // Focus input when sidebar opens
+  // Focus textarea when sidebar opens
   useEffect(() => {
-    if (isOpen && inputRef.current) {
-      setTimeout(() => inputRef.current?.focus(), 100);
+    if (isOpen && textareaRef.current) {
+      setTimeout(() => textareaRef.current?.focus(), 100);
     }
   }, [isOpen]);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      const scrollHeight = textareaRef.current.scrollHeight;
+      textareaRef.current.style.height = Math.min(scrollHeight, 120) + 'px';
+    }
+  }, [input]);
 
   // Derive context from current route
   const getContextFromRoute = useCallback(() => {
@@ -87,6 +102,10 @@ export function AICopilotSidebar({ isOpen, onToggle }: AICopilotSidebarProps) {
       context,
     });
     setInput('');
+    // Reset textarea height
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
   };
 
   const handleQuickPrompt = (prompt: string) => {
@@ -116,13 +135,13 @@ export function AICopilotSidebar({ isOpen, onToggle }: AICopilotSidebarProps) {
   // Collapsed state - just show toggle button
   if (!isOpen) {
     return (
-      <div className="fixed right-0 top-16 z-30">
+      <div className="fixed right-0 top-1/2 -translate-y-1/2 z-30">
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               variant="outline"
               size="icon"
-              className="rounded-l-lg rounded-r-none border-r-0 h-12 w-10 bg-background shadow-lg"
+              className="rounded-l-xl rounded-r-none border-r-0 h-14 w-8 bg-background shadow-lg hover:w-10 transition-all"
               onClick={onToggle}
             >
               <PanelRightOpen className="h-5 w-5" />
@@ -135,22 +154,41 @@ export function AICopilotSidebar({ isOpen, onToggle }: AICopilotSidebarProps) {
   }
 
   return (
-    <aside className="fixed right-0 top-0 z-40 h-screen w-[360px] bg-background border-l border-border flex flex-col shadow-xl">
-      {/* Header - more compact */}
-      <div className="flex items-center justify-between h-14 px-4 border-b border-border shrink-0">
-        <div className="flex items-center gap-2">
-          <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center">
+    <aside
+      className={cn(
+        'fixed right-0 top-0 z-40 h-screen bg-background border-l border-border flex flex-col shadow-xl transition-all duration-300',
+        sidebarWidth
+      )}
+      style={{ width: sidebarWidthPx }}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between h-14 px-4 border-b border-border shrink-0 bg-card/50">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
             <Bot className="h-4 w-4 text-primary" />
           </div>
           <div>
-            <h2 className="font-medium text-sm">Crypto CoPilot</h2>
-            <div className="flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-success" />
+            <h2 className="font-semibold text-sm">Crypto CoPilot</h2>
+            <div className="flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
               <span className="text-[10px] text-muted-foreground">Online</span>
             </div>
           </div>
         </div>
         <div className="flex items-center gap-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setIsExpanded(!isExpanded)}
+              >
+                {isExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{isExpanded ? 'Collapse' : 'Expand'}</TooltipContent>
+          </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -180,24 +218,24 @@ export function AICopilotSidebar({ isOpen, onToggle }: AICopilotSidebarProps) {
       <ScrollArea ref={scrollRef} className="flex-1 p-4">
         {messages.length === 0 ? (
           <div className="space-y-6">
-            {/* Welcome - more spacious */}
+            {/* Welcome */}
             <div className="text-center py-8">
-              <div className="h-12 w-12 mx-auto rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-4">
-                <Sparkles className="h-6 w-6 text-primary" />
+              <div className="h-14 w-14 mx-auto rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-4 shadow-lg">
+                <Sparkles className="h-7 w-7 text-primary" />
               </div>
-              <h3 className="font-medium text-base mb-1">Crypto CoPilot</h3>
-              <p className="text-sm text-muted-foreground max-w-[280px] mx-auto">
-                Real-time market intelligence and trading insights
+              <h3 className="font-semibold text-lg mb-2">Crypto CoPilot</h3>
+              <p className="text-sm text-muted-foreground max-w-[300px] mx-auto leading-relaxed">
+                Real-time market intelligence and trading insights powered by AI
               </p>
             </div>
 
-            {/* Quick prompts - cleaner styling */}
+            {/* Quick prompts */}
             <div className="space-y-3">
               <p className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium flex items-center gap-1.5 px-1">
                 <Lightbulb className="h-3 w-3" />
                 Quick Actions
               </p>
-              <div className="grid grid-cols-1 gap-1">
+              <div className="grid grid-cols-1 gap-1.5">
                 {QUICK_PROMPTS.map((item) => (
                   <Button
                     key={item.label}
@@ -205,9 +243,9 @@ export function AICopilotSidebar({ isOpen, onToggle }: AICopilotSidebarProps) {
                     variant="ghost"
                     onClick={() => handleQuickPrompt(item.prompt)}
                     disabled={isSending}
-                    className="w-full justify-start text-left h-10 px-3 text-sm font-normal hover:bg-muted/60 rounded-lg"
+                    className="w-full justify-start text-left h-11 px-3 text-sm font-normal hover:bg-muted/60 rounded-lg"
                   >
-                    <item.icon className="h-3.5 w-3.5 mr-2.5 text-muted-foreground" />
+                    <item.icon className="h-4 w-4 mr-3 text-muted-foreground" />
                     {item.label}
                   </Button>
                 ))}
@@ -220,18 +258,18 @@ export function AICopilotSidebar({ isOpen, onToggle }: AICopilotSidebarProps) {
               <div
                 key={idx}
                 className={cn(
-                  'flex gap-2.5',
+                  'flex gap-3',
                   msg.role === 'user' ? 'justify-end' : 'justify-start'
                 )}
               >
                 {msg.role === 'assistant' && (
-                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <Bot className="h-3.5 w-3.5 text-primary" />
+                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                    <Bot className="h-4 w-4 text-primary" />
                   </div>
                 )}
                 <div
                   className={cn(
-                    'max-w-[85%] rounded-xl p-3 space-y-2',
+                    'max-w-[85%] rounded-2xl p-3.5 space-y-2',
                     msg.role === 'user'
                       ? 'bg-primary text-primary-foreground rounded-br-md'
                       : 'bg-muted rounded-bl-md'
@@ -241,7 +279,7 @@ export function AICopilotSidebar({ isOpen, onToggle }: AICopilotSidebarProps) {
 
                   {/* Insights for assistant */}
                   {msg.role === 'assistant' && msg.insights && (
-                    <div className="flex flex-wrap gap-1 pt-2 border-t border-border/30">
+                    <div className="flex flex-wrap gap-1.5 pt-2 border-t border-border/30">
                       {msg.insights.suggested_actions.map((action) => (
                         <Badge
                           key={action}
@@ -270,22 +308,22 @@ export function AICopilotSidebar({ isOpen, onToggle }: AICopilotSidebarProps) {
                   </span>
                 </div>
                 {msg.role === 'user' && (
-                  <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center shrink-0 mt-0.5">
-                    <User className="h-3.5 w-3.5 text-primary-foreground" />
+                  <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center shrink-0 mt-0.5">
+                    <User className="h-4 w-4 text-primary-foreground" />
                   </div>
                 )}
               </div>
             ))}
 
             {isTyping && (
-              <div className="flex gap-2">
-                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  <Bot className="h-3.5 w-3.5 text-primary" />
+              <div className="flex gap-3">
+                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <Bot className="h-4 w-4 text-primary" />
                 </div>
-                <div className="bg-muted rounded-xl rounded-bl-sm px-3 py-2">
-                  <div className="flex items-center gap-1.5">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-                    <span className="text-xs text-muted-foreground">Analyzing...</span>
+                <div className="bg-muted rounded-2xl rounded-bl-sm px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    <span className="text-sm text-muted-foreground">Analyzing...</span>
                   </div>
                 </div>
               </div>
@@ -294,24 +332,34 @@ export function AICopilotSidebar({ isOpen, onToggle }: AICopilotSidebarProps) {
         )}
       </ScrollArea>
 
-      {/* Input Area - cleaner */}
-      <div className="p-3 border-t border-border shrink-0 bg-card/50">
-        <div className="flex gap-2">
-          <Input
-            ref={inputRef}
-            placeholder="Ask about markets, risk, strategies..."
+      {/* Input Area - Larger, Lovable-style */}
+      <div className="p-4 border-t border-border shrink-0 bg-card/80 backdrop-blur-sm">
+        <div className="relative">
+          <Textarea
+            ref={textareaRef}
+            placeholder="Ask about markets, strategies, risk assessment..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyPress}
             disabled={isSending}
-            className="flex-1 bg-background h-9 text-sm"
+            rows={1}
+            className="w-full resize-none bg-background pr-12 py-3 px-4 text-sm rounded-xl border-border focus-visible:ring-1 focus-visible:ring-primary min-h-[48px] max-h-[120px]"
           />
-          <Button onClick={handleSend} disabled={!input.trim() || isSending} size="sm" className="h-9 w-9 p-0">
-            {isSending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+          <Button
+            onClick={handleSend}
+            disabled={!input.trim() || isSending}
+            size="icon"
+            className="absolute right-2 bottom-2 h-8 w-8 rounded-lg"
+          >
+            {isSending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
           </Button>
         </div>
         <p className="text-[10px] text-muted-foreground mt-2 text-center">
-          Powered by real-time market intelligence
+          Press Enter to send • Shift+Enter for new line
         </p>
       </div>
     </aside>
