@@ -259,13 +259,10 @@ export default function SystemStatus() {
               Feature readiness and integration status
             </p>
           </div>
-          <Badge 
-            variant="outline" 
-            className="text-lg px-4 py-2 bg-warning/10 border-warning/30 text-warning"
-          >
-            <AlertTriangle className="h-5 w-5 mr-2" />
-            Simulation Mode
-          </Badge>
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-warning/10 border border-warning/20">
+            <AlertTriangle className="h-3 w-3 text-warning" />
+            <span className="text-xs font-medium text-warning">Simulation Mode</span>
+          </div>
         </div>
 
         {/* Overall Status */}
