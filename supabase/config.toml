@@ -77,3 +77,6 @@ verify_jwt = false
 
 [functions.signal-scoring]
 verify_jwt = false
+
+[functions.funding-arbitrage]
+verify_jwt = false

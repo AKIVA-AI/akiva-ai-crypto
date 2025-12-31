@@ -31,6 +31,7 @@ import {
   Ban,
   RotateCcw,
   BarChart3,
+  Percent,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -48,6 +49,7 @@ import {
 import { useArbitrageHistory, useArbitrageStats, useRecordArbitrageExecution } from '@/hooks/useArbitrageHistory';
 import { VENUES } from '@/lib/tradingModes';
 import { PnLAnalyticsDashboard } from '@/components/arbitrage/PnLAnalyticsDashboard';
+import { FundingArbitragePanel } from '@/components/arbitrage/FundingArbitragePanel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // All supported pairs
@@ -141,7 +143,11 @@ export default function Arbitrage() {
           <TabsList>
             <TabsTrigger value="scanner" className="gap-2">
               <Activity className="h-4 w-4" />
-              Scanner
+              CEX Scanner
+            </TabsTrigger>
+            <TabsTrigger value="funding" className="gap-2">
+              <Percent className="h-4 w-4" />
+              Funding Rate
             </TabsTrigger>
             <TabsTrigger value="analytics" className="gap-2">
               <BarChart3 className="h-4 w-4" />
@@ -724,6 +730,10 @@ export default function Arbitrage() {
             </Card>
           </div>
         </div>
+        </TabsContent>
+        
+        <TabsContent value="funding">
+          <FundingArbitragePanel />
         </TabsContent>
         
         <TabsContent value="analytics">
