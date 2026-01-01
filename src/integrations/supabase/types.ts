@@ -356,6 +356,77 @@ export type Database = {
           },
         ]
       }
+      decision_traces: {
+        Row: {
+          block_reasons: string[] | null
+          confidence: number
+          costs: Json
+          created_at: string
+          decision: string
+          direction: string
+          explanation: string
+          gates_checked: Json
+          id: string
+          instrument: string
+          reason_codes: string[] | null
+          regime: Json
+          signal_strength: number
+          strategy_id: string | null
+          strategy_name: string
+          target_exposure_usd: number
+          timestamp: string
+          trace_id: string
+        }
+        Insert: {
+          block_reasons?: string[] | null
+          confidence: number
+          costs?: Json
+          created_at?: string
+          decision: string
+          direction: string
+          explanation: string
+          gates_checked?: Json
+          id?: string
+          instrument: string
+          reason_codes?: string[] | null
+          regime?: Json
+          signal_strength: number
+          strategy_id?: string | null
+          strategy_name: string
+          target_exposure_usd: number
+          timestamp?: string
+          trace_id: string
+        }
+        Update: {
+          block_reasons?: string[] | null
+          confidence?: number
+          costs?: Json
+          created_at?: string
+          decision?: string
+          direction?: string
+          explanation?: string
+          gates_checked?: Json
+          id?: string
+          instrument?: string
+          reason_codes?: string[] | null
+          regime?: Json
+          signal_strength?: number
+          strategy_id?: string | null
+          strategy_name?: string
+          target_exposure_usd?: number
+          timestamp?: string
+          trace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decision_traces_strategy_id_fkey"
+            columns: ["strategy_id"]
+            isOneToOne: false
+            referencedRelation: "strategies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deployments: {
         Row: {
           book_id: string
@@ -618,6 +689,42 @@ export type Database = {
           strength?: number | null
           tier?: number | null
           venue?: string | null
+        }
+        Relationships: []
+      }
+      market_data_metrics: {
+        Row: {
+          avg_latency_ms: number | null
+          cache_hits: number | null
+          cache_misses: number | null
+          endpoint: string
+          id: string
+          rate_limit_hits: number | null
+          recorded_at: string
+          request_count: number | null
+          symbol: string | null
+        }
+        Insert: {
+          avg_latency_ms?: number | null
+          cache_hits?: number | null
+          cache_misses?: number | null
+          endpoint: string
+          id?: string
+          rate_limit_hits?: number | null
+          recorded_at?: string
+          request_count?: number | null
+          symbol?: string | null
+        }
+        Update: {
+          avg_latency_ms?: number | null
+          cache_hits?: number | null
+          cache_misses?: number | null
+          endpoint?: string
+          id?: string
+          rate_limit_hits?: number | null
+          recorded_at?: string
+          request_count?: number | null
+          symbol?: string | null
         }
         Relationships: []
       }
@@ -1331,13 +1438,20 @@ export type Database = {
           asset_class: string
           book_id: string
           config_metadata: Json
+          consecutive_losses: number | null
           created_at: string
+          execution_quality: number | null
           id: string
           intent_schema: Json
           last_signal_time: string | null
+          lifecycle_changed_at: string | null
+          lifecycle_reason: string | null
+          lifecycle_state: string | null
           max_drawdown: number
           name: string
           pnl: number
+          quarantine_count_30d: number | null
+          quarantine_expires_at: string | null
           risk_tier: number
           status: Database["public"]["Enums"]["strategy_status"]
           timeframe: string
@@ -1348,13 +1462,20 @@ export type Database = {
           asset_class?: string
           book_id: string
           config_metadata?: Json
+          consecutive_losses?: number | null
           created_at?: string
+          execution_quality?: number | null
           id?: string
           intent_schema?: Json
           last_signal_time?: string | null
+          lifecycle_changed_at?: string | null
+          lifecycle_reason?: string | null
+          lifecycle_state?: string | null
           max_drawdown?: number
           name: string
           pnl?: number
+          quarantine_count_30d?: number | null
+          quarantine_expires_at?: string | null
           risk_tier?: number
           status?: Database["public"]["Enums"]["strategy_status"]
           timeframe: string
@@ -1365,13 +1486,20 @@ export type Database = {
           asset_class?: string
           book_id?: string
           config_metadata?: Json
+          consecutive_losses?: number | null
           created_at?: string
+          execution_quality?: number | null
           id?: string
           intent_schema?: Json
           last_signal_time?: string | null
+          lifecycle_changed_at?: string | null
+          lifecycle_reason?: string | null
+          lifecycle_state?: string | null
           max_drawdown?: number
           name?: string
           pnl?: number
+          quarantine_count_30d?: number | null
+          quarantine_expires_at?: string | null
           risk_tier?: number
           status?: Database["public"]["Enums"]["strategy_status"]
           timeframe?: string
@@ -1384,6 +1512,47 @@ export type Database = {
             columns: ["book_id"]
             isOneToOne: false
             referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      strategy_lifecycle_events: {
+        Row: {
+          created_at: string
+          from_state: string
+          id: string
+          metadata: Json | null
+          reason: string
+          strategy_id: string
+          to_state: string
+          triggered_by: string
+        }
+        Insert: {
+          created_at?: string
+          from_state: string
+          id?: string
+          metadata?: Json | null
+          reason: string
+          strategy_id: string
+          to_state: string
+          triggered_by: string
+        }
+        Update: {
+          created_at?: string
+          from_state?: string
+          id?: string
+          metadata?: Json | null
+          reason?: string
+          strategy_id?: string
+          to_state?: string
+          triggered_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "strategy_lifecycle_events_strategy_id_fkey"
+            columns: ["strategy_id"]
+            isOneToOne: false
+            referencedRelation: "strategies"
             referencedColumns: ["id"]
           },
         ]
@@ -1428,6 +1597,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      system_health: {
+        Row: {
+          component: string
+          details: Json | null
+          error_message: string | null
+          id: string
+          last_check_at: string
+          status: string
+        }
+        Insert: {
+          component: string
+          details?: Json | null
+          error_message?: string | null
+          id?: string
+          last_check_at?: string
+          status: string
+        }
+        Update: {
+          component?: string
+          details?: Json | null
+          error_message?: string | null
+          id?: string
+          last_check_at?: string
+          status?: string
+        }
+        Relationships: []
       }
       trade_intents: {
         Row: {
