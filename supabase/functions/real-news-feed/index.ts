@@ -20,17 +20,18 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const newsApiKey = Deno.env.get('NEWS_API_KEY');
     const cryptocompareKey = Deno.env.get('CRYPTOCOMPARE_API_KEY');
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
 
     const supabase = createClient(supabaseUrl, supabaseKey);
     const { action, instruments = ['BTC', 'ETH', 'SOL'], limit = 20 } = await req.json() as NewsRequest;
 
-    console.log(`[real-news-feed] Action: ${action}`);
+    console.log(`[real-news-feed] Action: ${action}, NewsAPI key: ${newsApiKey ? 'configured' : 'missing'}`);
 
     switch (action) {
       case 'fetch_news': {
-        const news = await fetchRealNews(instruments, cryptocompareKey, lovableApiKey);
+        const news = await fetchRealNews(instruments, newsApiKey, cryptocompareKey, lovableApiKey);
         
         // Store in database
         for (const item of news) {
@@ -38,7 +39,7 @@ serve(async (req) => {
         }
 
         return new Response(
-          JSON.stringify({ success: true, news, count: news.length }),
+          JSON.stringify({ success: true, news, count: news.length, source: newsApiKey ? 'newsapi' : 'cryptocompare' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -102,74 +103,189 @@ serve(async (req) => {
 
 async function fetchRealNews(
   instruments: string[],
+  newsApiKey?: string,
   cryptocompareKey?: string,
   lovableApiKey?: string
 ): Promise<any[]> {
   const allNews: any[] = [];
 
-  // 1. Fetch from CryptoCompare News API (free tier available)
-  try {
-    const categories = instruments.map(i => i.toUpperCase()).join(',');
-    const ccUrl = `https://min-api.cryptocompare.com/data/v2/news/?categories=${categories}&extraParams=CryptoOps`;
-    
-    const headers: Record<string, string> = {};
-    if (cryptocompareKey) {
-      headers['authorization'] = `Apikey ${cryptocompareKey}`;
-    }
-
-    const response = await fetch(ccUrl, { headers });
-    
-    if (response.ok) {
-      const data = await response.json();
+  // 1. PRIORITY: Fetch from NewsAPI (80,000+ sources, real-time)
+  if (newsApiKey) {
+    try {
+      // Build search query for crypto news
+      const cryptoTerms = instruments.map(i => {
+        const name = getCryptoName(i);
+        return `"${name}" OR "${i}"`;
+      }).join(' OR ');
       
-      if (data.Data) {
-        for (const item of data.Data.slice(0, 15)) {
-          // Determine which instruments this news affects
-          const affectedInstruments = instruments.filter(i => 
-            item.categories?.toLowerCase().includes(i.toLowerCase()) ||
-            item.title?.toLowerCase().includes(i.toLowerCase()) ||
-            item.body?.toLowerCase().includes(i.toLowerCase())
-          ).map(i => `${i}-USDT`);
+      const query = encodeURIComponent(`(${cryptoTerms}) AND (crypto OR cryptocurrency OR blockchain OR trading OR price)`);
+      const newsApiUrl = `https://newsapi.org/v2/everything?q=${query}&language=en&sortBy=publishedAt&pageSize=25`;
+      
+      console.log(`[real-news-feed] Fetching from NewsAPI...`);
+      
+      const response = await fetch(newsApiUrl, {
+        headers: {
+          'X-Api-Key': newsApiKey,
+        },
+      });
 
-          if (affectedInstruments.length === 0) {
-            affectedInstruments.push(`${instruments[0]}-USDT`);
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`[real-news-feed] NewsAPI returned ${data.articles?.length || 0} articles`);
+        
+        if (data.articles) {
+          for (const article of data.articles.slice(0, 20)) {
+            // Skip articles without essential data
+            if (!article.title || !article.url) continue;
+            
+            // Determine which instruments this news affects
+            const affectedInstruments = instruments.filter(i => {
+              const name = getCryptoName(i).toLowerCase();
+              const titleLower = article.title?.toLowerCase() || '';
+              const descLower = article.description?.toLowerCase() || '';
+              return titleLower.includes(i.toLowerCase()) || 
+                     titleLower.includes(name) ||
+                     descLower.includes(i.toLowerCase()) ||
+                     descLower.includes(name);
+            }).map(i => `${i}-USDT`);
+
+            if (affectedInstruments.length === 0) {
+              affectedInstruments.push(`${instruments[0]}-USDT`);
+            }
+
+            allNews.push({
+              source: article.source?.name || 'NewsAPI',
+              title: article.title,
+              summary: article.description || '',
+              url: article.url,
+              published_at: article.publishedAt || new Date().toISOString(),
+              instruments: affectedInstruments,
+              sentiment_score: null,
+              impact_score: null,
+              tags: extractTags(article.title, article.description),
+              raw_content: article.content || article.description,
+            });
           }
-
-          allNews.push({
-            source: item.source_info?.name || item.source || 'CryptoCompare',
-            title: item.title,
-            summary: item.body?.substring(0, 300) || '',
-            url: item.url || item.guid,
-            published_at: new Date(item.published_on * 1000).toISOString(),
-            instruments: affectedInstruments,
-            sentiment_score: null, // Will be analyzed
-            impact_score: null,
-            tags: item.categories?.split('|') || [],
-            raw_content: item.body,
-          });
         }
+      } else {
+        const errorText = await response.text();
+        console.error(`[real-news-feed] NewsAPI error: ${response.status} - ${errorText}`);
       }
+    } catch (e) {
+      console.error('[real-news-feed] NewsAPI fetch error:', e);
     }
-  } catch (e) {
-    console.error('[real-news-feed] CryptoCompare news error:', e);
   }
 
-  // 2. If we have Lovable API key, analyze sentiment for each article
+  // 2. FALLBACK: Fetch from CryptoCompare News API
+  if (allNews.length < 5) {
+    try {
+      const categories = instruments.map(i => i.toUpperCase()).join(',');
+      const ccUrl = `https://min-api.cryptocompare.com/data/v2/news/?categories=${categories}&extraParams=CryptoOps`;
+      
+      const headers: Record<string, string> = {};
+      if (cryptocompareKey) {
+        headers['authorization'] = `Apikey ${cryptocompareKey}`;
+      }
+
+      console.log(`[real-news-feed] Fetching from CryptoCompare as ${allNews.length > 0 ? 'supplement' : 'primary'}...`);
+      const response = await fetch(ccUrl, { headers });
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.Data) {
+          for (const item of data.Data.slice(0, 15)) {
+            // Check for duplicate URLs
+            if (allNews.some(n => n.url === item.url || n.url === item.guid)) continue;
+            
+            const affectedInstruments = instruments.filter(i => 
+              item.categories?.toLowerCase().includes(i.toLowerCase()) ||
+              item.title?.toLowerCase().includes(i.toLowerCase()) ||
+              item.body?.toLowerCase().includes(i.toLowerCase())
+            ).map(i => `${i}-USDT`);
+
+            if (affectedInstruments.length === 0) {
+              affectedInstruments.push(`${instruments[0]}-USDT`);
+            }
+
+            allNews.push({
+              source: item.source_info?.name || item.source || 'CryptoCompare',
+              title: item.title,
+              summary: item.body?.substring(0, 300) || '',
+              url: item.url || item.guid,
+              published_at: new Date(item.published_on * 1000).toISOString(),
+              instruments: affectedInstruments,
+              sentiment_score: null,
+              impact_score: null,
+              tags: item.categories?.split('|') || [],
+              raw_content: item.body,
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.error('[real-news-feed] CryptoCompare news error:', e);
+    }
+  }
+
+  // 3. Analyze sentiment with AI if available
   if (lovableApiKey && allNews.length > 0) {
     await analyzeSentiment(allNews, lovableApiKey);
   }
 
-  // 3. Add some fallback/simulated news if API fails
+  // 4. Add fallback news only if both APIs fail
   if (allNews.length === 0) {
+    console.warn('[real-news-feed] All APIs failed, using fallback news');
     allNews.push(...getDefaultNews(instruments));
   }
 
+  console.log(`[real-news-feed] Returning ${allNews.length} news articles`);
   return allNews;
 }
 
+function getCryptoName(symbol: string): string {
+  const names: Record<string, string> = {
+    'BTC': 'Bitcoin',
+    'ETH': 'Ethereum',
+    'SOL': 'Solana',
+    'XRP': 'Ripple',
+    'ADA': 'Cardano',
+    'DOGE': 'Dogecoin',
+    'DOT': 'Polkadot',
+    'AVAX': 'Avalanche',
+    'MATIC': 'Polygon',
+    'LINK': 'Chainlink',
+    'LTC': 'Litecoin',
+    'UNI': 'Uniswap',
+    'ATOM': 'Cosmos',
+    'ARB': 'Arbitrum',
+    'OP': 'Optimism',
+  };
+  return names[symbol.toUpperCase()] || symbol;
+}
+
+function extractTags(title?: string, description?: string): string[] {
+  const text = `${title || ''} ${description || ''}`.toLowerCase();
+  const tags: string[] = [];
+  
+  const tagKeywords = [
+    'bitcoin', 'ethereum', 'crypto', 'blockchain', 'defi', 'nft',
+    'trading', 'market', 'price', 'etf', 'regulation', 'sec',
+    'adoption', 'institutional', 'bull', 'bear', 'rally', 'crash',
+    'mining', 'staking', 'yield', 'airdrop', 'token', 'altcoin'
+  ];
+  
+  for (const keyword of tagKeywords) {
+    if (text.includes(keyword)) {
+      tags.push(keyword);
+    }
+  }
+  
+  return tags.slice(0, 5);
+}
+
 async function analyzeSentiment(news: any[], apiKey: string): Promise<void> {
-  // Batch analyze up to 5 articles at once
-  const batch = news.slice(0, 5);
+  const batch = news.slice(0, 8);
   const titles = batch.map(n => n.title).join('\n- ');
 
   try {
@@ -184,11 +300,11 @@ async function analyzeSentiment(news: any[], apiKey: string): Promise<void> {
         messages: [
           {
             role: 'system',
-            content: 'You are a crypto market analyst. Analyze news headlines and provide sentiment scores.'
+            content: 'You are a crypto market analyst. Analyze news headlines for market sentiment and trading impact.'
           },
           {
             role: 'user',
-            content: `For each headline, provide a JSON array with sentiment_score (-1 to 1) and impact_score (0 to 1).
+            content: `For each headline, provide a JSON array with sentiment_score (-1 to 1, where 1 is very bullish) and impact_score (0 to 1, where 1 is high market impact).
             
 Headlines:
 - ${titles}
@@ -216,7 +332,6 @@ Return ONLY a JSON array like: [{"sentiment": 0.5, "impact": 0.7}, ...]`
     }
   } catch (e) {
     console.error('[real-news-feed] Sentiment analysis error:', e);
-    // Set default scores if analysis fails
     for (const item of batch) {
       item.sentiment_score = 0;
       item.impact_score = 0.5;
@@ -232,7 +347,6 @@ async function fetchSocialSentiment(
 
   for (const symbol of instruments) {
     try {
-      // Fetch from CryptoCompare social stats
       const headers: Record<string, string> = {};
       if (cryptocompareKey) {
         headers['authorization'] = `Apikey ${cryptocompareKey}`;
@@ -251,7 +365,6 @@ async function fetchSocialSentiment(
           const twitter = social.Twitter || {};
           const reddit = social.Reddit || {};
 
-          // Twitter sentiment
           sentiment.push({
             instrument: `${symbol}-USDT`,
             platform: 'twitter',
@@ -265,7 +378,6 @@ async function fetchSocialSentiment(
             recorded_at: new Date().toISOString(),
           });
 
-          // Reddit sentiment
           sentiment.push({
             instrument: `${symbol}-USDT`,
             platform: 'reddit',
@@ -285,7 +397,6 @@ async function fetchSocialSentiment(
     }
   }
 
-  // Add fallback data if API fails
   if (sentiment.length === 0) {
     for (const symbol of instruments) {
       sentiment.push({
@@ -316,14 +427,10 @@ async function analyzeNewsImpact(news: any[], apiKey?: string): Promise<any> {
     };
   }
 
-  // Aggregate sentiment
   const avgSentiment = news.reduce((sum, n) => sum + (n.sentiment_score || 0), 0) / news.length;
   const avgImpact = news.reduce((sum, n) => sum + (n.impact_score || 0.5), 0) / news.length;
-
-  // Extract instruments mentioned
   const allInstruments = [...new Set(news.flatMap(n => n.instruments || []))];
 
-  // Determine actionable signals based on high-impact news
   const highImpactNews = news.filter(n => (n.impact_score || 0) > 0.7);
   const actionableSignals = highImpactNews.map(n => ({
     instrument: n.instruments?.[0] || 'BTC-USDT',
@@ -346,7 +453,6 @@ async function analyzeNewsImpact(news: any[], apiKey?: string): Promise<any> {
 }
 
 function getCoinId(symbol: string): number {
-  // CryptoCompare coin IDs
   const coinIds: Record<string, number> = {
     'BTC': 1182,
     'ETH': 7605,
