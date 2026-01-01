@@ -10,11 +10,15 @@ const ALLOWED_ORIGINS = [
   'http://localhost:3000',
 ];
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': ALLOWED_ORIGINS[0],
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get('origin') || '';
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  };
+}
 
 // Kraken API URLs
 const KRAKEN_API_URL = 'https://api.kraken.com';
@@ -190,6 +194,8 @@ async function getStakingAssets(credentials: KrakenCredentials): Promise<any> {
 }
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
