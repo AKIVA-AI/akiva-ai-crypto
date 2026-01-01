@@ -1,5 +1,6 @@
 """
 Database connection and utilities for Supabase.
+Kill switch state is now persisted to global_settings for cluster safety.
 """
 import structlog
 from datetime import datetime
@@ -84,11 +85,6 @@ async def audit_log(
 ):
     """Log an audit event to the database asynchronously."""
     try:
-        # Check kill switch first
-        if await is_kill_switch_active():
-            logger.warning("audit_log_blocked_kill_switch_active", action=action)
-            return
-
         supabase = get_supabase()
         # Use async execute for non-blocking operation
         import asyncio
@@ -144,15 +140,27 @@ async def create_alert(
         logger.error("alert_creation_failed", error=str(e), title=title)
 
 
-# Kill Switch Implementation
-_kill_switch_active = False
-_kill_switch_reason = ""
-_kill_switch_timestamp = None
+# ============================================================================
+# Kill Switch Implementation - Persisted to Supabase global_settings
+# ============================================================================
+
+def _get_global_settings_id() -> str | None:
+    """Get the ID of the global_settings row."""
+    try:
+        supabase = get_supabase()
+        result = supabase.table("global_settings").select("id").limit(1).execute()
+        if result.data and len(result.data) > 0:
+            return result.data[0]["id"]
+        return None
+    except Exception as e:
+        logger.error("get_global_settings_id_failed", error=str(e))
+        return None
 
 
 async def activate_kill_switch(reason: str, user_id: str = "system") -> bool:
     """
     Activate the kill switch to immediately stop all trading operations.
+    State is persisted to global_settings for cluster safety.
 
     Args:
         reason: Reason for activation
@@ -161,12 +169,20 @@ async def activate_kill_switch(reason: str, user_id: str = "system") -> bool:
     Returns:
         True if activated successfully
     """
-    global _kill_switch_active, _kill_switch_reason, _kill_switch_timestamp
-
     try:
-        _kill_switch_active = True
-        _kill_switch_reason = reason
-        _kill_switch_timestamp = datetime.utcnow()
+        supabase = get_supabase()
+        settings_id = _get_global_settings_id()
+        
+        if not settings_id:
+            logger.error("kill_switch_activation_failed", error="No global_settings row found")
+            return False
+        
+        # Update kill switch in database
+        supabase.table("global_settings").update({
+            "global_kill_switch": True,
+            "updated_at": datetime.utcnow().isoformat(),
+            "updated_by": user_id if user_id != "system" else None
+        }).eq("id", settings_id).execute()
 
         # Log the activation
         await audit_log(
@@ -178,7 +194,7 @@ async def activate_kill_switch(reason: str, user_id: str = "system") -> bool:
             after_state={
                 "active": True,
                 "reason": reason,
-                "timestamp": _kill_switch_timestamp.isoformat()
+                "timestamp": datetime.utcnow().isoformat()
             }
         )
 
@@ -187,7 +203,8 @@ async def activate_kill_switch(reason: str, user_id: str = "system") -> bool:
             title="KILL SWITCH ACTIVATED",
             message=f"Trading operations halted: {reason}",
             severity="critical",
-            source="system"
+            source="system",
+            metadata={"reason": reason, "activated_by": user_id}
         )
 
         logger.critical("kill_switch_activated", reason=reason, user_id=user_id)
@@ -201,6 +218,7 @@ async def activate_kill_switch(reason: str, user_id: str = "system") -> bool:
 async def deactivate_kill_switch(user_id: str = "system") -> bool:
     """
     Deactivate the kill switch to resume trading operations.
+    State is persisted to global_settings for cluster safety.
 
     Args:
         user_id: User ID deactivating the switch
@@ -208,15 +226,20 @@ async def deactivate_kill_switch(user_id: str = "system") -> bool:
     Returns:
         True if deactivated successfully
     """
-    global _kill_switch_active, _kill_switch_reason, _kill_switch_timestamp
-
     try:
-        was_active = _kill_switch_active
-        reason = _kill_switch_reason
-
-        _kill_switch_active = False
-        _kill_switch_reason = ""
-        _kill_switch_timestamp = None
+        supabase = get_supabase()
+        settings_id = _get_global_settings_id()
+        
+        if not settings_id:
+            logger.error("kill_switch_deactivation_failed", error="No global_settings row found")
+            return False
+        
+        # Update kill switch in database
+        supabase.table("global_settings").update({
+            "global_kill_switch": False,
+            "updated_at": datetime.utcnow().isoformat(),
+            "updated_by": user_id if user_id != "system" else None
+        }).eq("id", settings_id).execute()
 
         # Log the deactivation
         await audit_log(
@@ -224,7 +247,7 @@ async def deactivate_kill_switch(user_id: str = "system") -> bool:
             resource_type="system",
             user_id=user_id,
             severity="warning",
-            before_state={"active": was_active, "reason": reason},
+            before_state={"active": True},
             after_state={"active": False}
         )
 
@@ -247,29 +270,61 @@ async def deactivate_kill_switch(user_id: str = "system") -> bool:
 async def is_kill_switch_active() -> bool:
     """
     Check if the kill switch is currently active.
+    Reads from global_settings for cluster-safe state.
 
     Returns:
         True if kill switch is active
     """
-    return _kill_switch_active
+    try:
+        supabase = get_supabase()
+        result = supabase.table("global_settings").select("global_kill_switch").limit(1).execute()
+        
+        if result.data and len(result.data) > 0:
+            return result.data[0].get("global_kill_switch", False)
+        return False
+        
+    except Exception as e:
+        logger.error("is_kill_switch_active_check_failed", error=str(e))
+        # Fail safe: if we can't check, assume it's active
+        return True
 
 
 async def get_kill_switch_status() -> dict:
     """
-    Get detailed kill switch status.
+    Get detailed kill switch status from database.
 
     Returns:
         Dictionary with kill switch status information
     """
-    return {
-        "active": _kill_switch_active,
-        "reason": _kill_switch_reason,
-        "timestamp": _kill_switch_timestamp.isoformat() if _kill_switch_timestamp else None,
-        "duration_minutes": (
-            (datetime.utcnow() - _kill_switch_timestamp).total_seconds() / 60
-            if _kill_switch_timestamp else None
-        )
-    }
+    try:
+        supabase = get_supabase()
+        result = supabase.table("global_settings").select(
+            "global_kill_switch, updated_at, updated_by"
+        ).limit(1).execute()
+        
+        if result.data and len(result.data) > 0:
+            row = result.data[0]
+            return {
+                "active": row.get("global_kill_switch", False),
+                "updated_at": row.get("updated_at"),
+                "updated_by": row.get("updated_by"),
+                "source": "database"
+            }
+        
+        return {
+            "active": False,
+            "updated_at": None,
+            "updated_by": None,
+            "source": "default"
+        }
+        
+    except Exception as e:
+        logger.error("get_kill_switch_status_failed", error=str(e))
+        return {
+            "active": True,  # Fail safe
+            "error": str(e),
+            "source": "error"
+        }
 
 
 async def check_kill_switch_for_trading() -> tuple[bool, str]:
@@ -279,7 +334,30 @@ async def check_kill_switch_for_trading() -> tuple[bool, str]:
     Returns:
         Tuple of (allowed: bool, reason: str)
     """
-    if _kill_switch_active:
-        return False, f"Kill switch active: {_kill_switch_reason}"
+    is_active = await is_kill_switch_active()
+    
+    if is_active:
+        return False, "Kill switch is active - trading halted"
 
     return True, ""
+
+
+async def get_global_settings() -> dict:
+    """
+    Get all global settings from database.
+    
+    Returns:
+        Dictionary with all global settings
+    """
+    try:
+        supabase = get_supabase()
+        result = supabase.table("global_settings").select("*").limit(1).execute()
+        
+        if result.data and len(result.data) > 0:
+            return result.data[0]
+        
+        return {}
+        
+    except Exception as e:
+        logger.error("get_global_settings_failed", error=str(e))
+        return {}

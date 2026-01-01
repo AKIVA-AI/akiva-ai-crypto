@@ -386,21 +386,77 @@ async function executeBinanceOrder(order: TradeOrder): Promise<{
   const binanceApiKey = Deno.env.get('BINANCE_API_KEY');
   const binanceApiSecret = Deno.env.get('BINANCE_API_SECRET');
   
-  // If no Binance credentials, fall back to simulation
   if (!binanceApiKey || !binanceApiSecret) {
-    console.log('No Binance credentials, using simulation mode');
+    console.log('[LiveTrading] No Binance credentials configured');
     return null;
   }
   
-  // TODO: Implement real Binance order execution with HMAC signing
-  // For now, return null to use simulation
-  // Real implementation would:
-  // 1. Create timestamp
-  // 2. Build query string with order params
-  // 3. Sign with HMAC SHA256
-  // 4. POST to /api/v3/order
-  console.log('Binance credentials found, but live execution not yet enabled');
-  return null;
+  const startTime = Date.now();
+  
+  try {
+    const symbol = order.instrument.replace('/', '').toUpperCase();
+    const timestamp = Date.now().toString();
+    
+    const params: Record<string, string> = {
+      symbol,
+      side: order.side.toUpperCase(),
+      type: order.orderType.toUpperCase(),
+      quantity: order.size.toString(),
+      timestamp,
+    };
+    
+    if (order.orderType === 'limit' && order.price) {
+      params.price = order.price.toString();
+      params.timeInForce = 'GTC';
+    }
+    
+    // Build query string and sign with HMAC-SHA256
+    const queryString = new URLSearchParams(params).toString();
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      'raw', encoder.encode(binanceApiSecret),
+      { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+    );
+    const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(queryString));
+    const signatureHex = Array.from(new Uint8Array(signature))
+      .map(b => b.toString(16).padStart(2, '0')).join('');
+    
+    const url = `https://api.binance.com/api/v3/order?${queryString}&signature=${signatureHex}`;
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'X-MBX-APIKEY': binanceApiKey },
+    });
+    
+    const latencyMs = Date.now() - startTime;
+    
+    if (!response.ok) {
+      const error = await response.text();
+      console.error('[LiveTrading] Binance order failed:', error);
+      return null;
+    }
+    
+    const result = await response.json();
+    console.log('[LiveTrading] Binance order executed:', result.orderId);
+    
+    const filledPrice = parseFloat(result.avgPrice || result.price || '0');
+    const filledSize = parseFloat(result.executedQty || '0');
+    const originalPrice = await getBinancePrice(order.instrument) || filledPrice;
+    const slippage = originalPrice > 0 ? Math.abs(filledPrice - originalPrice) / originalPrice * 10000 : 0;
+    
+    return {
+      filledPrice,
+      filledSize,
+      fee: filledPrice * filledSize * 0.001,
+      latencyMs,
+      slippage,
+      mode: 'live',
+    };
+    
+  } catch (error) {
+    console.error('[LiveTrading] Binance execution error:', error);
+    return null;
+  }
 }
 
 async function simulateFill(order: TradeOrder): Promise<{
