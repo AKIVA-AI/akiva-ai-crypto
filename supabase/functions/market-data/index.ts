@@ -66,7 +66,9 @@ serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const path = url.pathname.split('/').pop();
+    const pathParts = url.pathname.split('/').filter(Boolean);
+    // Get the endpoint - could be after 'market-data' or just the last part
+    let path = pathParts[pathParts.length - 1];
 
     // Parse body for POST requests
     let body: Record<string, unknown> = {};
@@ -76,7 +78,17 @@ serve(async (req) => {
       } catch {
         // Empty body is fine
       }
+      
+      // For POST requests with symbols in body, default to ticker endpoint
+      // This handles supabase.functions.invoke('market-data', { body: { symbols: '...' } })
+      if ((path === 'market-data' || path === 'v1') && body.symbols) {
+        path = 'ticker';
+      } else if ((path === 'market-data' || path === 'v1') && body.symbol) {
+        path = 'price';
+      }
     }
+
+    console.log(`[MarketData] Request: ${req.method} path=${path}`);
 
     switch (path) {
       case 'ticker': {
