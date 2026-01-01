@@ -21,8 +21,9 @@ import { formatDistanceToNow } from 'date-fns';
 import { 
   useSystemHealth, 
   runHealthChecks, 
-  HealthStatus,
-  SystemHealthComponent,
+  CRITICAL_HEALTH_COMPONENTS,
+  type HealthStatus,
+  type SystemHealthComponent,
 } from '@/hooks/useSystemHealth';
 import { supabase } from '@/integrations/supabase/client';
 

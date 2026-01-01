@@ -46,12 +46,17 @@ const GatesCheckedSchema = z.union([
   }));
 });
 
+// Canonical health component IDs - must match across edge functions, hooks, and DB
+export const CRITICAL_HEALTH_COMPONENTS = ['oms', 'risk_engine', 'database'] as const;
+export const ALL_HEALTH_COMPONENTS = [...CRITICAL_HEALTH_COMPONENTS, 'market_data', 'venues', 'cache'] as const;
+export type HealthComponentId = typeof ALL_HEALTH_COMPONENTS[number];
+
 export const DecisionTraceSchema = z.object({
   id: z.string().uuid(),
   trace_id: z.string(),
   timestamp: z.string().datetime(),
   instrument: z.string().min(1),
-  direction: z.enum(['buy', 'sell', 'LONG', 'SHORT']),
+  direction: DirectionSchema, // Now uses the normalizing schema
   strategy_name: z.string(),
   strategy_id: z.string().uuid().nullable(),
   signal_strength: z.number().min(0).max(1),

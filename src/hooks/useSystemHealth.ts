@@ -1,11 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { CRITICAL_HEALTH_COMPONENTS, ALL_HEALTH_COMPONENTS, type HealthComponentId } from '@/lib/schemas';
 
 export type HealthStatus = 'healthy' | 'degraded' | 'unhealthy';
 
 export interface SystemHealthComponent {
   id: string;
-  component: string;
+  component: HealthComponentId;
   status: HealthStatus;
   last_check_at: string;
   details: Record<string, unknown>;
@@ -19,14 +20,8 @@ export interface SystemHealthSummary {
   isReady: boolean;
 }
 
-const HEALTH_COMPONENTS = [
-  'database',
-  'market_data',
-  'venues',
-  'oms',
-  'risk_engine',
-  'cache',
-];
+// Re-export canonical component lists for consistency
+export { CRITICAL_HEALTH_COMPONENTS, ALL_HEALTH_COMPONENTS };
 
 export function useSystemHealth() {
   return useQuery({
@@ -48,11 +43,12 @@ export function useSystemHealth() {
         overall = 'degraded';
       }
       
-      // Check if all critical components are healthy
-      const criticalComponents = ['database', 'oms', 'risk_engine'];
-      const isReady = criticalComponents.every(
-        name => components.find(c => c.component === name)?.status === 'healthy'
-      );
+      // Check if all critical components are healthy (not degraded or unhealthy)
+      // POLICY: Must match edge function - critical components block on degraded too
+      const isReady = CRITICAL_HEALTH_COMPONENTS.every(name => {
+        const component = components.find(c => c.component === name);
+        return component?.status === 'healthy';
+      });
       
       return {
         overall,

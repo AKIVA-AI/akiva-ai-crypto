@@ -71,12 +71,16 @@ checks.push({
       };
     }
     
-    const unhealthyComponents = health?.filter(h => h.status === 'unhealthy');
-    
-    if (unhealthyComponents.length > 0) {
-      return { passed: false, reason: 'System not ready' };
-    }
-    return { passed: true };
+      // POLICY: For critical components, BOTH 'unhealthy' AND 'degraded' block trading
+      // This is the conservative, "highest probability of success" approach
+      const blockedComponents = health?.filter(h => 
+        h.status === 'unhealthy' || h.status === 'degraded'
+      );
+      
+      if (blockedComponents.length > 0) {
+        return { passed: false, reason: 'System not ready', reasonCode: 'CRITICAL_COMPONENT_DEGRADED' };
+      }
+      return { passed: true };
   },
 });
 ```

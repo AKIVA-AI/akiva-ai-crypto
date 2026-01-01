@@ -45,6 +45,7 @@ async function runSafetyChecks(
 
   // Check 0: System Health (must be ready to trade)
   // CRITICAL: Uses lowercase snake_case component IDs to match useSystemHealth hook
+  // Canonical IDs: 'oms', 'risk_engine', 'database', 'market_data', 'venues', 'cache'
   const CRITICAL_COMPONENTS = ['oms', 'risk_engine', 'database'];
   
   checks.push({
@@ -62,17 +63,26 @@ async function runSafetyChecks(
       if (missingComponents.length > 0) {
         return { 
           passed: false, 
-          reason: `System not ready: missing health data for ${missingComponents.join(', ')}` 
+          reason: `System not ready: missing health data for ${missingComponents.join(', ')}`,
+          reasonCode: 'HEALTH_DATA_MISSING',
         };
       }
       
-      const unhealthyComponents = health?.filter((h: { status: string }) => 
-        h.status === 'unhealthy'
+      // POLICY: For critical components, BOTH 'unhealthy' AND 'degraded' block trading
+      // This is the conservative, "highest probability of success" approach
+      const blockedComponents = health?.filter((h: { status: string }) => 
+        h.status === 'unhealthy' || h.status === 'degraded'
       ) || [];
       
-      if (unhealthyComponents.length > 0) {
-        const names = unhealthyComponents.map((c: { component: string }) => c.component).join(', ');
-        return { passed: false, reason: `System not ready: ${names} unhealthy` };
+      if (blockedComponents.length > 0) {
+        const details = blockedComponents.map((c: { component: string; status: string }) => 
+          `${c.component}:${c.status}`
+        ).join(', ');
+        return { 
+          passed: false, 
+          reason: `System not ready: ${details}`,
+          reasonCode: 'CRITICAL_COMPONENT_DEGRADED',
+        };
       }
       
       return { passed: true };
