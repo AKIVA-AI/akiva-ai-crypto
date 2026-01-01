@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
+import * as jose from "https://deno.land/x/jose@v5.2.0/index.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -25,108 +26,147 @@ interface OrderRequest {
   clientOrderId?: string;
 }
 
-// Parse PEM EC private key to raw key bytes
-function pemToBytes(pem: string): Uint8Array {
-  // Handle escaped newlines from environment variables
-  let normalizedPem = pem
-    .replace(/\\n/g, '\n')  // Replace literal \n with actual newlines
-    .replace(/\\r/g, '')    // Remove any \r
+// Normalize PEM key (handle escaped newlines from env vars)
+function normalizePem(pem: string): string {
+  return pem
+    .replace(/\\n/g, '\n')
+    .replace(/\\r/g, '')
     .trim();
-  
-  // Remove PEM headers and all whitespace
-  const pemContents = normalizedPem
-    .replace(/-----BEGIN EC PRIVATE KEY-----/g, '')
-    .replace(/-----END EC PRIVATE KEY-----/g, '')
-    .replace(/-----BEGIN PRIVATE KEY-----/g, '')
-    .replace(/-----END PRIVATE KEY-----/g, '')
-    .replace(/[\s\n\r]/g, '');
-  
-  console.log('[Coinbase] PEM content length:', pemContents.length);
-  
-  if (!pemContents || pemContents.length === 0) {
-    throw new Error('Empty PEM content after parsing');
-  }
-  
-  // Decode base64
-  try {
-    const binary = atob(pemContents);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    return bytes;
-  } catch (e) {
-    console.error('[Coinbase] Base64 decode error. Content preview:', pemContents.substring(0, 50));
-    throw new Error('Failed to decode base64');
-  }
 }
 
-// Generate JWT token for Coinbase CDP API (new key format)
+// Convert SEC1 EC PRIVATE KEY PEM to PKCS#8 PRIVATE KEY PEM format
+// SEC1 uses "-----BEGIN EC PRIVATE KEY-----" 
+// PKCS#8 uses "-----BEGIN PRIVATE KEY-----"
+function sec1ToPkcs8Pem(sec1Pem: string): string {
+  // Extract base64 content from SEC1 PEM
+  const lines = sec1Pem.split('\n');
+  const base64Lines: string[] = [];
+  
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith('-----')) {
+      base64Lines.push(trimmed);
+    }
+  }
+  
+  const sec1Base64 = base64Lines.join('');
+  const sec1Binary = atob(sec1Base64);
+  const sec1Bytes = new Uint8Array(sec1Binary.length);
+  for (let i = 0; i < sec1Binary.length; i++) {
+    sec1Bytes[i] = sec1Binary.charCodeAt(i);
+  }
+  
+  // PKCS#8 structure for EC key:
+  // SEQUENCE {
+  //   INTEGER 0 (version)
+  //   SEQUENCE (AlgorithmIdentifier) {
+  //     OID 1.2.840.10045.2.1 (ecPublicKey)
+  //     OID 1.2.840.10045.3.1.7 (prime256v1/P-256)
+  //   }
+  //   OCTET STRING (contains SEC1 key)
+  // }
+  
+  const algorithmId = new Uint8Array([
+    0x30, 0x13, // SEQUENCE length 19
+    0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01, // OID ecPublicKey
+    0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, // OID P-256
+  ]);
+  
+  // Calculate lengths
+  const octetStringLen = sec1Bytes.length;
+  const octetStringHeader = octetStringLen < 128 
+    ? new Uint8Array([0x04, octetStringLen])
+    : new Uint8Array([0x04, 0x81, octetStringLen]); // For lengths > 127
+  
+  const innerLen = 3 + algorithmId.length + octetStringHeader.length + sec1Bytes.length; // 3 for version INTEGER
+  
+  // Build PKCS#8 structure
+  let pkcs8: Uint8Array;
+  if (innerLen < 128) {
+    pkcs8 = new Uint8Array(2 + innerLen);
+    pkcs8[0] = 0x30; // SEQUENCE
+    pkcs8[1] = innerLen;
+    let offset = 2;
+    pkcs8.set([0x02, 0x01, 0x00], offset); offset += 3; // INTEGER 0
+    pkcs8.set(algorithmId, offset); offset += algorithmId.length;
+    pkcs8.set(octetStringHeader, offset); offset += octetStringHeader.length;
+    pkcs8.set(sec1Bytes, offset);
+  } else {
+    pkcs8 = new Uint8Array(4 + innerLen);
+    pkcs8[0] = 0x30; // SEQUENCE
+    pkcs8[1] = 0x81; // Long form
+    pkcs8[2] = innerLen;
+    let offset = 3;
+    pkcs8.set([0x02, 0x01, 0x00], offset); offset += 3;
+    pkcs8.set(algorithmId, offset); offset += algorithmId.length;
+    pkcs8.set(octetStringHeader, offset); offset += octetStringHeader.length;
+    pkcs8.set(sec1Bytes, offset);
+  }
+  
+  // Convert to base64 PEM
+  let binary = '';
+  for (let i = 0; i < pkcs8.length; i++) {
+    binary += String.fromCharCode(pkcs8[i]);
+  }
+  const base64 = btoa(binary);
+  
+  // Format as PEM with 64 char lines
+  const pemLines = ['-----BEGIN PRIVATE KEY-----'];
+  for (let i = 0; i < base64.length; i += 64) {
+    pemLines.push(base64.slice(i, i + 64));
+  }
+  pemLines.push('-----END PRIVATE KEY-----');
+  
+  return pemLines.join('\n');
+}
+
+// Generate JWT token for Coinbase CDP API using jose library
 async function generateJWT(
   apiKeyName: string,
   privateKeyPem: string,
   requestMethod: string,
   requestPath: string
 ): Promise<string> {
-  const header = {
-    alg: 'ES256',
-    typ: 'JWT',
-    kid: apiKeyName,
-    nonce: crypto.randomUUID(),
-  };
+  let normalizedPem = normalizePem(privateKeyPem);
   
-  const now = Math.floor(Date.now() / 1000);
-  const uri = `${requestMethod.toUpperCase()} api.coinbase.com${requestPath}`;
+  // Convert SEC1 to PKCS#8 if needed
+  if (normalizedPem.includes('BEGIN EC PRIVATE KEY')) {
+    console.log('[Coinbase] Converting SEC1 to PKCS#8 format');
+    normalizedPem = sec1ToPkcs8Pem(normalizedPem);
+    console.log('[Coinbase] Converted PEM preview:', normalizedPem.substring(0, 50));
+  }
   
-  const payload = {
-    iss: 'cdp',
-    sub: apiKeyName,
-    nbf: now,
-    exp: now + 120, // 2 minute expiry
-    aud: ['retail_rest_api_proxy'],
-    uri,
-  };
-  
-  // Base64URL encode header and payload
-  const encoder = new TextEncoder();
-  const headerB64 = btoa(JSON.stringify(header)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-  const payloadB64 = btoa(JSON.stringify(payload)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-  
-  const message = `${headerB64}.${payloadB64}`;
+  console.log('[Coinbase] Importing EC private key for JWT signing');
   
   try {
-    // Import the EC private key - convert to ArrayBuffer for compatibility
-    const keyBytes = pemToBytes(privateKeyPem);
-    const keyBuffer = keyBytes.buffer.slice(keyBytes.byteOffset, keyBytes.byteOffset + keyBytes.byteLength) as ArrayBuffer;
+    // Use jose to import the PKCS#8 PEM key
+    const privateKey = await jose.importPKCS8(normalizedPem, 'ES256');
     
-    const privateKey = await crypto.subtle.importKey(
-      'pkcs8',
-      keyBuffer,
-      { name: 'ECDSA', namedCurve: 'P-256' },
-      false,
-      ['sign']
-    );
+    const now = Math.floor(Date.now() / 1000);
+    const uri = `${requestMethod.toUpperCase()} api.coinbase.com${requestPath}`;
     
-    // Sign the message
-    const messageBuffer = encoder.encode(message);
-    const msgArrayBuffer = messageBuffer.buffer.slice(messageBuffer.byteOffset, messageBuffer.byteOffset + messageBuffer.byteLength) as ArrayBuffer;
-    const signature = await crypto.subtle.sign(
-      { name: 'ECDSA', hash: 'SHA-256' },
-      privateKey,
-      msgArrayBuffer
-    );
+    // Build JWT with required claims
+    const jwt = await new jose.SignJWT({
+      iss: 'cdp',
+      sub: apiKeyName,
+      aud: ['retail_rest_api_proxy'],
+      uri,
+    })
+      .setProtectedHeader({ 
+        alg: 'ES256', 
+        typ: 'JWT', 
+        kid: apiKeyName,
+        nonce: crypto.randomUUID(),
+      })
+      .setIssuedAt(now)
+      .setNotBefore(now)
+      .setExpirationTime(now + 120)
+      .sign(privateKey);
     
-    // Convert signature to base64url
-    const sigBytes = new Uint8Array(signature);
-    let sigBinary = '';
-    for (let i = 0; i < sigBytes.length; i++) {
-      sigBinary += String.fromCharCode(sigBytes[i]);
-    }
-    const signatureB64 = btoa(sigBinary).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
-    
-    return `${message}.${signatureB64}`;
+    console.log('[Coinbase] JWT generated successfully');
+    return jwt;
   } catch (error) {
-    console.error('JWT generation error:', error);
+    console.error('[Coinbase] JWT generation error:', error);
     throw new Error(`Failed to generate JWT: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
@@ -196,28 +236,37 @@ async function coinbaseRequest(
     'Content-Type': 'application/json',
   };
   
-  // Check if using new CDP keys (EC/EdDSA private key) or legacy API keys
+  // Check if using new CDP keys (EC private key) or legacy API keys
   if (isNewCDPKey(credentials.apiSecret)) {
-    // New CDP API keys use EdDSA which isn't supported in Web Crypto
-    // Inform user they need legacy API keys
-    console.error('[Coinbase] CDP API keys (with EC/EdDSA private key) are not yet supported.');
-    console.error('[Coinbase] Please use legacy API keys from https://www.coinbase.com/settings/api');
-    throw new Error('CDP API keys not supported. Please use legacy API keys from coinbase.com/settings/api (not CDP portal)');
+    // New CDP API keys use ES256 JWT authentication
+    console.log('[Coinbase] Using CDP JWT authentication (ES256)');
+    try {
+      const jwt = await generateJWT(
+        credentials.apiKey,
+        credentials.apiSecret,
+        method,
+        path
+      );
+      headers['Authorization'] = `Bearer ${jwt}`;
+    } catch (error) {
+      console.error('[Coinbase] JWT generation failed:', error);
+      throw new Error(`CDP JWT authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  } else {
+    // Legacy API - use HMAC signature
+    console.log('[Coinbase] Using legacy HMAC authentication');
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const signature = await generateLegacySignature(
+      credentials.apiSecret,
+      timestamp,
+      method,
+      path,
+      bodyString
+    );
+    headers['CB-ACCESS-KEY'] = credentials.apiKey;
+    headers['CB-ACCESS-SIGN'] = signature;
+    headers['CB-ACCESS-TIMESTAMP'] = timestamp;
   }
-  
-  // Legacy API - use HMAC signature
-  console.log('[Coinbase] Using legacy HMAC authentication');
-  const timestamp = Math.floor(Date.now() / 1000).toString();
-  const signature = await generateLegacySignature(
-    credentials.apiSecret,
-    timestamp,
-    method,
-    path,
-    bodyString
-  );
-  headers['CB-ACCESS-KEY'] = credentials.apiKey;
-  headers['CB-ACCESS-SIGN'] = signature;
-  headers['CB-ACCESS-TIMESTAMP'] = timestamp;
   
   const response = await fetch(`${COINBASE_API_URL}${path}`, {
     method,
