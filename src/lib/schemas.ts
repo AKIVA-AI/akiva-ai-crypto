@@ -11,35 +11,82 @@ import { z } from 'zod';
 // Decision Trace Schema
 // ====================
 
+// Direction values: DB stores lowercase 'buy'/'sell', but in-memory trace uses 'LONG'/'SHORT'
+// We accept both for flexibility during transition
+export const DirectionSchema = z.enum(['buy', 'sell', 'LONG', 'SHORT']).transform(val => {
+  // Normalize to lowercase for DB consistency
+  if (val === 'LONG') return 'buy';
+  if (val === 'SHORT') return 'sell';
+  return val;
+});
+
+// Gate check can be stored as array of objects OR as a JSON object keyed by gate name
+// Accept both shapes for backward compatibility
+const GateCheckItemSchema = z.object({
+  gate: z.string(),
+  passed: z.boolean(),
+  reason: z.string().optional(),
+  details: z.string().optional(),
+  value: z.union([z.string(), z.number()]).optional(),
+  limit: z.union([z.string(), z.number()]).optional(),
+  checkedAt: z.string().optional(),
+  timestamp: z.string().optional(),
+});
+
+const GatesCheckedSchema = z.union([
+  z.array(GateCheckItemSchema),
+  z.record(z.unknown()), // Legacy format: { gateName: { passed, reason, ... } }
+]).transform(val => {
+  // If it's already an array, return as-is
+  if (Array.isArray(val)) return val;
+  // Convert object format to array format
+  return Object.entries(val).map(([gate, data]) => ({
+    gate,
+    ...(typeof data === 'object' && data !== null ? data : { passed: false }),
+  }));
+});
+
 export const DecisionTraceSchema = z.object({
   id: z.string().uuid(),
   trace_id: z.string(),
   timestamp: z.string().datetime(),
   instrument: z.string().min(1),
-  direction: z.enum(['buy', 'sell']),
+  direction: z.enum(['buy', 'sell', 'LONG', 'SHORT']),
   strategy_name: z.string(),
   strategy_id: z.string().uuid().nullable(),
   signal_strength: z.number().min(0).max(1),
   confidence: z.number().min(0).max(1),
   target_exposure_usd: z.number().min(0),
   decision: z.enum(['EXECUTED', 'BLOCKED', 'MODIFIED', 'PENDING']),
-  gates_checked: z.array(z.object({
-    gate: z.string(),
-    passed: z.boolean(),
-    reason: z.string().optional(),
-    checkedAt: z.string().datetime(),
-  })),
-  costs: z.object({
-    spread: z.number().optional(),
-    slippage: z.number().optional(),
-    fees: z.number().optional(),
-    total: z.number().optional(),
-  }).optional(),
-  regime: z.object({
-    current: z.string().optional(),
-    volatility: z.string().optional(),
-    trend: z.string().optional(),
-  }).optional(),
+  gates_checked: GatesCheckedSchema,
+  costs: z.union([
+    z.object({
+      spread: z.number().optional(),
+      slippage: z.number().optional(),
+      fees: z.number().optional(),
+      total: z.number().optional(),
+      // Also accept the CostAnalysis shape from decisionTrace.ts
+      expectedEdgeBps: z.number().optional(),
+      spreadCostBps: z.number().optional(),
+      slippageEstimateBps: z.number().optional(),
+      feeCostBps: z.number().optional(),
+      totalCostBps: z.number().optional(),
+      netEdgeBps: z.number().optional(),
+      isCostEfficient: z.boolean().optional(),
+    }),
+    z.record(z.unknown()),
+  ]).optional(),
+  regime: z.union([
+    z.object({
+      current: z.string().optional(),
+      volatility: z.string().optional(),
+      trend: z.string().optional(),
+      overall: z.string().optional(),
+      liquidity: z.string().optional(),
+      confidence: z.number().optional(),
+    }),
+    z.record(z.unknown()),
+  ]).optional(),
   block_reasons: z.array(z.string()).nullable(),
   reason_codes: z.array(z.string()).nullable(),
   explanation: z.string(),

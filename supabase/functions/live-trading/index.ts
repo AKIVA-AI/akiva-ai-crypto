@@ -44,13 +44,27 @@ async function runSafetyChecks(
   const checks: { name: string; check: () => Promise<SafetyCheck> }[] = [];
 
   // Check 0: System Health (must be ready to trade)
+  // CRITICAL: Uses lowercase snake_case component IDs to match useSystemHealth hook
+  const CRITICAL_COMPONENTS = ['oms', 'risk_engine', 'database'];
+  
   checks.push({
     name: 'system_health',
     check: async () => {
       const { data: health } = await supabase
         .from('system_health')
         .select('component, status')
-        .in('component', ['OMS', 'Risk Engine', 'Database']);
+        .in('component', CRITICAL_COMPONENTS);
+      
+      // FAIL-CLOSED: If we don't have health records for all critical components, block trading
+      const foundComponents = new Set((health || []).map((h: { component: string }) => h.component));
+      const missingComponents = CRITICAL_COMPONENTS.filter(c => !foundComponents.has(c));
+      
+      if (missingComponents.length > 0) {
+        return { 
+          passed: false, 
+          reason: `System not ready: missing health data for ${missingComponents.join(', ')}` 
+        };
+      }
       
       const unhealthyComponents = health?.filter((h: { status: string }) => 
         h.status === 'unhealthy'
@@ -101,18 +115,26 @@ async function runSafetyChecks(
   });
   
   // Check 1.5: Strategy lifecycle state (server-side enforcement)
+  // CRITICAL: Fail-closed on invalid strategyId to prevent bypass attacks
   checks.push({
     name: 'strategy_lifecycle',
     check: async () => {
-      if (!order.strategyId) return { passed: true }; // Manual trades allowed
+      // If no strategyId provided, treat as manual trade (allowed)
+      if (!order.strategyId) return { passed: true };
       
-      const { data: strategy } = await supabase
+      const { data: strategy, error } = await supabase
         .from('strategies')
         .select('lifecycle_state, quarantine_expires_at, lifecycle_reason')
         .eq('id', order.strategyId)
         .single();
       
-      if (!strategy) return { passed: true }; // Strategy not found, allow manual
+      // FAIL-CLOSED: If strategyId is provided but not found, reject (prevents bypass with fake UUIDs)
+      if (error || !strategy) {
+        return { 
+          passed: false, 
+          reason: `Invalid strategyId: strategy not found (${order.strategyId})` 
+        };
+      }
       
       const { lifecycle_state, quarantine_expires_at, lifecycle_reason } = strategy;
       
