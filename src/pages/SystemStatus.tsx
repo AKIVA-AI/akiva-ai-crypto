@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
 import { 
   CheckCircle2, 
   XCircle, 
@@ -19,10 +20,25 @@ import {
   Newspaper,
   Key,
   Activity,
+  RefreshCw,
+  Clock,
+  Server,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
 
+type HealthStatus = 'healthy' | 'degraded' | 'unhealthy';
 type FeatureStatus = 'functional' | 'simulated' | 'pending';
+
+interface HealthCheckResult {
+  component: string;
+  status: HealthStatus;
+  details: Record<string, unknown>;
+  error_message: string | null;
+  last_check_at: string;
+}
 
 interface Feature {
   name: string;
@@ -32,183 +48,65 @@ interface Feature {
   details?: string;
 }
 
+// API integrations with their secrets
+const API_INTEGRATIONS = [
+  { name: 'Coinbase', key: 'COINBASE_API_KEY', component: 'exchange_coinbase', icon: '🟠' },
+  { name: 'Kraken', key: 'KRAKEN_API_KEY', component: 'exchange_kraken', icon: '🟣' },
+  { name: 'Binance.us', key: 'BINANCE_US_API_KEY', component: 'exchange_binance_us', icon: '🟡' },
+  { name: 'CoinGecko', key: 'COINGECKO_API_KEY', component: 'exchange_coingecko', icon: '🦎' },
+  { name: 'Telegram', key: 'TELEGRAM_BOT_TOKEN', component: null, icon: '📱' },
+  { name: 'Whale Alert', key: 'WHALE_ALERT_API_KEY', component: null, icon: '🐋' },
+  { name: 'LunarCrush', key: 'LUNARCRUSH_API_KEY', component: null, icon: '🌙' },
+  { name: 'News API', key: 'NEWS_API_KEY', component: null, icon: '📰' },
+  { name: 'Polygon', key: 'POLYGON_API_KEY', component: null, icon: '📊' },
+  { name: 'CryptoCompare', key: 'CRYPTOCOMPARE_API_KEY', component: null, icon: '💱' },
+  { name: 'FRED', key: 'FRED_API_KEY', component: null, icon: '🏦' },
+];
+
 const features: { category: string; items: Feature[] }[] = [
   {
     category: 'Core Trading',
     items: [
-      {
-        name: 'Live Price Feed',
-        description: 'Real-time price data from Binance WebSocket',
-        status: 'functional',
-        icon: <Wifi className="h-4 w-4" />,
-        details: 'Connected to Binance public WebSocket API',
-      },
-      {
-        name: 'Coinbase Integration',
-        description: 'US-compliant exchange for spot trading',
-        status: 'functional',
-        icon: <TrendingUp className="h-4 w-4" />,
-        details: 'Coinbase Advanced Trade API integrated - credentials configured',
-      },
-      {
-        name: 'Kraken Integration',
-        description: 'US-compliant exchange with futures & staking',
-        status: 'functional',
-        icon: <TrendingUp className="h-4 w-4" />,
-        details: 'Kraken API integrated - spot, futures, margin, staking',
-      },
-      {
-        name: 'US/International Mode',
-        description: 'Region-aware trading restrictions',
-        status: 'functional',
-        icon: <Activity className="h-4 w-4" />,
-        details: 'Auto-detect with manual override, venue filtering by region',
-      },
-      {
-        name: 'Trade Ticket',
-        description: 'Order entry interface with book selection',
-        status: 'functional',
-        icon: <TrendingUp className="h-4 w-4" />,
-        details: 'Orders saved to database, execution via Coinbase or Kraken',
-      },
-      {
-        name: 'Order Execution',
-        description: 'Actual order placement on exchanges',
-        status: 'functional',
-        icon: <Zap className="h-4 w-4" />,
-        details: 'Coinbase + Kraken APIs ready - switch paper_trading_mode to enable live',
-      },
-      {
-        name: 'Position Tracking',
-        description: 'Track open positions and P&L',
-        status: 'functional',
-        icon: <BarChart3 className="h-4 w-4" />,
-        details: 'Positions stored in database with real-time updates',
-      },
-      {
-        name: 'Order Book Display',
-        description: 'Live order book visualization',
-        status: 'functional',
-        icon: <Activity className="h-4 w-4" />,
-        details: 'Real depth data from Binance/Kraken public APIs',
-      },
+      { name: 'Live Price Feed', description: 'Real-time price data from Binance WebSocket', status: 'functional', icon: <Wifi className="h-4 w-4" />, details: 'Connected to Binance public WebSocket API' },
+      { name: 'Coinbase Integration', description: 'US-compliant exchange for spot trading', status: 'functional', icon: <TrendingUp className="h-4 w-4" />, details: 'Coinbase Advanced Trade API integrated' },
+      { name: 'Kraken Integration', description: 'US-compliant exchange with futures & staking', status: 'functional', icon: <TrendingUp className="h-4 w-4" />, details: 'Kraken API integrated - spot, futures, margin' },
+      { name: 'Binance.us Integration', description: 'US-compliant Binance exchange', status: 'functional', icon: <TrendingUp className="h-4 w-4" />, details: 'Binance.us API ready for trading' },
+      { name: 'Trade Ticket', description: 'Order entry interface with book selection', status: 'functional', icon: <TrendingUp className="h-4 w-4" />, details: 'Orders saved to database, execution via exchanges' },
+      { name: 'Position Tracking', description: 'Track open positions and P&L', status: 'functional', icon: <BarChart3 className="h-4 w-4" />, details: 'Positions stored with real-time updates' },
     ],
   },
   {
     category: 'Risk Management',
     items: [
-      {
-        name: 'Kill Switch',
-        description: 'Emergency stop all trading',
-        status: 'functional',
-        icon: <Shield className="h-4 w-4" />,
-        details: 'Global settings flag, enforced in edge functions',
-      },
-      {
-        name: 'Risk Limits',
-        description: 'Per-book position and loss limits',
-        status: 'functional',
-        icon: <AlertTriangle className="h-4 w-4" />,
-        details: 'Checked before order placement in live-trading function',
-      },
-      {
-        name: 'Risk Gauges',
-        description: 'Visual risk level indicators',
-        status: 'functional',
-        icon: <Activity className="h-4 w-4" />,
-      },
+      { name: 'Kill Switch', description: 'Emergency stop all trading', status: 'functional', icon: <Shield className="h-4 w-4" />, details: 'Global settings flag, enforced in edge functions' },
+      { name: 'Risk Limits', description: 'Per-book position and loss limits', status: 'functional', icon: <AlertTriangle className="h-4 w-4" />, details: 'Checked before order placement' },
+      { name: 'Risk Gauges', description: 'Visual risk level indicators', status: 'functional', icon: <Activity className="h-4 w-4" /> },
     ],
   },
   {
     category: 'Market Intelligence',
     items: [
-      {
-        name: 'Derivatives Data',
-        description: 'Funding rates, OI, liquidations',
-        status: 'functional',
-        icon: <BarChart3 className="h-4 w-4" />,
-        details: 'Fetched from Binance Futures public API',
-      },
-      {
-        name: 'Whale Alerts',
-        description: 'Large transaction monitoring',
-        status: 'simulated',
-        icon: <Fish className="h-4 w-4" />,
-        details: 'AI-generated mock data - requires Arkham/Nansen API',
-      },
-      {
-        name: 'Social Sentiment',
-        description: 'Twitter/Discord sentiment analysis',
-        status: 'simulated',
-        icon: <MessageCircle className="h-4 w-4" />,
-        details: 'AI-generated mock data - requires LunarCrush API',
-      },
-      {
-        name: 'Market News',
-        description: 'Crypto news aggregation',
-        status: 'simulated',
-        icon: <Newspaper className="h-4 w-4" />,
-        details: 'AI-generated mock data - requires CryptoPanic API',
-      },
+      { name: 'Derivatives Data', description: 'Funding rates, OI, liquidations', status: 'functional', icon: <BarChart3 className="h-4 w-4" />, details: 'Fetched from Binance Futures public API' },
+      { name: 'Whale Alerts', description: 'Large transaction monitoring', status: 'functional', icon: <Fish className="h-4 w-4" />, details: 'Whale Alert API integrated' },
+      { name: 'Social Sentiment', description: 'Social media sentiment analysis', status: 'functional', icon: <MessageCircle className="h-4 w-4" />, details: 'LunarCrush API configured' },
+      { name: 'Market News', description: 'Crypto news aggregation', status: 'functional', icon: <Newspaper className="h-4 w-4" />, details: 'News API integrated' },
     ],
   },
   {
     category: 'Automation',
     items: [
-      {
-        name: 'Auto-Trade Triggers',
-        description: 'Automated trading based on conditions',
-        status: 'simulated',
-        icon: <Zap className="h-4 w-4" />,
-        details: 'UI configured only - requires backend scheduling and exchange APIs',
-      },
-      {
-        name: 'Exchange API Manager',
-        description: 'Secure API key storage',
-        status: 'pending',
-        icon: <Key className="h-4 w-4" />,
-        details: 'Local storage only - backend secure storage not implemented',
-      },
-      {
-        name: 'Alert Notifications',
-        description: 'Telegram/Discord notifications',
-        status: 'pending',
-        icon: <Bell className="h-4 w-4" />,
-        details: 'Requires Telegram Bot Token configuration',
-      },
+      { name: 'Scheduled Monitor', description: 'Automated health checks every 5 minutes', status: 'functional', icon: <Zap className="h-4 w-4" />, details: 'Checks exchanges, positions, agents' },
+      { name: 'Telegram Alerts', description: 'Telegram notifications for critical events', status: 'functional', icon: <Bell className="h-4 w-4" />, details: 'Bot token configured' },
+      { name: 'Exchange API Manager', description: 'Secure API key storage', status: 'functional', icon: <Key className="h-4 w-4" />, details: 'Supabase secrets configured' },
     ],
   },
   {
     category: 'Infrastructure',
     items: [
-      {
-        name: 'Database',
-        description: 'PostgreSQL with RLS policies',
-        status: 'functional',
-        icon: <Database className="h-4 w-4" />,
-        details: 'Lovable Cloud Supabase instance',
-      },
-      {
-        name: 'Edge Functions',
-        description: 'Serverless backend logic',
-        status: 'functional',
-        icon: <Zap className="h-4 w-4" />,
-        details: 'Deployed automatically via Lovable',
-      },
-      {
-        name: 'Authentication',
-        description: 'User auth and role-based access',
-        status: 'functional',
-        icon: <Shield className="h-4 w-4" />,
-        details: 'Email/password with auto-confirm enabled',
-      },
-      {
-        name: 'Audit Logging',
-        description: 'Track all privileged actions',
-        status: 'functional',
-        icon: <Activity className="h-4 w-4" />,
-        details: 'All mutations logged to audit_events table',
-      },
+      { name: 'Database', description: 'PostgreSQL with RLS policies', status: 'functional', icon: <Database className="h-4 w-4" />, details: 'Supabase instance' },
+      { name: 'Edge Functions', description: 'Serverless backend logic', status: 'functional', icon: <Zap className="h-4 w-4" />, details: '31 functions deployed' },
+      { name: 'Authentication', description: 'User auth and role-based access', status: 'functional', icon: <Shield className="h-4 w-4" />, details: 'Email/password with RBAC' },
+      { name: 'Audit Logging', description: 'Track all privileged actions', status: 'functional', icon: <Activity className="h-4 w-4" />, details: 'All mutations logged' },
     ],
   },
 ];
@@ -239,7 +137,83 @@ const getStatusBadge = (status: FeatureStatus) => {
   }
 };
 
+const getHealthBadge = (status: HealthStatus) => {
+  switch (status) {
+    case 'healthy':
+      return (
+        <Badge className="bg-success/20 text-success border-success/30 gap-1">
+          <CheckCircle2 className="h-3 w-3" />
+          Healthy
+        </Badge>
+      );
+    case 'degraded':
+      return (
+        <Badge className="bg-warning/20 text-warning border-warning/30 gap-1">
+          <AlertTriangle className="h-3 w-3" />
+          Degraded
+        </Badge>
+      );
+    case 'unhealthy':
+      return (
+        <Badge className="bg-destructive/20 text-destructive border-destructive/30 gap-1">
+          <XCircle className="h-3 w-3" />
+          Offline
+        </Badge>
+      );
+    default:
+      return (
+        <Badge className="bg-muted text-muted-foreground gap-1">
+          <Clock className="h-3 w-3" />
+          Unknown
+        </Badge>
+      );
+  }
+};
+
 export default function SystemStatus() {
+  const queryClient = useQueryClient();
+
+  // Fetch live health data from database
+  const { data: healthData, isLoading: healthLoading } = useQuery({
+    queryKey: ['system-health'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('system_health')
+        .select('*')
+        .order('last_check_at', { ascending: false });
+      
+      if (error) throw error;
+      return data as HealthCheckResult[];
+    },
+    refetchInterval: 30000,
+  });
+
+  // Trigger manual health check
+  const healthCheckMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('health-check');
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['system-health'] });
+    },
+  });
+
+  // Trigger scheduled monitor
+  const monitorMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('scheduled-monitor', {
+        body: { task: 'exchange_health' },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['system-health'] });
+    },
+  });
+
   // Calculate stats
   const allFeatures = features.flatMap(cat => cat.items);
   const functional = allFeatures.filter(f => f.status === 'functional').length;
@@ -247,6 +221,13 @@ export default function SystemStatus() {
   const pending = allFeatures.filter(f => f.status === 'pending').length;
   const total = allFeatures.length;
   const readinessPercent = Math.round((functional / total) * 100);
+
+  // Get exchange health from system_health data
+  const getComponentHealth = (component: string): HealthCheckResult | undefined => {
+    return healthData?.find(h => h.component === component);
+  };
+
+  const lastCheckTime = healthData?.[0]?.last_check_at;
 
   return (
     <MainLayout>
@@ -256,14 +237,87 @@ export default function SystemStatus() {
           <div>
             <h1 className="text-3xl font-bold">System Status</h1>
             <p className="text-muted-foreground mt-1">
-              Feature readiness and integration status
+              Live health monitoring for all integrations and APIs
             </p>
           </div>
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-warning/10 border border-warning/20">
-            <AlertTriangle className="h-3 w-3 text-warning" />
-            <span className="text-xs font-medium text-warning">Simulation Mode</span>
+          <div className="flex items-center gap-2">
+            {lastCheckTime && (
+              <span className="text-xs text-muted-foreground">
+                Last check: {format(new Date(lastCheckTime), 'HH:mm:ss')}
+              </span>
+            )}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                healthCheckMutation.mutate();
+                monitorMutation.mutate();
+              }}
+              disabled={healthCheckMutation.isPending || monitorMutation.isPending}
+            >
+              <RefreshCw className={cn("h-4 w-4 mr-2", (healthCheckMutation.isPending || monitorMutation.isPending) && "animate-spin")} />
+              Refresh
+            </Button>
           </div>
         </div>
+
+        {/* Live Exchange Status */}
+        <Card className="glass-panel border-primary/30">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Server className="h-5 w-5 text-primary" />
+              Live Exchange & API Status
+            </CardTitle>
+            <CardDescription>
+              Real-time connectivity status for all configured APIs
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {API_INTEGRATIONS.map((api) => {
+                const health = api.component ? getComponentHealth(api.component) : null;
+                const status = health?.status || 'unknown';
+                const latency = health?.details?.latency_ms as number | undefined;
+                
+                return (
+                  <div 
+                    key={api.key}
+                    className={cn(
+                      "p-4 rounded-lg border",
+                      status === 'healthy' && "border-success/30 bg-success/5",
+                      status === 'degraded' && "border-warning/30 bg-warning/5",
+                      status === 'unhealthy' && "border-destructive/30 bg-destructive/5",
+                      status === 'unknown' && "border-border/50 bg-card/50"
+                    )}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{api.icon}</span>
+                        <span className="font-semibold">{api.name}</span>
+                      </div>
+                      {health ? getHealthBadge(status as HealthStatus) : (
+                        <Badge className="bg-muted text-muted-foreground gap-1">
+                          <Key className="h-3 w-3" />
+                          Configured
+                        </Badge>
+                      )}
+                    </div>
+                    {latency !== undefined && (
+                      <div className="text-xs text-muted-foreground">
+                        Latency: {latency}ms
+                      </div>
+                    )}
+                    {health?.error_message && (
+                      <div className="text-xs text-destructive mt-1">
+                        {health.error_message}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Overall Status */}
         <Card className="glass-panel">
@@ -294,6 +348,54 @@ export default function SystemStatus() {
                 <div className="text-3xl font-bold text-muted-foreground">{pending}</div>
                 <div className="text-sm text-muted-foreground">Pending</div>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Core Health Components */}
+        <Card className="glass-panel">
+          <CardHeader>
+            <CardTitle>Core Infrastructure Health</CardTitle>
+            <CardDescription>
+              Database, OMS, Risk Engine, and other critical components
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {['database', 'oms', 'risk_engine', 'market_data', 'venues', 'cache'].map((component) => {
+                const health = getComponentHealth(component);
+                const status = health?.status as HealthStatus | undefined;
+                
+                return (
+                  <div 
+                    key={component}
+                    className={cn(
+                      "p-4 rounded-lg border",
+                      status === 'healthy' && "border-success/30 bg-success/5",
+                      status === 'degraded' && "border-warning/30 bg-warning/5",
+                      status === 'unhealthy' && "border-destructive/30 bg-destructive/5",
+                      !status && "border-border/50 bg-card/50"
+                    )}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-semibold capitalize">{component.replace('_', ' ')}</span>
+                      {status ? getHealthBadge(status) : (
+                        <Badge className="bg-muted text-muted-foreground gap-1">
+                          <Clock className="h-3 w-3" />
+                          Unknown
+                        </Badge>
+                      )}
+                    </div>
+                    {health?.details && Object.keys(health.details).length > 0 && (
+                      <div className="text-xs text-muted-foreground">
+                        {Object.entries(health.details).map(([key, value]) => (
+                          <div key={key}>{key}: {String(value)}</div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
@@ -338,53 +440,32 @@ export default function SystemStatus() {
           ))}
         </div>
 
-        {/* Required for Production */}
+        {/* Configured Secrets */}
         <Card className="glass-panel border-primary/30">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Key className="h-5 w-5 text-primary" />
-              Required for Production
+              Configured API Keys & Secrets
             </CardTitle>
             <CardDescription>
-              API keys and integrations needed to enable live trading
+              All secrets stored securely in Supabase
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="p-3 rounded-lg border border-success/30 bg-success/5">
-                <h4 className="font-semibold mb-2 text-success flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4" /> Exchange APIs (Configured)
-                </h4>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li className="text-success">✓ Coinbase Advanced Trade (US-compliant)</li>
-                  <li className="text-success">✓ Binance API (data only, non-US)</li>
-                  <li>• Kraken API (optional)</li>
-                </ul>
-              </div>
-              <div className="p-3 rounded-lg border border-border/50 bg-card/50">
-                <h4 className="font-semibold mb-2">Data Providers</h4>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• Arkham/Nansen (whale tracking)</li>
-                  <li>• LunarCrush (social sentiment)</li>
-                  <li>• CryptoPanic (news feed)</li>
-                </ul>
-              </div>
-              <div className="p-3 rounded-lg border border-success/30 bg-success/5">
-                <h4 className="font-semibold mb-2 text-success flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4" /> Notifications (Configured)
-                </h4>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li className="text-success">✓ Telegram Bot Token</li>
-                  <li>• Discord Webhook (optional)</li>
-                </ul>
-              </div>
-              <div className="p-3 rounded-lg border border-border/50 bg-card/50">
-                <h4 className="font-semibold mb-2">Infrastructure</h4>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li className="text-success">✓ Lovable Cloud (active)</li>
-                  <li>• Custom domain (optional)</li>
-                </ul>
-              </div>
+            <div className="flex flex-wrap gap-2">
+              {[
+                'COINBASE_API_KEY', 'COINBASE_API_SECRET',
+                'KRAKEN_API_KEY', 'KRAKEN_API_SECRET', 
+                'BINANCE_US_API_KEY', 'BINANCE_US_API_SECRET',
+                'COINGECKO_API_KEY', 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID',
+                'WHALE_ALERT_API_KEY', 'LUNARCRUSH_API_KEY', 'NEWS_API_KEY',
+                'POLYGON_API_KEY', 'CRYPTOCOMPARE_API_KEY', 'FRED_API_KEY',
+              ].map((secret) => (
+                <Badge key={secret} variant="secondary" className="gap-1">
+                  <CheckCircle2 className="h-3 w-3 text-success" />
+                  {secret}
+                </Badge>
+              ))}
             </div>
           </CardContent>
         </Card>

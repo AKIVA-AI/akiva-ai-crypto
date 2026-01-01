@@ -12,8 +12,9 @@ const corsHeaders = {
  * - Check open positions for risk breaches
  * - Monitor signals and generate alerts
  * - Check kill switch status
- * - Update venue health
+ * - Update venue health with REAL API checks
  * - Process pending trade intents
+ * - Check exchange API connectivity
  */
 
 interface MonitorResult {
@@ -21,6 +22,136 @@ interface MonitorResult {
   success: boolean;
   details: Record<string, unknown>;
   duration_ms: number;
+}
+
+interface ExchangeHealthResult {
+  exchange: string;
+  online: boolean;
+  latency_ms: number;
+  error?: string;
+}
+
+// Check Coinbase API health
+async function checkCoinbaseHealth(): Promise<ExchangeHealthResult> {
+  const start = Date.now();
+  try {
+    const response = await fetch('https://api.coinbase.com/v2/time', {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const latency = Date.now() - start;
+    
+    if (response.ok) {
+      return { exchange: 'coinbase', online: true, latency_ms: latency };
+    }
+    return { exchange: 'coinbase', online: false, latency_ms: latency, error: `HTTP ${response.status}` };
+  } catch (error) {
+    return { exchange: 'coinbase', online: false, latency_ms: Date.now() - start, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+// Check Kraken API health
+async function checkKrakenHealth(): Promise<ExchangeHealthResult> {
+  const start = Date.now();
+  try {
+    const response = await fetch('https://api.kraken.com/0/public/Time', {
+      method: 'GET',
+    });
+    const latency = Date.now() - start;
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (data.error && data.error.length > 0) {
+        return { exchange: 'kraken', online: false, latency_ms: latency, error: data.error.join(', ') };
+      }
+      return { exchange: 'kraken', online: true, latency_ms: latency };
+    }
+    return { exchange: 'kraken', online: false, latency_ms: latency, error: `HTTP ${response.status}` };
+  } catch (error) {
+    return { exchange: 'kraken', online: false, latency_ms: Date.now() - start, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+// Check Binance US API health
+async function checkBinanceUSHealth(): Promise<ExchangeHealthResult> {
+  const start = Date.now();
+  try {
+    const response = await fetch('https://api.binance.us/api/v3/time', {
+      method: 'GET',
+    });
+    const latency = Date.now() - start;
+    
+    if (response.ok) {
+      return { exchange: 'binance_us', online: true, latency_ms: latency };
+    }
+    return { exchange: 'binance_us', online: false, latency_ms: latency, error: `HTTP ${response.status}` };
+  } catch (error) {
+    return { exchange: 'binance_us', online: false, latency_ms: Date.now() - start, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+// Check CoinGecko API health (market data)
+async function checkCoinGeckoHealth(): Promise<ExchangeHealthResult> {
+  const start = Date.now();
+  const apiKey = Deno.env.get('COINGECKO_API_KEY');
+  try {
+    const url = apiKey 
+      ? 'https://pro-api.coingecko.com/api/v3/ping'
+      : 'https://api.coingecko.com/api/v3/ping';
+    
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (apiKey) {
+      headers['x-cg-pro-api-key'] = apiKey;
+    }
+    
+    const response = await fetch(url, { method: 'GET', headers });
+    const latency = Date.now() - start;
+    
+    if (response.ok) {
+      return { exchange: 'coingecko', online: true, latency_ms: latency };
+    }
+    return { exchange: 'coingecko', online: false, latency_ms: latency, error: `HTTP ${response.status}` };
+  } catch (error) {
+    return { exchange: 'coingecko', online: false, latency_ms: Date.now() - start, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+// Send Telegram alert for critical issues
+async function sendTelegramAlert(title: string, message: string, severity: 'info' | 'warning' | 'critical' = 'critical') {
+  const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
+  const chatId = Deno.env.get('TELEGRAM_CHAT_ID');
+  
+  if (!botToken || !chatId) {
+    console.log('[scheduled-monitor] Telegram not configured, skipping alert');
+    return;
+  }
+  
+  const severityEmojis = { info: 'ℹ️', warning: '⚠️', critical: '🔴' };
+  const emoji = severityEmojis[severity];
+  
+  const formattedMessage = `
+${emoji} *${title}*
+
+${message}
+
+_Sent by Scheduled Monitor_
+`.trim();
+
+  try {
+    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: formattedMessage,
+        parse_mode: 'Markdown',
+        disable_web_page_preview: true,
+      }),
+    });
+    console.log('[scheduled-monitor] Telegram alert sent');
+  } catch (error) {
+    console.error('[scheduled-monitor] Failed to send Telegram alert:', error);
+  }
 }
 
 Deno.serve(async (req) => {
@@ -49,7 +180,6 @@ Deno.serve(async (req) => {
         .single();
       
       if (settings?.global_kill_switch) {
-        // Kill switch is active - close all positions
         await supabase
           .from('alerts')
           .insert({
@@ -71,11 +201,100 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Task 2: Position Risk Check
+    // Task 2: Exchange API Health Check (NEW - checks real APIs)
+    if (task === 'all' || task === 'exchange_health') {
+      const taskStart = Date.now();
+      
+      // Check all exchanges in parallel
+      const [coinbase, kraken, binanceUS, coingecko] = await Promise.all([
+        checkCoinbaseHealth(),
+        checkKrakenHealth(),
+        checkBinanceUSHealth(),
+        checkCoinGeckoHealth(),
+      ]);
+      
+      const exchangeResults = [coinbase, kraken, binanceUS, coingecko];
+      const offlineExchanges = exchangeResults.filter(e => !e.online);
+      const highLatencyExchanges = exchangeResults.filter(e => e.online && e.latency_ms > 2000);
+      
+      // Persist to system_health table
+      for (const result of exchangeResults) {
+        await supabase
+          .from('system_health')
+          .upsert({
+            component: `exchange_${result.exchange}`,
+            status: result.online ? (result.latency_ms > 2000 ? 'degraded' : 'healthy') : 'unhealthy',
+            details: { latency_ms: result.latency_ms },
+            error_message: result.error || null,
+            last_check_at: new Date().toISOString(),
+          }, { onConflict: 'component' });
+      }
+      
+      // Persist to venue_health table for historical tracking
+      for (const result of exchangeResults) {
+        await supabase
+          .from('venue_health')
+          .insert({
+            venue_id: '00000000-0000-0000-0000-000000000000', // Placeholder
+            status: result.online ? 'healthy' : 'degraded',
+            latency_ms: result.latency_ms,
+            error_rate: result.online ? 0 : 100,
+            order_success_rate: result.online ? 100 : 0,
+            last_error: result.error || null,
+            metadata: { exchange: result.exchange },
+          });
+      }
+      
+      // Alert if any exchange is down
+      if (offlineExchanges.length > 0) {
+        const offlineNames = offlineExchanges.map(e => e.exchange).join(', ');
+        
+        await supabase.from('alerts').insert({
+          title: 'Exchange Offline',
+          message: `The following exchanges are offline: ${offlineNames}`,
+          severity: 'critical',
+          source: 'scheduled-monitor',
+          metadata: { offline_exchanges: offlineExchanges },
+        });
+        
+        // Send Telegram alert
+        await sendTelegramAlert(
+          '🚨 Exchange Offline',
+          `The following exchanges are DOWN:\n${offlineExchanges.map(e => `• ${e.exchange}: ${e.error}`).join('\n')}\n\nCheck connectivity immediately!`,
+          'critical'
+        );
+      }
+      
+      // Alert if high latency
+      if (highLatencyExchanges.length > 0) {
+        const highLatencyNames = highLatencyExchanges.map(e => `${e.exchange} (${e.latency_ms}ms)`).join(', ');
+        
+        await supabase.from('alerts').insert({
+          title: 'High Exchange Latency',
+          message: `High latency detected: ${highLatencyNames}`,
+          severity: 'warning',
+          source: 'scheduled-monitor',
+        });
+      }
+      
+      results.push({
+        task: 'exchange_health',
+        success: true,
+        details: {
+          exchanges_checked: exchangeResults.length,
+          online: exchangeResults.filter(e => e.online).length,
+          offline: offlineExchanges.length,
+          high_latency: highLatencyExchanges.length,
+          results: exchangeResults,
+        },
+        duration_ms: Date.now() - taskStart,
+      });
+    }
+
+    // Task 3: Position Risk Check
     if (task === 'all' || task === 'position_risk') {
       const taskStart = Date.now();
       
-      // Get open positions with their books and risk limits
       const { data: positions } = await supabase
         .from('positions')
         .select(`
@@ -95,7 +314,6 @@ Deno.serve(async (req) => {
         
         if (!riskLimits) continue;
         
-        // Check drawdown
         const pnlPercent = (position.unrealized_pnl / book.capital_allocated) * 100;
         if (pnlPercent < -riskLimits.max_daily_loss) {
           riskBreaches.push({
@@ -107,7 +325,6 @@ Deno.serve(async (req) => {
           });
         }
         
-        // Check concentration
         const positionValue = position.size * position.mark_price;
         const concentration = (positionValue / book.capital_allocated) * 100;
         if (concentration > riskLimits.max_concentration) {
@@ -121,7 +338,6 @@ Deno.serve(async (req) => {
         }
       }
       
-      // Insert risk breaches
       if (riskBreaches.length > 0) {
         await supabase.from('risk_breaches').insert(
           riskBreaches.map(breach => ({
@@ -130,7 +346,6 @@ Deno.serve(async (req) => {
           }))
         );
         
-        // Create alert
         await supabase.from('alerts').insert({
           title: 'Risk Breaches Detected',
           message: `${riskBreaches.length} risk limit violations detected across positions`,
@@ -138,6 +353,13 @@ Deno.serve(async (req) => {
           source: 'scheduled-monitor',
           metadata: { breaches: riskBreaches },
         });
+        
+        // Send Telegram alert for risk breaches
+        await sendTelegramAlert(
+          '⚠️ Risk Limit Breach',
+          `${riskBreaches.length} risk violations detected:\n${riskBreaches.slice(0, 3).map(b => `• ${b.description}`).join('\n')}`,
+          'warning'
+        );
       }
       
       results.push({
@@ -151,11 +373,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Task 3: Signal Processing
+    // Task 4: Signal Processing
     if (task === 'all' || task === 'signals') {
       const taskStart = Date.now();
       
-      // Get unexpired signals
       const { data: signals } = await supabase
         .from('intelligence_signals')
         .select('*')
@@ -163,7 +384,6 @@ Deno.serve(async (req) => {
         .order('created_at', { ascending: false })
         .limit(50);
       
-      // Group by instrument and find consensus
       const signalsByInstrument: Record<string, Array<{ direction: string; confidence: number | null }>> = {};
       for (const signal of signals || []) {
         if (!signalsByInstrument[signal.instrument]) {
@@ -172,7 +392,6 @@ Deno.serve(async (req) => {
         signalsByInstrument[signal.instrument]!.push(signal);
       }
       
-      // Check for strong consensus signals
       const strongSignals: string[] = [];
       for (const [instrument, instrumentSignals] of Object.entries(signalsByInstrument)) {
         if (!instrumentSignals) continue;
@@ -213,7 +432,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Task 4: Venue Health Check
+    // Task 5: Venue Health Check (DB-based)
     if (task === 'all' || task === 'venue_health') {
       const taskStart = Date.now();
       
@@ -225,12 +444,10 @@ Deno.serve(async (req) => {
       const degradedVenues: string[] = [];
       
       for (const venue of venues || []) {
-        // Check if venue hasn't had a heartbeat in 5 minutes
         const lastHeartbeat = new Date(venue.last_heartbeat);
         const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
         
         if (lastHeartbeat < fiveMinutesAgo && venue.status === 'healthy') {
-          // Mark as degraded
           await supabase
             .from('venues')
             .update({ status: 'degraded' })
@@ -260,7 +477,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Task 5: Process Pending Trade Intents
+    // Task 6: Process Pending Trade Intents
     if (task === 'all' || task === 'trade_intents') {
       const taskStart = Date.now();
       
@@ -274,12 +491,10 @@ Deno.serve(async (req) => {
       let processedCount = 0;
       
       for (const intent of pendingIntents || []) {
-        // Check if intent is still valid (not expired based on horizon)
         const createdAt = new Date(intent.created_at);
         const expiryTime = new Date(createdAt.getTime() + intent.horizon_minutes * 60 * 1000);
         
         if (new Date() > expiryTime) {
-          // Expire the intent
           await supabase
             .from('trade_intents')
             .update({ 
@@ -289,7 +504,6 @@ Deno.serve(async (req) => {
             .eq('id', intent.id);
           processedCount++;
         }
-        // Note: Actual order execution would happen via Python backend or manual approval
       }
       
       results.push({
@@ -303,7 +517,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Task 6: Agent Heartbeat Check
+    // Task 7: Agent Heartbeat Check
     if (task === 'all' || task === 'agent_health') {
       const taskStart = Date.now();
       
@@ -334,6 +548,12 @@ Deno.serve(async (req) => {
           severity: 'critical',
           source: 'scheduled-monitor',
         });
+        
+        await sendTelegramAlert(
+          '🤖 Agent Offline',
+          `The following agents have stopped responding:\n${offlineAgents.map(a => `• ${a}`).join('\n')}`,
+          'critical'
+        );
       }
       
       results.push({
