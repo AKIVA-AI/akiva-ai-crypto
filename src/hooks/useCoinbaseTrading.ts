@@ -88,15 +88,12 @@ export function useCoinbaseTicker(productId: string = 'BTC-USD') {
   return useQuery({
     queryKey: ['coinbase-ticker', productId],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('coinbase-trading/ticker', {
-        body: null,
-        headers: { 'Content-Type': 'application/json' },
-      });
-      
-      // Handle the case where we need to pass query params
-      const response = await supabase.functions.invoke(`coinbase-trading/ticker?product_id=${productId}`);
-      if (response.error) throw response.error;
-      return response.data;
+      // Edge function expects product_id as query param
+      const { data, error } = await supabase.functions.invoke(
+        `coinbase-trading/ticker?product_id=${productId}`
+      );
+      if (error) throw error;
+      return data;
     },
     refetchInterval: 5000,
   });

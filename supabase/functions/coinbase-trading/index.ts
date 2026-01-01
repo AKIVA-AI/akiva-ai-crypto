@@ -92,9 +92,11 @@ function sec1ToPkcs8Pem(sec1Pem: string): string {
     pkcs8.set(octetStringHeader, offset); offset += octetStringHeader.length;
     pkcs8.set(sec1Bytes, offset);
   } else {
-    pkcs8 = new Uint8Array(4 + innerLen);
+    // Long-form length encoding (supports up to 255 bytes, which is enough for SEC1 keys)
+    // Total buffer = 3 (SEQUENCE tag + length bytes) + innerLen
+    pkcs8 = new Uint8Array(3 + innerLen);
     pkcs8[0] = 0x30; // SEQUENCE
-    pkcs8[1] = 0x81; // Long form
+    pkcs8[1] = 0x81; // Long form (one length byte follows)
     pkcs8[2] = innerLen;
     let offset = 3;
     pkcs8.set([0x02, 0x01, 0x00], offset); offset += 3;
