@@ -210,7 +210,7 @@ serve(async (req) => {
       : null;
 
     const url = new URL(req.url);
-    const path = url.pathname.split('/').pop();
+    const pathSegment = url.pathname.split('/').pop();
 
     let body: any = {};
     if (req.method !== 'GET') {
@@ -224,7 +224,11 @@ serve(async (req) => {
       }
     }
 
-    switch (path) {
+    // Use body.action as primary, fallback to URL path
+    const action = body.action || pathSegment;
+    console.log(`[Kraken] Action: ${action}`);
+
+    switch (action) {
       case 'status': {
         let connected = false;
         let accountInfo = null;
@@ -282,7 +286,7 @@ serve(async (req) => {
       }
 
       case 'ticker': {
-        const pair = url.searchParams.get('pair') || 'XXBTZUSD';
+        const pair = body.pair || url.searchParams.get('pair') || 'XXBTZUSD';
         
         try {
           const ticker = await getTicker(pair);
@@ -309,8 +313,8 @@ serve(async (req) => {
       }
 
       case 'orderbook': {
-        const pair = url.searchParams.get('pair') || 'XXBTZUSD';
-        const count = url.searchParams.get('count') || '25';
+        const pair = body.pair || url.searchParams.get('pair') || 'XXBTZUSD';
+        const count = body.count?.toString() || url.searchParams.get('count') || '25';
         
         const orderBook = await getOrderBook(pair, count);
         const pairData = orderBook[Object.keys(orderBook)[0]];

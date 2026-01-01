@@ -64,11 +64,13 @@ export function useCoinbaseStatus() {
   return useQuery({
     queryKey: ['coinbase-status'],
     queryFn: async (): Promise<CoinbaseStatus> => {
-      const { data, error } = await supabase.functions.invoke('coinbase-trading/status');
+      const { data, error } = await supabase.functions.invoke('coinbase-trading', {
+        body: { action: 'status' },
+      });
       if (error) throw error;
       return data;
     },
-    refetchInterval: 30000, // Check every 30 seconds
+    refetchInterval: 30000,
   });
 }
 
@@ -76,7 +78,9 @@ export function useCoinbaseBalances() {
   return useQuery({
     queryKey: ['coinbase-balances'],
     queryFn: async (): Promise<{ balances: CoinbaseBalance[]; simulation?: boolean }> => {
-      const { data, error } = await supabase.functions.invoke('coinbase-trading/balances');
+      const { data, error } = await supabase.functions.invoke('coinbase-trading', {
+        body: { action: 'balances' },
+      });
       if (error) throw error;
       return data;
     },
@@ -88,10 +92,9 @@ export function useCoinbaseTicker(productId: string = 'BTC-USD') {
   return useQuery({
     queryKey: ['coinbase-ticker', productId],
     queryFn: async () => {
-      // Edge function expects product_id as query param
-      const { data, error } = await supabase.functions.invoke(
-        `coinbase-trading/ticker?product_id=${productId}`
-      );
+      const { data, error } = await supabase.functions.invoke('coinbase-trading', {
+        body: { action: 'ticker', product_id: productId },
+      });
       if (error) throw error;
       return data;
     },
@@ -103,11 +106,13 @@ export function useCoinbaseProducts() {
   return useQuery({
     queryKey: ['coinbase-products'],
     queryFn: async (): Promise<{ products: CoinbaseProduct[] }> => {
-      const { data, error } = await supabase.functions.invoke('coinbase-trading/products');
+      const { data, error } = await supabase.functions.invoke('coinbase-trading', {
+        body: { action: 'products' },
+      });
       if (error) throw error;
       return data;
     },
-    staleTime: 60000, // Cache for 1 minute
+    staleTime: 60000,
   });
 }
 
@@ -116,8 +121,8 @@ export function useCoinbasePlaceOrder() {
   
   return useMutation({
     mutationFn: async (params: PlaceOrderParams): Promise<OrderResult> => {
-      const { data, error } = await supabase.functions.invoke('coinbase-trading/place-order', {
-        body: params,
+      const { data, error } = await supabase.functions.invoke('coinbase-trading', {
+        body: { action: 'place-order', ...params },
       });
       
       if (error) throw error;
@@ -150,8 +155,8 @@ export function useCoinbaseCancelOrder() {
   
   return useMutation({
     mutationFn: async (orderId: string) => {
-      const { data, error } = await supabase.functions.invoke('coinbase-trading/cancel-order', {
-        body: { order_id: orderId },
+      const { data, error } = await supabase.functions.invoke('coinbase-trading', {
+        body: { action: 'cancel-order', order_id: orderId },
       });
       
       if (error) throw error;
@@ -171,10 +176,9 @@ export function useCoinbaseOrders(productId?: string) {
   return useQuery({
     queryKey: ['coinbase-orders', productId],
     queryFn: async () => {
-      const path = productId 
-        ? `coinbase-trading/orders?product_id=${productId}` 
-        : 'coinbase-trading/orders';
-      const { data, error } = await supabase.functions.invoke(path);
+      const { data, error } = await supabase.functions.invoke('coinbase-trading', {
+        body: { action: 'orders', ...(productId && { product_id: productId }) },
+      });
       if (error) throw error;
       return data;
     },

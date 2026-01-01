@@ -76,7 +76,9 @@ export function useKrakenStatus() {
   return useQuery({
     queryKey: ['kraken-status'],
     queryFn: async (): Promise<KrakenStatus> => {
-      const { data, error } = await supabase.functions.invoke('kraken-trading/status');
+      const { data, error } = await supabase.functions.invoke('kraken-trading', {
+        body: { action: 'status' },
+      });
       if (error) throw error;
       return data;
     },
@@ -88,7 +90,9 @@ export function useKrakenBalances() {
   return useQuery({
     queryKey: ['kraken-balances'],
     queryFn: async (): Promise<{ balances: Record<string, string>; simulation?: boolean }> => {
-      const { data, error } = await supabase.functions.invoke('kraken-trading/balances');
+      const { data, error } = await supabase.functions.invoke('kraken-trading', {
+        body: { action: 'balances' },
+      });
       if (error) throw error;
       return data;
     },
@@ -100,7 +104,9 @@ export function useKrakenTicker(pair: string = 'XXBTZUSD') {
   return useQuery({
     queryKey: ['kraken-ticker', pair],
     queryFn: async (): Promise<KrakenTicker> => {
-      const { data, error } = await supabase.functions.invoke(`kraken-trading/ticker?pair=${pair}`);
+      const { data, error } = await supabase.functions.invoke('kraken-trading', {
+        body: { action: 'ticker', pair },
+      });
       if (error) throw error;
       return data;
     },
@@ -112,9 +118,9 @@ export function useKrakenOrderBook(pair: string = 'XXBTZUSD', count: number = 25
   return useQuery({
     queryKey: ['kraken-orderbook', pair, count],
     queryFn: async (): Promise<KrakenOrderBook> => {
-      const { data, error } = await supabase.functions.invoke(
-        `kraken-trading/orderbook?pair=${pair}&count=${count}`
-      );
+      const { data, error } = await supabase.functions.invoke('kraken-trading', {
+        body: { action: 'orderbook', pair, count },
+      });
       if (error) throw error;
       return data;
     },
@@ -126,7 +132,9 @@ export function useKrakenPairs() {
   return useQuery({
     queryKey: ['kraken-pairs'],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('kraken-trading/pairs');
+      const { data, error } = await supabase.functions.invoke('kraken-trading', {
+        body: { action: 'pairs' },
+      });
       if (error) throw error;
       return data.pairs;
     },
@@ -139,8 +147,8 @@ export function useKrakenPlaceOrder() {
   
   return useMutation({
     mutationFn: async (params: PlaceOrderParams): Promise<OrderResult> => {
-      const { data, error } = await supabase.functions.invoke('kraken-trading/place-order', {
-        body: params,
+      const { data, error } = await supabase.functions.invoke('kraken-trading', {
+        body: { action: 'place-order', ...params },
       });
       
       if (error) throw error;
@@ -173,8 +181,8 @@ export function useKrakenCancelOrder() {
   
   return useMutation({
     mutationFn: async (txid: string) => {
-      const { data, error } = await supabase.functions.invoke('kraken-trading/cancel-order', {
-        body: { txid },
+      const { data, error } = await supabase.functions.invoke('kraken-trading', {
+        body: { action: 'cancel-order', txid },
       });
       
       if (error) throw error;
@@ -194,7 +202,9 @@ export function useKrakenOrders() {
   return useQuery({
     queryKey: ['kraken-orders'],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('kraken-trading/orders');
+      const { data, error } = await supabase.functions.invoke('kraken-trading', {
+        body: { action: 'orders' },
+      });
       if (error) throw error;
       return data;
     },
@@ -206,7 +216,9 @@ export function useKrakenStaking() {
   return useQuery({
     queryKey: ['kraken-staking'],
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('kraken-trading/staking');
+      const { data, error } = await supabase.functions.invoke('kraken-trading', {
+        body: { action: 'staking' },
+      });
       if (error) throw error;
       return data.assets;
     },

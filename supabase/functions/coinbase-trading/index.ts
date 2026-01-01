@@ -534,7 +534,7 @@ serve(async (req) => {
       : null;
 
     const url = new URL(req.url);
-    const path = url.pathname.split('/').pop();
+    const pathSegment = url.pathname.split('/').pop();
 
     let body: any = {};
     if (req.method !== 'GET') {
@@ -548,7 +548,11 @@ serve(async (req) => {
       }
     }
 
-    switch (path) {
+    // Use body.action as primary, fallback to URL path
+    const action = body.action || pathSegment;
+    console.log(`[Coinbase] Action: ${action}`);
+
+    switch (action) {
       case 'status': {
         // Check if Coinbase is configured and connected
         let connected = false;

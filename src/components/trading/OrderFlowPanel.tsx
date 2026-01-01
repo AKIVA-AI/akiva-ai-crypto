@@ -11,16 +11,44 @@ interface OrderFlowPanelProps {
 }
 
 export function OrderFlowPanel({ symbol, compact = false }: OrderFlowPanelProps) {
-  const { metrics, isConnected, tradeCount } = useOrderFlowAnalysis(symbol);
+  const { metrics, isConnected, isConnecting, connectionFailed, tradeCount } = useOrderFlowAnalysis(symbol);
   const { cvdHistory, divergence } = useCumulativeVolumeDelta(symbol);
 
-  if (!metrics) {
+  // Handle connection failures gracefully
+  if (connectionFailed) {
+    return (
+      <Card className={cn(compact ? 'p-3' : '')}>
+        <CardContent className="flex items-center justify-center py-8">
+          <div className="text-center text-muted-foreground">
+            <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <p className="font-medium">Order Flow Unavailable</p>
+            <p className="text-xs mt-1">Live trade stream blocked by browser security</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!metrics && isConnecting) {
     return (
       <Card className={cn(compact ? 'p-3' : '')}>
         <CardContent className="flex items-center justify-center py-8">
           <div className="text-center text-muted-foreground">
             <Activity className="h-8 w-8 mx-auto mb-2 animate-pulse" />
             <p>Connecting to trade stream...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!metrics) {
+    return (
+      <Card className={cn(compact ? 'p-3' : '')}>
+        <CardContent className="flex items-center justify-center py-8">
+          <div className="text-center text-muted-foreground">
+            <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <p>No order flow data available</p>
           </div>
         </CardContent>
       </Card>

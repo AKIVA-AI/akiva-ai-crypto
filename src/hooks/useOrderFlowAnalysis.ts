@@ -224,18 +224,32 @@ export function useOrderFlowAnalysis(
     return `wss://stream.binance.com:9443/ws/${binanceSymbol}@trade`;
   }, [symbol]);
 
+  // Track if we should stop trying (after too many failures)
+  const [connectionFailed, setConnectionFailed] = useState(false);
+  const attemptCountRef = useRef(0);
+
   const wsState = useWebSocketManager({
     url: wsUrl,
-    enabled: enabled && !!symbol,
-    maxReconnectAttempts: 10,
+    enabled: enabled && !!symbol && !connectionFailed,
+    maxReconnectAttempts: 3, // Reduced from 10 - fail faster on browser restrictions
     initialBackoffMs: 1000,
-    maxBackoffMs: 30000,
+    maxBackoffMs: 5000,
     onMessage: handleMessage,
     onConnect: () => {
       console.log(`[OrderFlow] Connected for ${symbol}`);
+      attemptCountRef.current = 0;
+      setConnectionFailed(false);
       setTrades([]);
     },
-    onDisconnect: () => console.log(`[OrderFlow] Disconnected for ${symbol}`),
+    onDisconnect: () => {
+      console.log(`[OrderFlow] Disconnected for ${symbol}`);
+      attemptCountRef.current++;
+      // After 3 failed attempts, stop trying
+      if (attemptCountRef.current >= 3) {
+        console.log(`[OrderFlow] Connection failed permanently for ${symbol}, showing simulated data`);
+        setConnectionFailed(true);
+      }
+    },
   });
 
   // Recalculate metrics periodically even without new trades
@@ -261,10 +275,11 @@ export function useOrderFlowAnalysis(
     trades: trades.slice(-100), // Return last 100 for display
     metrics,
     isConnected: wsState.isConnected,
-    isConnecting: wsState.isConnecting,
-    connectionError: wsState.error,
+    isConnecting: wsState.isConnecting && !connectionFailed,
+    connectionError: connectionFailed ? 'WebSocket unavailable (browser restrictions)' : wsState.error,
     latencyMs: wsState.latencyMs,
     tradeCount: trades.length,
+    connectionFailed,
   };
 }
 
