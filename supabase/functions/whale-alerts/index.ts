@@ -15,14 +15,30 @@ interface WhaleAlertRequest {
   instrument?: string;
   instruments?: string[];
   limit?: number;
+  min_usd?: number;
 }
+
+const WHALE_ALERT_API_URL = 'https://api.whale-alert.io/v1';
+
+// Map crypto symbols to Whale Alert blockchain identifiers
+const BLOCKCHAIN_MAP: Record<string, string> = {
+  'BTC': 'bitcoin',
+  'ETH': 'ethereum',
+  'SOL': 'solana',
+  'XRP': 'ripple',
+  'DOGE': 'dogecoin',
+  'LTC': 'litecoin',
+  'TRX': 'tron',
+  'MATIC': 'polygon',
+  'AVAX': 'avalanche',
+};
 
 // Known whale wallet categories
 const WHALE_CATEGORIES = {
-  exchange: ['binance', 'coinbase', 'kraken', 'ftx', 'okx', 'bybit'],
-  defi: ['aave', 'compound', 'uniswap', 'curve', 'lido'],
+  exchange: ['binance', 'coinbase', 'kraken', 'ftx', 'okx', 'bybit', 'huobi', 'kucoin'],
+  defi: ['aave', 'compound', 'uniswap', 'curve', 'lido', 'makerdao'],
   institution: ['grayscale', 'microstrategy', 'tesla', '3ac'],
-  unknown: ['whale', 'smart_money'],
+  unknown: ['whale', 'smart_money', 'unknown'],
 };
 
 // Pre-defined whale wallets for tracking
@@ -45,6 +61,7 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const whaleAlertApiKey = Deno.env.get('WHALE_ALERT_API_KEY');
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const { 
@@ -55,10 +72,11 @@ serve(async (req) => {
       category,
       instrument = 'BTC-USDT',
       instruments = ['BTC-USDT', 'ETH-USDT', 'SOL-USDT'],
-      limit = 50
+      limit = 50,
+      min_usd = 500000,
     } = await req.json() as WhaleAlertRequest;
 
-    console.log(`[whale-alerts] Action: ${action}, instrument: ${instrument}`);
+    console.log(`[whale-alerts] Action: ${action}, API configured: ${!!whaleAlertApiKey}`);
 
     switch (action) {
       case 'track_wallet': {
@@ -156,6 +174,108 @@ serve(async (req) => {
         );
       }
 
+      case 'fetch_real_alerts': {
+        // Fetch real whale transactions from Whale Alert API
+        if (!whaleAlertApiKey) {
+          console.log('[whale-alerts] No API key, falling back to simulation');
+          // Fall back to simulation if no API key
+          await initializeWhaleWallets(supabase);
+          const transactions = await generateWhaleTransactions(supabase, instruments);
+          const signals = await generateWhaleSignals(supabase, transactions, instruments);
+          
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              source: 'simulated',
+              transactions,
+              signals,
+              message: `Simulated ${transactions.length} transactions (no API key configured)`
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Fetch from Whale Alert API
+        const now = Math.floor(Date.now() / 1000);
+        const startTime = now - 3600; // Last hour
+        
+        const allTransactions: any[] = [];
+        const symbols = instruments.map(i => i.split('-')[0]);
+        
+        for (const symbol of symbols) {
+          const blockchain = BLOCKCHAIN_MAP[symbol];
+          if (!blockchain) continue;
+
+          try {
+            const url = `${WHALE_ALERT_API_URL}/transactions?api_key=${whaleAlertApiKey}&min_value=${min_usd}&start=${startTime}&end=${now}&currency=${symbol.toLowerCase()}`;
+            console.log(`[whale-alerts] Fetching ${symbol} from Whale Alert`);
+            
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+              console.error(`[whale-alerts] API error for ${symbol}: ${response.status}`);
+              continue;
+            }
+
+            const data = await response.json();
+            
+            if (data.result === 'success' && data.transactions) {
+              for (const tx of data.transactions) {
+                const processed = processWhaleAlertTransaction(tx, symbol);
+                if (processed) {
+                  allTransactions.push(processed);
+                }
+              }
+            }
+          } catch (err) {
+            console.error(`[whale-alerts] Error fetching ${symbol}:`, err);
+          }
+        }
+
+        console.log(`[whale-alerts] Fetched ${allTransactions.length} real transactions`);
+
+        // Store transactions in database
+        const storedTxs: any[] = [];
+        for (const tx of allTransactions) {
+          const { data, error } = await supabase
+            .from('whale_transactions')
+            .upsert(tx, { onConflict: 'tx_hash' })
+            .select()
+            .single();
+          
+          if (!error && data) {
+            storedTxs.push(data);
+          }
+        }
+
+        // Create alerts for very large transactions
+        for (const tx of allTransactions) {
+          if ((tx.usd_value || 0) >= 10000000) {
+            await supabase.from('alerts').insert({
+              title: `🐋 Whale Alert: $${((tx.usd_value || 0) / 1000000).toFixed(1)}M ${tx.direction}`,
+              message: `${tx.instrument} ${tx.direction}: ${tx.amount.toLocaleString()} tokens ($${((tx.usd_value || 0) / 1000000).toFixed(1)}M) from ${tx.from_label || 'unknown'} to ${tx.to_label || 'unknown'}`,
+              source: 'whale-alert-api',
+              severity: (tx.usd_value || 0) >= 50000000 ? 'critical' : 'warning',
+              metadata: { transaction: tx },
+            });
+          }
+        }
+
+        // Generate intelligence signals
+        const signals = await generateWhaleSignals(supabase, allTransactions, instruments);
+
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            source: 'whale_alert_api',
+            transactions: storedTxs,
+            signals,
+            message: `Fetched ${allTransactions.length} real transactions, generated ${signals.length} signals`
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       case 'simulate_whale_activity': {
         // Ensure known whale wallets are tracked
         await initializeWhaleWallets(supabase);
@@ -169,6 +289,7 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({ 
             success: true, 
+            source: 'simulated',
             transactions,
             signals,
             message: `Generated ${transactions.length} transactions and ${signals.length} signals`
@@ -199,8 +320,14 @@ serve(async (req) => {
           .from('whale_wallets')
           .select('*', { count: 'exact', head: true })
           .eq('is_tracked', true);
+        
         return new Response(
-          JSON.stringify({ success: true, status: 'healthy', tracked_wallets: count || 0 }),
+          JSON.stringify({ 
+            success: true, 
+            status: 'healthy', 
+            tracked_wallets: count || 0,
+            api_configured: !!whaleAlertApiKey,
+          }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -217,6 +344,59 @@ serve(async (req) => {
     );
   }
 });
+
+// Process a raw Whale Alert API transaction into our format
+function processWhaleAlertTransaction(tx: any, symbol: string): any | null {
+  try {
+    // Determine direction based on from/to labels
+    const fromLabel = tx.from?.owner_type || 'unknown';
+    const toLabel = tx.to?.owner_type || 'unknown';
+    
+    let direction = 'transfer';
+    if (fromLabel === 'exchange' && toLabel !== 'exchange') {
+      direction = 'outflow'; // Leaving exchange = accumulation
+    } else if (fromLabel !== 'exchange' && toLabel === 'exchange') {
+      direction = 'inflow'; // Going to exchange = distribution
+    }
+
+    // Map owner to category
+    const fromCategory = categorizeOwner(tx.from?.owner || '');
+    const toCategory = categorizeOwner(tx.to?.owner || '');
+
+    return {
+      instrument: `${symbol}-USDT`,
+      network: tx.blockchain || 'unknown',
+      direction,
+      tx_hash: tx.hash,
+      from_address: tx.from?.address || '',
+      to_address: tx.to?.address || '',
+      from_label: tx.from?.owner || fromLabel,
+      to_label: tx.to?.owner || toLabel,
+      from_category: fromCategory,
+      to_category: toCategory,
+      amount: tx.amount || 0,
+      usd_value: tx.amount_usd || 0,
+      block_number: tx.block || null,
+      created_at: new Date(tx.timestamp * 1000).toISOString(),
+    };
+  } catch (err) {
+    console.error('[whale-alerts] Error processing transaction:', err);
+    return null;
+  }
+}
+
+// Categorize wallet owner based on name
+function categorizeOwner(owner: string): string {
+  const lowerOwner = owner.toLowerCase();
+  
+  for (const [category, keywords] of Object.entries(WHALE_CATEGORIES)) {
+    if (keywords.some(kw => lowerOwner.includes(kw))) {
+      return category;
+    }
+  }
+  
+  return 'unknown';
+}
 
 async function initializeWhaleWallets(supabase: any) {
   for (const wallet of KNOWN_WHALE_WALLETS) {
@@ -257,12 +437,12 @@ async function generateWhaleTransactions(supabase: any, instruments: string[]) {
     const instrument = instruments[Math.floor(Math.random() * instruments.length)];
     const baseSymbol = instrument.split('-')[0];
     
-    // Determine direction with bias based on time of day (more activity during trading hours)
+    // Determine direction with bias based on time of day
     const hourOfDay = new Date().getHours();
     const isActiveHours = hourOfDay >= 8 && hourOfDay <= 22;
     const directionIndex = isActiveHours 
       ? Math.floor(Math.random() * 3) 
-      : Math.random() > 0.7 ? Math.floor(Math.random() * 3) : 2; // More transfers during quiet hours
+      : Math.random() > 0.7 ? Math.floor(Math.random() * 3) : 2;
     const direction = directions[directionIndex];
     
     // Select from/to wallets based on direction
@@ -329,7 +509,7 @@ async function generateWhaleTransactions(supabase: any, instruments: string[]) {
     });
   }
 
-  console.log(`[whale-alerts] Generated ${transactions.length} transactions`);
+  console.log(`[whale-alerts] Generated ${transactions.length} simulated transactions`);
   return transactions;
 }
 
@@ -377,7 +557,7 @@ async function generateWhaleSignals(supabase: any, transactions: any[], instrume
       instrument,
       signal_type: 'whale_activity',
       direction,
-      strength: Math.min(1, totalFlow / 20000000), // Normalize by $20M
+      strength: Math.min(1, totalFlow / 20000000),
       confidence: 0.65,
       source_data: {
         source: 'whale_alerts',
