@@ -11,12 +11,12 @@ import { UnifiedPortfolioPanel } from '@/components/portfolio/UnifiedPortfolioPa
 import { MobileDashboard } from '@/components/mobile/MobileDashboard';
 import { MarketPulseWidget } from '@/components/intelligence/MarketPulseWidget';
 import { OpportunityScannerPanel } from '@/components/intelligence/OpportunityScannerPanel';
+import { WhyNoTradeWidget } from '@/components/dashboard/WhyNoTradeWidget';
 import { useDashboardMetrics } from '@/hooks/useDashboardMetrics';
 import { useDashboardRealtime } from '@/hooks/useRealtimeSubscriptions';
 import { useTradingShortcuts } from '@/hooks/useTradingShortcuts';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { DollarSign, TrendingUp, Layers, AlertTriangle, Loader2 } from 'lucide-react';
-
 export default function Index() {
   const { data: metrics, isLoading } = useDashboardMetrics();
   const isMobile = useIsMobile();
@@ -102,6 +102,9 @@ export default function Index() {
 
           {/* Right column - opportunities, portfolio, risk, and events */}
           <div className="space-y-6">
+            {/* Why Didn't We Trade - The killer UX feature */}
+            <WhyNoTradeWidget />
+
             {/* Opportunity Scanner - High Probability Trades */}
             <OpportunityScannerPanel compact />
 
