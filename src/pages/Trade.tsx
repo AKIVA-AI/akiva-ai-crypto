@@ -4,6 +4,8 @@ import { UnifiedSpotTrader } from '@/components/trading/UnifiedSpotTrader';
 import { PositionProtectionPanel } from '@/components/trading/PositionProtectionPanel';
 import { OrderFlowPanel } from '@/components/trading/OrderFlowPanel';
 import { RiskSimulator } from '@/components/risk/RiskSimulator';
+import { ModeAwareSafetyBanner } from '@/components/mode/ModeAwareSafetyBanner';
+import { TradeExplainabilityPanel } from '@/components/explainability/TradeExplainabilityPanel';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,6 +19,7 @@ import {
   AlertCircle,
   Shield,
   Activity,
+  HelpCircle,
 } from 'lucide-react';
 import { useArbitrageMonitor } from '@/hooks/useCrossExchangeArbitrage';
 import { Link } from 'react-router-dom';
@@ -34,12 +37,15 @@ export default function Trade() {
   return (
     <MainLayout>
       <div className="container mx-auto p-4 space-y-6">
+        {/* Safety Banner - Always Visible */}
+        <ModeAwareSafetyBanner />
+
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Trade</h1>
             <p className="text-muted-foreground">
-              Execute trades across connected exchanges with best price routing
+              Risk-managed execution with full transparency
             </p>
           </div>
           <Button variant="outline" asChild>

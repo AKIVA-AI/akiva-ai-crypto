@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AlertNotificationProvider } from "@/components/alerts/AlertNotificationSystem";
 import { TradingModeProvider } from "@/contexts/TradingModeContext";
+import { UserModeProvider } from "@/contexts/UserModeContext";
 import { AICopilotProvider } from "@/contexts/AICopilotContext";
 import Index from "./pages/Index";
 import Agents from "./pages/Agents";
@@ -37,9 +38,10 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <TradingModeProvider>
-            <AICopilotProvider>
-              <AlertNotificationProvider>
-                <Toaster />
+            <UserModeProvider>
+              <AICopilotProvider>
+                <AlertNotificationProvider>
+                  <Toaster />
                 <Sonner />
                 <Routes>
                   <Route path="/auth" element={<Auth />} />
@@ -63,8 +65,9 @@ const App = () => (
                   <Route path="/operations" element={<ProtectedRoute><Operations /></ProtectedRoute>} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
-              </AlertNotificationProvider>
-            </AICopilotProvider>
+                </AlertNotificationProvider>
+              </AICopilotProvider>
+            </UserModeProvider>
           </TradingModeProvider>
         </AuthProvider>
       </BrowserRouter>
