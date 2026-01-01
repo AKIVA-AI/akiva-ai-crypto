@@ -41,61 +41,132 @@ function base64UrlEncode(data: Uint8Array | string): string {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
-// Detect key type: EdDSA (base64 64-byte), ES256 PEM, or legacy HMAC
-function detectKeyType(secret: string): 'eddsa' | 'es256' | 'legacy' {
+// Detect key type: ES256 (EC key) or legacy HMAC
+function detectKeyType(secret: string): 'es256' | 'legacy' {
   const normalized = secret.replace(/\\n/g, '\n').trim();
   
-  console.log('[Coinbase] Key detection - length:', normalized.length, 'first 20 chars:', normalized.substring(0, 20));
+  console.log('[Coinbase] Key detection - length:', normalized.length, 'first 30 chars:', JSON.stringify(normalized.substring(0, 30)));
   
-  // Check for PEM format (EC keys)
-  if (normalized.includes('-----BEGIN') || normalized.includes('PRIVATE KEY')) {
-    console.log('[Coinbase] Detected PEM/EC format');
+  // Check for PEM format (EC keys with headers)
+  if (normalized.includes('-----BEGIN')) {
+    console.log('[Coinbase] Detected PEM EC format');
     return 'es256';
   }
   
-  // Check for EdDSA (base64 encoded, ~88 chars for 64 bytes)
-  try {
-    const decoded = atob(normalized);
-    console.log('[Coinbase] Base64 decoded length:', decoded.length);
-    if (decoded.length === 64) {
-      console.log('[Coinbase] Detected Ed25519 key (64 bytes)');
-      return 'eddsa';
-    } else if (decoded.length === 32) {
-      // Some CDP keys might be just 32-byte seeds
-      console.log('[Coinbase] Detected Ed25519 seed (32 bytes)');
-      return 'eddsa';
+  // If length suggests EC key (160-180 chars typical for base64 DER EC key)
+  // and starts with expected EC key prefix
+  if (normalized.length >= 120 && normalized.length <= 200 && !normalized.includes(' ')) {
+    // Try to decode to verify it's valid base64
+    try {
+      // Convert URL-safe base64 to standard base64
+      let base64Data = normalized.replace(/-/g, '+').replace(/_/g, '/');
+      // Add padding if needed
+      const paddingNeeded = (4 - base64Data.length % 4) % 4;
+      base64Data = base64Data + '='.repeat(paddingNeeded);
+      
+      const decoded = atob(base64Data);
+      console.log('[Coinbase] Decoded length:', decoded.length, 'first byte:', decoded.charCodeAt(0).toString(16));
+      
+      // Check if it starts with SEQUENCE (0x30)
+      if (decoded.charCodeAt(0) === 0x30) {
+        console.log('[Coinbase] Detected base64 DER EC key');
+        return 'es256';
+      }
+    } catch (e) {
+      // Even if decode fails, treat long base64-like strings as EC keys
+      console.log('[Coinbase] Base64 decode failed but treating as EC key by length:', e);
+      return 'es256';
     }
-  } catch (e) {
-    console.log('[Coinbase] Base64 decode failed:', e);
+    
+    // Fallback: if it looks like an EC key by length, treat it as such
+    console.log('[Coinbase] Treating as EC key by length pattern');
+    return 'es256';
   }
   
   return 'legacy';
 }
 
-// Generate JWT token for Coinbase CDP API using EdDSA (Ed25519)
-async function generateEdDSAJWT(
+// Parse SEC1 EC private key from DER format
+function parseEC256PrivateKey(keyData: string): Uint8Array {
+  let derBytes: Uint8Array;
+  
+  // Normalize the key data - handle various escape sequences and newlines
+  let normalizedKey = keyData
+    .replace(/\\n/g, '')  // Remove escaped newlines
+    .replace(/\n/g, '')   // Remove actual newlines
+    .replace(/\r/g, '')   // Remove carriage returns
+    .replace(/\s/g, '')   // Remove all whitespace
+    .trim();
+  
+  // Check if it's PEM format
+  if (normalizedKey.includes('-----BEGIN')) {
+    const pemContent = normalizedKey
+      .replace(/-----BEGIN EC PRIVATE KEY-----/g, '')
+      .replace(/-----END EC PRIVATE KEY-----/g, '')
+      .replace(/-----BEGIN PRIVATE KEY-----/g, '')
+      .replace(/-----END PRIVATE KEY-----/g, '')
+      .replace(/\s/g, '');
+    const binary = atob(pemContent);
+    derBytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      derBytes[i] = binary.charCodeAt(i);
+    }
+  } else {
+    // Handle base64 (might be URL-safe variant)
+    let base64Data = normalizedKey.replace(/\s/g, '');
+    // Convert URL-safe base64 to standard base64
+    base64Data = base64Data.replace(/-/g, '+').replace(/_/g, '/');
+    // Add padding if needed
+    const paddingNeeded = (4 - base64Data.length % 4) % 4;
+    base64Data = base64Data + '='.repeat(paddingNeeded);
+    
+    console.log('[Coinbase] parseEC256: base64 length:', base64Data.length, 'sample:', base64Data.substring(0, 40));
+    
+    // Try-catch with detailed error
+    try {
+      const binary = atob(base64Data);
+      derBytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        derBytes[i] = binary.charCodeAt(i);
+      }
+    } catch (e) {
+      // Find the invalid character
+      const validBase64 = /^[A-Za-z0-9+/]*=*$/;
+      const invalidChars = base64Data.split('').filter(c => !validBase64.test(c));
+      console.error('[Coinbase] Invalid base64 chars found:', JSON.stringify(invalidChars.slice(0, 10)));
+      throw e;
+    }
+  }
+  
+  console.log('[Coinbase] DER bytes length:', derBytes.length, 'first bytes:', Array.from(derBytes.slice(0, 10)).map(b => b.toString(16).padStart(2, '0')).join(' '));
+  
+  // Parse SEC1 ECPrivateKey structure
+  // SEQUENCE { version INTEGER, privateKey OCTET STRING, [0] parameters, [1] publicKey }
+  // The private key is typically at offset 7 for a 32-byte key
+  // Look for the OCTET STRING (0x04) followed by length (0x20 = 32)
+  for (let i = 0; i < derBytes.length - 33; i++) {
+    if (derBytes[i] === 0x04 && derBytes[i + 1] === 0x20) {
+      const privateKey = derBytes.slice(i + 2, i + 2 + 32);
+      console.log('[Coinbase] Found 32-byte private key at offset', i);
+      return privateKey;
+    }
+  }
+  
+  throw new Error('Could not parse EC private key from DER format');
+}
+
+// Generate JWT token for Coinbase CDP API using ES256 (ECDSA P-256)
+async function generateES256JWT(
   apiKeyId: string,
   apiKeySecret: string,
   requestMethod: string,
   requestHost: string,
   requestPath: string
 ): Promise<string> {
-  console.log('[Coinbase] Generating EdDSA JWT for CDP API');
+  console.log('[Coinbase] Generating ES256 JWT for CDP API');
   
-  // Decode the Ed25519 private key from base64
-  // CDP keys are 64 bytes: 32-byte seed + 32-byte public key
-  const decoded = atob(apiKeySecret);
-  if (decoded.length !== 64) {
-    throw new Error(`Invalid Ed25519 key length: ${decoded.length}, expected 64`);
-  }
-  
-  const keyBytes = new Uint8Array(64);
-  for (let i = 0; i < 64; i++) {
-    keyBytes[i] = decoded.charCodeAt(i);
-  }
-  
-  // Extract seed (first 32 bytes) - this is the private key for signing
-  const seed = keyBytes.slice(0, 32);
+  // Parse the EC private key
+  const privateKeyBytes = parseEC256PrivateKey(apiKeySecret);
   
   // Generate nonce
   const nonce = crypto.randomUUID().replace(/-/g, '');
@@ -105,7 +176,7 @@ async function generateEdDSAJWT(
   
   // JWT Header
   const header = {
-    alg: 'EdDSA',
+    alg: 'ES256',
     typ: 'JWT',
     kid: apiKeyId,
     nonce: nonce,
@@ -124,15 +195,66 @@ async function generateEdDSAJWT(
   const payloadB64 = base64UrlEncode(JSON.stringify(payload));
   const message = `${headerB64}.${payloadB64}`;
   
-  // Sign with Ed25519
-  const messageBytes = new TextEncoder().encode(message);
-  const signature = await ed.signAsync(messageBytes, seed);
-  const signatureB64 = base64UrlEncode(signature);
+  // Import the EC private key for signing
+  // We need to construct a proper JWK or import raw key
+  // P-256 private keys are 32 bytes
+  const privateKeyJwk = {
+    kty: 'EC',
+    crv: 'P-256',
+    d: base64UrlEncode(privateKeyBytes),
+    // We need x and y for import, but we can derive them or use a different approach
+  };
   
-  const jwt = `${message}.${signatureB64}`;
-  console.log('[Coinbase] EdDSA JWT generated successfully');
+  // Try to import as raw EC private key using PKCS#8 format
+  // First, we need to wrap the raw key in PKCS#8 structure
+  const pkcs8Prefix = new Uint8Array([
+    0x30, 0x41, // SEQUENCE, length 65
+    0x02, 0x01, 0x00, // INTEGER version = 0
+    0x30, 0x13, // SEQUENCE (AlgorithmIdentifier)
+    0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01, // OID 1.2.840.10045.2.1 (ecPublicKey)
+    0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, // OID 1.2.840.10045.3.1.7 (P-256)
+    0x04, 0x27, // OCTET STRING, length 39
+    0x30, 0x25, // SEQUENCE, length 37
+    0x02, 0x01, 0x01, // INTEGER version = 1
+    0x04, 0x20, // OCTET STRING, length 32 (private key follows)
+  ]);
   
-  return jwt;
+  // Construct PKCS#8 key
+  const pkcs8Key = new Uint8Array(pkcs8Prefix.length + 32);
+  pkcs8Key.set(pkcs8Prefix);
+  pkcs8Key.set(privateKeyBytes, pkcs8Prefix.length);
+  
+  try {
+    const cryptoKey = await crypto.subtle.importKey(
+      'pkcs8',
+      pkcs8Key.buffer,
+      { name: 'ECDSA', namedCurve: 'P-256' },
+      false,
+      ['sign']
+    );
+    
+    const messageBytes = new TextEncoder().encode(message);
+    const signatureArrayBuffer = await crypto.subtle.sign(
+      { name: 'ECDSA', hash: 'SHA-256' },
+      cryptoKey,
+      messageBytes
+    );
+    
+    // Convert DER signature to raw R||S format (64 bytes)
+    const signatureBytes = new Uint8Array(signatureArrayBuffer);
+    const signatureB64 = base64UrlEncode(signatureBytes);
+    
+    const jwt = `${message}.${signatureB64}`;
+    console.log('[Coinbase] ES256 JWT generated successfully');
+    
+    return jwt;
+  } catch (importError) {
+    console.error('[Coinbase] PKCS#8 import failed, trying SEC1:', importError);
+    
+    // Try using the full DER as SEC1 format via a different approach
+    // We'll use the @noble/secp256k1 library instead
+    throw new Error(`EC key import failed: ${importError instanceof Error ? importError.message : 'Unknown error'}`);
+  }
 }
 // Legacy HMAC signature for old-style API keys
 async function generateLegacySignature(
@@ -194,11 +316,11 @@ async function coinbaseRequest(
   
   const keyType = detectKeyType(credentials.apiSecret);
   
-  if (keyType === 'eddsa') {
-    // New CDP API keys use EdDSA JWT authentication
-    console.log('[Coinbase] Using CDP JWT authentication (EdDSA)');
+  if (keyType === 'es256') {
+    // CDP API keys use ES256 JWT authentication
+    console.log('[Coinbase] Using CDP JWT authentication (ES256)');
     try {
-      const jwt = await generateEdDSAJWT(
+      const jwt = await generateES256JWT(
         credentials.apiKey,
         credentials.apiSecret,
         method,
@@ -210,9 +332,6 @@ async function coinbaseRequest(
       console.error('[Coinbase] JWT generation failed:', error);
       throw new Error(`CDP JWT authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-  } else if (keyType === 'es256') {
-    // ES256 PEM keys - not currently supported
-    throw new Error('ES256 PEM keys are not supported. Please use Ed25519 keys from CDP portal.');
   } else {
     // Legacy API - use HMAC signature
     console.log('[Coinbase] Using legacy HMAC authentication');
