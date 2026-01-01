@@ -11,11 +11,41 @@ export interface AgentRole {
 }
 
 export const AGENT_ROLES: Record<string, AgentRole> = {
+  'meta-decision': {
+    type: 'meta-decision',
+    name: 'Meta-Decision Agent',
+    icon: '👑',
+    description: 'SUPREME AUTHORITY - Decides WHETHER trading is allowed at all. Has VETO POWER over all strategy agents. Does NOT trade or predict prices.',
+    responsibilities: [
+      'Determine global trading state (HALTED/REDUCE_ONLY/NORMAL)',
+      'Evaluate volatility regime and market conditions',
+      'Monitor system stress and agent health',
+      'Set per-strategy enable/disable decisions',
+      'Fail-safe to HALT on any anomalies',
+    ],
+    interactions: ['All Agents (binding authority)'],
+    status: 'critical',
+  },
+  'capital-allocation': {
+    type: 'capital-allocation',
+    name: 'Capital Allocation Agent',
+    icon: '💰',
+    description: 'Manages HOW MUCH capital each strategy receives. Dynamically adjusts allocations based on performance, correlation, and regime.',
+    responsibilities: [
+      'Calculate dynamic strategy weights',
+      'Set per-strategy risk budgets',
+      'Enforce exposure caps',
+      'Quarantine underperforming strategies',
+      'Reduce exposure during volatility/drawdowns',
+    ],
+    interactions: ['Meta-Decision Agent', 'Risk Agent', 'Strategy Agent'],
+    status: 'critical',
+  },
   'market-data': {
     type: 'market-data',
     name: 'Market Data Agent',
     icon: '📊',
-    description: 'Aggregates and normalizes real-time market data from all connected venues. Maintains order book snapshots, trade streams, and OHLCV candles.',
+    description: 'Aggregates and normalizes real-time market data from all connected venues.',
     responsibilities: [
       'Connect to exchange WebSocket feeds',
       'Normalize data formats across venues',
@@ -23,22 +53,22 @@ export const AGENT_ROLES: Record<string, AgentRole> = {
       'Calculate derived metrics (VWAP, spreads)',
       'Broadcast updates to downstream agents',
     ],
-    interactions: ['Strategy Agent', 'Execution Agent', 'Risk Agent'],
+    interactions: ['Meta-Decision Agent', 'Strategy Agent', 'Execution Agent'],
     status: 'critical',
   },
   'strategy': {
     type: 'strategy',
     name: 'Strategy Agent',
     icon: '🧠',
-    description: 'Runs quantitative models and generates trading signals. Evaluates market conditions against strategy rules and emits trade intents.',
+    description: 'Proposes trade intents ONLY - never executes directly. Must include edge estimate, confidence, and worst-case loss.',
     responsibilities: [
-      'Execute strategy logic on market ticks',
-      'Generate buy/sell signals with confidence scores',
-      'Emit TradeIntent objects to risk engine',
-      'Track strategy P&L and performance metrics',
-      'Manage strategy parameters and rebalancing',
+      'Generate trade intents with edge estimates',
+      'Include confidence and uncertainty metrics',
+      'Specify expected holding time and max loss',
+      'Cannot override Meta-Decision or Risk Agent',
+      'Track strategy lifecycle state (ACTIVE/QUARANTINED/PAPER)',
     ],
-    interactions: ['Market Data Agent', 'Risk Agent'],
+    interactions: ['Meta-Decision Agent', 'Capital Allocation Agent', 'Risk Agent'],
     status: 'critical',
   },
   'execution': {

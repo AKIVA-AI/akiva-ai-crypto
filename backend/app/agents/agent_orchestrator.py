@@ -1,6 +1,9 @@
 """
 Agent Orchestrator - Manages the lifecycle of all trading agents.
 Handles startup, shutdown, health monitoring, and coordination.
+
+UPGRADED: Now includes Meta-Decision and Capital Allocation agents
+for institution-grade profitability and risk management.
 """
 
 import asyncio
@@ -12,6 +15,8 @@ from .base_agent import BaseAgent, AgentChannel, AgentMessage
 from .signal_agent import SignalAgent
 from .risk_agent import RiskAgent
 from .execution_agent import ExecutionAgent
+from .meta_decision_agent import MetaDecisionAgent
+from .capital_allocation_agent import CapitalAllocationAgent
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +25,9 @@ class AgentOrchestrator:
     """
     Orchestrates multiple trading agents, managing their lifecycle
     and providing a unified control interface.
+    
+    CRITICAL: Meta-Decision Agent has VETO POWER over all other agents.
+    No strategy can trade without Meta-Decision approval.
     """
     
     def __init__(self, redis_url: str = "redis://localhost:6379"):
@@ -35,8 +43,33 @@ class AgentOrchestrator:
         logger.info(f"Registered agent: {agent.agent_id} ({agent.agent_type})")
     
     def create_default_agents(self):
-        """Create the default set of trading agents"""
-        # Signal Agent
+        """Create the default set of trading agents with proper hierarchy"""
+        
+        # META-DECISION AGENT (SUPREME AUTHORITY)
+        # Must be created first - has veto power over all others
+        meta_agent = MetaDecisionAgent(
+            agent_id="meta-decision-agent-01",
+            redis_url=self.redis_url
+        )
+        self.register_agent(meta_agent)
+        
+        # CAPITAL ALLOCATION AGENT
+        # Manages capital distribution across strategies
+        capital_agent = CapitalAllocationAgent(
+            agent_id="capital-allocation-agent-01",
+            redis_url=self.redis_url,
+            total_capital=100000.0
+        )
+        self.register_agent(capital_agent)
+        
+        # RISK AGENT (Single source of truth for risk)
+        risk_agent = RiskAgent(
+            agent_id="risk-agent-01",
+            redis_url=self.redis_url
+        )
+        self.register_agent(risk_agent)
+        
+        # SIGNAL AGENT (proposes intents only, never executes)
         signal_agent = SignalAgent(
             agent_id="signal-agent-01",
             redis_url=self.redis_url,
@@ -44,14 +77,7 @@ class AgentOrchestrator:
         )
         self.register_agent(signal_agent)
         
-        # Risk Agent
-        risk_agent = RiskAgent(
-            agent_id="risk-agent-01",
-            redis_url=self.redis_url
-        )
-        self.register_agent(risk_agent)
-        
-        # Execution Agent
+        # EXECUTION AGENT (executes only approved intents)
         execution_agent = ExecutionAgent(
             agent_id="execution-agent-01",
             redis_url=self.redis_url,
@@ -59,7 +85,7 @@ class AgentOrchestrator:
         )
         self.register_agent(execution_agent)
         
-        logger.info(f"Created {len(self._agents)} default agents")
+        logger.info(f"Created {len(self._agents)} agents with Meta-Decision authority")
     
     async def start(self):
         """Start all registered agents"""
