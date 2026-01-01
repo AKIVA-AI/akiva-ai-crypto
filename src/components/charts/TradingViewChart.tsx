@@ -110,6 +110,13 @@ export function TradingViewChart({
   
   const [currentSymbol, setCurrentSymbol] = useState(symbol);
   const [timeframe, setTimeframe] = useState('1h');
+
+  // Sync with external symbol prop changes
+  useEffect(() => {
+    if (symbol !== currentSymbol) {
+      setCurrentSymbol(symbol);
+    }
+  }, [symbol]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [lastPrice, setLastPrice] = useState<number | null>(null);
   const [priceChange, setPriceChange] = useState<number>(0);
