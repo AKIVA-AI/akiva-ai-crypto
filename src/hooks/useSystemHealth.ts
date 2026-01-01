@@ -87,14 +87,38 @@ export function useRunHealthChecks() {
   });
 }
 
-// Legacy function - now calls edge function instead of direct DB writes
-export async function runHealthChecks(): Promise<SystemHealthComponent[]> {
+// Response shape from health-check edge function
+export interface HealthCheckResponse {
+  success: boolean;
+  overall: HealthStatus;
+  isReady: boolean;
+  components: SystemHealthComponent[];
+  checkedAt: string;
+  error?: string;
+}
+
+/**
+ * Standalone function to run health checks via Edge Function.
+ * Throws on error or invalid response shape.
+ * @deprecated Prefer useRunHealthChecks() hook for React components
+ */
+export async function runHealthChecks(): Promise<HealthCheckResponse> {
   const { data, error } = await supabase.functions.invoke('health-check');
   
   if (error) {
     console.error('[runHealthChecks] Edge function error:', error);
-    throw error;
+    throw new Error(`Health check failed: ${error.message}`);
   }
   
-  return data?.components || [];
+  // Validate response shape
+  if (!data || typeof data.success !== 'boolean' || !Array.isArray(data.components)) {
+    console.error('[runHealthChecks] Invalid response shape:', data);
+    throw new Error('Health check returned invalid response');
+  }
+  
+  if (!data.success) {
+    throw new Error(data.error || 'Health check failed');
+  }
+  
+  return data as HealthCheckResponse;
 }
