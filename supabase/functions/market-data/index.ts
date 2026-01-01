@@ -4,7 +4,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 /**
  * Market Data Proxy Edge Function
  * 
- * Proxies requests to CoinGecko with in-memory caching to avoid rate limits
+ * Proxies requests to CoinGecko Pro API with in-memory caching
+ * Uses Pro API for higher rate limits (500 calls/min vs 10-30 for free)
  */
 
 const corsHeaders = {
@@ -12,6 +13,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
+
+// CoinGecko API configuration
+const COINGECKO_API_KEY = Deno.env.get('COINGECKO_API_KEY');
+const COINGECKO_BASE_URL = COINGECKO_API_KEY 
+  ? 'https://pro-api.coingecko.com/api/v3'
+  : 'https://api.coingecko.com/api/v3';
 
 interface TickerData {
   symbol: string;
@@ -30,15 +37,15 @@ interface CacheEntry {
   timestamp: number;
 }
 
-// In-memory cache with 30-second TTL
+// In-memory cache with 30-second TTL (can be shorter with Pro API)
 const cache: Map<string, CacheEntry> = new Map();
-const CACHE_TTL_MS = 30000; // 30 seconds
+const CACHE_TTL_MS = COINGECKO_API_KEY ? 15000 : 30000; // 15s with Pro, 30s with free
 
-// Rate limit tracking
+// Rate limit tracking (more lenient with Pro API)
 let lastApiCall = 0;
-const MIN_API_INTERVAL_MS = 1500; // Minimum 1.5s between API calls
+const MIN_API_INTERVAL_MS = COINGECKO_API_KEY ? 200 : 1500; // 200ms with Pro, 1.5s with free
 
-// Symbol to CoinGecko ID mapping
+console.log(`[MarketData] Using CoinGecko ${COINGECKO_API_KEY ? 'Pro' : 'Free'} API`);
 const COINGECKO_IDS: Record<string, string> = {
   // Major coins
   'BTC': 'bitcoin', 'BTCUSDT': 'bitcoin', 'BTCUSD': 'bitcoin',
@@ -181,7 +188,13 @@ async function rateLimitedFetch(url: string): Promise<Response> {
   }
   
   lastApiCall = Date.now();
-  return fetch(url, { headers: { 'Accept': 'application/json' } });
+  
+  const headers: Record<string, string> = { 'Accept': 'application/json' };
+  if (COINGECKO_API_KEY) {
+    headers['x-cg-pro-api-key'] = COINGECKO_API_KEY;
+  }
+  
+  return fetch(url, { headers });
 }
 
 // Fetch detailed data from CoinGecko markets endpoint with caching
@@ -193,9 +206,9 @@ async function fetchDetailedFromCoinGecko(coinIds: string[]): Promise<TickerData
   }
   
   const ids = coinIds.join(',');
-  const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}&order=market_cap_desc&sparkline=false&price_change_percentage=24h`;
+  const url = `${COINGECKO_BASE_URL}/coins/markets?vs_currency=usd&ids=${ids}&order=market_cap_desc&sparkline=false&price_change_percentage=24h`;
   
-  console.log(`[MarketData] CoinGecko markets fetch: ${url}`);
+  console.log(`[MarketData] CoinGecko markets fetch: ${url.replace(COINGECKO_API_KEY || '', '***')}`);
   const response = await rateLimitedFetch(url);
   
   if (!response.ok) {
@@ -242,9 +255,9 @@ async function fetchFromCoinGecko(coinIds: string[]): Promise<TickerData[]> {
   }
   
   const ids = coinIds.join(',');
-  const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_vol=true&include_24hr_change=true&include_last_updated_at=true`;
+  const url = `${COINGECKO_BASE_URL}/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_vol=true&include_24hr_change=true&include_last_updated_at=true`;
   
-  console.log(`[MarketData] CoinGecko simple fetch: ${url}`);
+  console.log(`[MarketData] CoinGecko simple fetch`);
   const response = await rateLimitedFetch(url);
   
   if (!response.ok) {

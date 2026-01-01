@@ -157,9 +157,9 @@ export function useLivePriceFeed({ symbols, enabled = true }: UseLivePriceFeedOp
     // Always do an initial fetch for immediate data
     pollPrices();
     
-    // If using fallback, poll every 2 seconds
+    // If using fallback, poll every 10 seconds to avoid rate limits
     if (usingFallback || !wsState.isConnected) {
-      fallbackIntervalRef.current = setInterval(pollPrices, 2000);
+      fallbackIntervalRef.current = setInterval(pollPrices, 10000);
     }
     
     return () => {
