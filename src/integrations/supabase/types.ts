@@ -1048,6 +1048,42 @@ export type Database = {
           },
         ]
       }
+      performance_metrics: {
+        Row: {
+          endpoint: string | null
+          error_message: string | null
+          function_name: string
+          id: string
+          latency_ms: number
+          metadata: Json | null
+          recorded_at: string
+          status_code: number | null
+          success: boolean
+        }
+        Insert: {
+          endpoint?: string | null
+          error_message?: string | null
+          function_name: string
+          id?: string
+          latency_ms: number
+          metadata?: Json | null
+          recorded_at?: string
+          status_code?: number | null
+          success?: boolean
+        }
+        Update: {
+          endpoint?: string | null
+          error_message?: string | null
+          function_name?: string
+          id?: string
+          latency_ms?: number
+          metadata?: Json | null
+          recorded_at?: string
+          status_code?: number | null
+          success?: boolean
+        }
+        Relationships: []
+      }
       positions: {
         Row: {
           book_id: string
@@ -1801,6 +1837,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_old_metrics: { Args: never; Returns: undefined }
       has_any_role: {
         Args: {
           _roles: Database["public"]["Enums"]["app_role"][]

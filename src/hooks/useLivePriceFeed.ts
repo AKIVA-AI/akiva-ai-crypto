@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useWebSocketManager } from './useWebSocketManager';
+import { supabase } from '@/integrations/supabase/client';
 import type { BinanceTickerMessage } from '@/types';
 
 export interface LivePrice {
@@ -36,41 +37,43 @@ const fromBinanceSymbol = (symbol: string): string => {
   return upper;
 };
 
-// REST API fallback for when WebSocket is blocked
+// REST API fallback using Edge Function proxy (avoids CORS issues)
 async function fetchPricesREST(symbols: string[]): Promise<Map<string, LivePrice>> {
   const prices = new Map<string, LivePrice>();
   
   try {
-    // Fetch 24hr ticker data for all symbols at once
-    const binanceSymbols = symbols.map(s => toBinanceSymbol(s).toUpperCase());
-    const url = `https://api.binance.com/api/v3/ticker/24hr?symbols=${encodeURIComponent(JSON.stringify(binanceSymbols))}`;
+    // Use our Edge Function proxy to fetch market data
+    const binanceSymbols = symbols.map(s => toBinanceSymbol(s).toUpperCase()).join(',');
     
-    const response = await fetch(url);
-    if (!response.ok) {
-      console.warn('[LivePriceFeed] REST API failed:', response.status);
+    const { data, error } = await supabase.functions.invoke('market-data', {
+      body: { symbols: binanceSymbols },
+      method: 'POST',
+    });
+    
+    if (error) {
+      console.warn('[LivePriceFeed] Edge function error:', error);
       return prices;
     }
     
-    const data = await response.json();
-    
-    for (const ticker of data) {
-      const symbol = fromBinanceSymbol(ticker.symbol);
-      prices.set(symbol, {
-        symbol,
-        price: parseFloat(ticker.lastPrice),
-        change24h: parseFloat(ticker.priceChangePercent),
-        volume24h: parseFloat(ticker.quoteVolume),
-        high24h: parseFloat(ticker.highPrice),
-        low24h: parseFloat(ticker.lowPrice),
-        bid: parseFloat(ticker.bidPrice),
-        ask: parseFloat(ticker.askPrice),
-        timestamp: Date.now(),
-      });
+    if (data?.tickers) {
+      for (const ticker of data.tickers) {
+        const symbol = fromBinanceSymbol(ticker.symbol);
+        prices.set(symbol, {
+          symbol,
+          price: ticker.price,
+          change24h: ticker.change24h,
+          volume24h: ticker.volume24h,
+          high24h: ticker.high24h,
+          low24h: ticker.low24h,
+          bid: ticker.bid,
+          ask: ticker.ask,
+          timestamp: ticker.timestamp,
+        });
+      }
+      console.log(`[LivePriceFeed] Proxy fetched ${prices.size} prices`);
     }
-    
-    console.log(`[LivePriceFeed] REST fallback fetched ${prices.size} prices`);
   } catch (error) {
-    console.error('[LivePriceFeed] REST API error:', error);
+    console.error('[LivePriceFeed] Proxy error:', error);
   }
   
   return prices;

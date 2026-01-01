@@ -1,5 +1,8 @@
 project_id = "amvakxshlojoshdfcqos"
 
+[functions.market-data]
+verify_jwt = false
+
 [functions.reallocate-capital]
 verify_jwt = true
 

@@ -47,7 +47,7 @@ serve(async (req) => {
       }
     }
 
-    // Handle detect_region action for server-side geo detection
+    // Handle detect_region action for server-side geo detection using MaxMind GeoLite2
     if (body.action === 'detect_region') {
       // Get client IP from headers
       const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() 
@@ -55,17 +55,80 @@ serve(async (req) => {
         || req.headers.get('x-real-ip')
         || 'unknown';
       
-      // For production, integrate with a geo-IP service
-      // This is a placeholder that defaults to international mode
-      // Server-side enforcement happens at trade execution regardless
       console.log(`[REGION DETECTION] Client IP: ${clientIp}`);
       
-      // NOTE: In production, use a server-side geo-IP service like MaxMind
-      // For now, we default to international - actual enforcement happens at trade time
+      // MaxMind GeoLite2 integration
+      const maxmindLicenseKey = Deno.env.get('MAXMIND_LICENSE_KEY');
+      
+      if (maxmindLicenseKey && clientIp && clientIp !== 'unknown') {
+        try {
+          // Use MaxMind GeoLite2 web service
+          const geoResponse = await fetch(
+            `https://geolite.info/geoip/v2.1/country/${clientIp}`,
+            {
+              headers: {
+                'Authorization': `Basic ${btoa(`${Deno.env.get('MAXMIND_ACCOUNT_ID') || '0'}:${maxmindLicenseKey}`)}`,
+              },
+            }
+          );
+          
+          if (geoResponse.ok) {
+            const geoData = await geoResponse.json();
+            const countryCode = geoData.country?.iso_code || 'Unknown';
+            const isUS = countryCode === 'US';
+            
+            console.log(`[REGION DETECTION] MaxMind result: ${countryCode}, isUS: ${isUS}`);
+            
+            // Log metric
+            await supabase.from('performance_metrics').insert({
+              function_name: 'trading-api',
+              endpoint: 'detect_region',
+              latency_ms: 0,
+              success: true,
+              metadata: { country: countryCode, isUS, source: 'maxmind' },
+            });
+            
+            return new Response(JSON.stringify({
+              country: countryCode,
+              countryName: geoData.country?.names?.en || countryCode,
+              continent: geoData.continent?.code,
+              isUS,
+              source: 'maxmind_geolite2',
+              note: isUS 
+                ? 'US location detected - some features restricted per US regulations'
+                : 'International location - full feature access',
+            }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          } else {
+            console.warn(`[REGION DETECTION] MaxMind API error: ${geoResponse.status}`);
+          }
+        } catch (e) {
+          console.error('[REGION DETECTION] MaxMind lookup failed:', e);
+        }
+      }
+      
+      // Fallback: Use Cloudflare headers if available
+      const cfCountry = req.headers.get('cf-ipcountry');
+      if (cfCountry) {
+        const isUS = cfCountry === 'US';
+        console.log(`[REGION DETECTION] Cloudflare fallback: ${cfCountry}, isUS: ${isUS}`);
+        
+        return new Response(JSON.stringify({
+          country: cfCountry,
+          isUS,
+          source: 'cloudflare',
+          note: isUS 
+            ? 'US location detected - some features restricted per US regulations'
+            : 'International location - full feature access',
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      
+      // Final fallback: Default to international (safe fallback)
+      console.log('[REGION DETECTION] No geo data available, defaulting to international');
       return new Response(JSON.stringify({
         country: 'Unknown',
         isUS: false,
-        note: 'Server-side geo detection - enforcement happens at trade execution',
+        source: 'fallback',
+        note: 'Could not determine location - defaulting to international access. Actual enforcement happens at trade execution.',
         clientIp: clientIp !== 'unknown' ? 'detected' : 'unknown',
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
