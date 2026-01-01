@@ -66,7 +66,16 @@ export function useOrderFlowAnalysis(
   config: Partial<OrderFlowConfig> = {},
   enabled: boolean = true
 ) {
-  const mergedConfig = { ...DEFAULT_CONFIG, ...config };
+  // Memoize config to prevent infinite re-renders
+  const mergedConfig = useMemo(() => ({ ...DEFAULT_CONFIG, ...config }), [
+    config.imbalanceThreshold,
+    config.lookbackTrades,
+    config.largeTradeThreshold,
+    config.signalDecayMs,
+    config.aggressiveWeight,
+    config.passiveWeight,
+  ]);
+  
   const [trades, setTrades] = useState<Trade[]>([]);
   const [metrics, setMetrics] = useState<OrderFlowMetrics | null>(null);
   const lastCalculationRef = useRef<number>(0);
