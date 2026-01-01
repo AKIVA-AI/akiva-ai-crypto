@@ -45,86 +45,55 @@ function toApiSymbol(symbol: string): string {
   return symbol.replace('-', '').toUpperCase();
 }
 
-// Fetch kline data from edge function
-async function fetchKlineData(symbol: string, interval: string): Promise<CandlestickData<Time>[]> {
+// Fetch kline data from edge function – includes volume
+async function fetchKlineData(
+  symbol: string,
+  interval: string
+): Promise<{ candles: CandlestickData<Time>[]; volumes: number[] }> {
   try {
     const apiSymbol = toApiSymbol(symbol);
     const { data, error } = await supabase.functions.invoke('market-data', {
       body: { symbol: apiSymbol, interval, endpoint: 'klines' },
       method: 'POST',
     });
-    
-    if (error || !data?.candles) {
+
+    if (error || !data?.candles || data.candles.length === 0) {
       console.warn('[Chart] Failed to fetch klines:', error);
-      return [];
+      return { candles: [], volumes: [] };
     }
-    
-    return data.candles.map((c: any) => ({
+
+    const candles: CandlestickData<Time>[] = data.candles.map((c: any) => ({
       time: Math.floor(c.time / 1000) as Time,
       open: c.open,
       high: c.high,
       low: c.low,
       close: c.close,
     }));
+
+    const volumes: number[] = data.candles.map((c: any) => c.volume ?? 0);
+
+    return { candles, volumes };
   } catch (err) {
     console.error('[Chart] Kline fetch error:', err);
-    return [];
+    return { candles: [], volumes: [] };
   }
 }
 
-// Generate fallback OHLC data when API fails
-function generateCandlestickData(basePrice: number, numCandles: number = 100): CandlestickData<Time>[] {
-  const data: CandlestickData<Time>[] = [];
-  let currentPrice = basePrice;
-  const now = Math.floor(Date.now() / 1000);
-  const candleInterval = 3600;
-
-  for (let i = numCandles; i >= 0; i--) {
-    const time = (now - i * candleInterval) as Time;
-    const volatility = 0.02;
-    const trend = Math.sin(i / 20) * 0.001;
-    
-    const change = (Math.random() - 0.5) * 2 * volatility + trend;
-    const open = currentPrice;
-    const close = open * (1 + change);
-    const high = Math.max(open, close) * (1 + Math.random() * volatility * 0.5);
-    const low = Math.min(open, close) * (1 - Math.random() * volatility * 0.5);
-    
-    data.push({
-      time,
-      open: Number(open.toFixed(2)),
-      high: Number(high.toFixed(2)),
-      low: Number(low.toFixed(2)),
-      close: Number(close.toFixed(2)),
-    });
-    
-    currentPrice = close;
-  }
-
-  return data;
-}
-
-// Volume data generation
-function generateVolumeData(candleData: CandlestickData<Time>[]): { time: Time; value: number; color: string }[] {
-  return candleData.map((candle) => ({
+// Volume bars derived from candle data
+function deriveVolumeData(
+  candleData: CandlestickData<Time>[],
+  volumeRaw: number[]
+): { time: Time; value: number; color: string }[] {
+  return candleData.map((candle, i) => ({
     time: candle.time,
-    value: Math.random() * 1000000 + 500000,
-    color: candle.close >= candle.open 
-      ? 'rgba(34, 197, 94, 0.5)' 
-      : 'rgba(239, 68, 68, 0.5)',
+    value: volumeRaw[i] ?? 0,
+    color:
+      candle.close >= candle.open
+        ? 'rgba(34, 197, 94, 0.5)'
+        : 'rgba(239, 68, 68, 0.5)',
   }));
 }
-
-const BASE_PRICES: Record<string, number> = {
-  'BTC-USDT': 87000,
-  'ETH-USDT': 2980,
-  'SOL-USDT': 125,
-  'ARB-USDT': 0.80,
-  'OP-USDT': 1.50,
-  'AVAX-USDT': 12,
-  'MATIC-USDT': 0,
-  'LINK-USDT': 12,
-};
+// REMOVED: BASE_PRICES constant – no longer needed since we don't generate fake data
 
 export function TradingViewChart({ 
   symbol = 'BTC-USDT', 
@@ -251,65 +220,47 @@ export function TradingViewChart({
 
     const loadData = async () => {
       setIsLoading(true);
-      
-      // Try to fetch real data from API
-      let candleData = await fetchKlineData(currentSymbol, timeframe);
-      
-      // Fall back to generated data if API fails
-      if (candleData.length === 0) {
-        const basePrice = BASE_PRICES[currentSymbol] || 100;
-        candleData = generateCandlestickData(basePrice);
-      }
-      
-      const volumeData = generateVolumeData(candleData);
+      setChartError(null);
 
-      candlestickSeriesRef.current?.setData(candleData);
+      // Fetch real data only
+      const { candles, volumes } = await fetchKlineData(currentSymbol, timeframe);
+
+      if (candles.length === 0) {
+        // No data available – show error state
+        setChartError(`No chart data for ${currentSymbol}`);
+        candlestickSeriesRef.current?.setData([]);
+        volumeSeriesRef.current?.setData([]);
+        setLastPrice(null);
+        setPriceChange(0);
+        setIsLoading(false);
+        return;
+      }
+
+      const volumeData = deriveVolumeData(candles, volumes);
+
+      candlestickSeriesRef.current?.setData(candles);
       volumeSeriesRef.current?.setData(volumeData);
 
       // Set last price and change
-      if (candleData.length >= 2) {
-        const last = candleData[candleData.length - 1];
-        const prev = candleData[candleData.length - 2];
+      if (candles.length >= 2) {
+        const last = candles[candles.length - 1];
+        const prev = candles[candles.length - 2];
         setLastPrice(last.close);
         setPriceChange(((last.close - prev.close) / prev.close) * 100);
+      } else if (candles.length === 1) {
+        setLastPrice(candles[0].close);
+        setPriceChange(0);
       }
 
       // Fit content
       chartRef.current?.timeScale().fitContent();
       setIsLoading(false);
     };
-    
+
     loadData();
   }, [currentSymbol, timeframe]);
 
-  // Real-time updates
-  useEffect(() => {
-    if (!candlestickSeriesRef.current) return;
-
-    const interval = setInterval(() => {
-      const basePrice = BASE_PRICES[currentSymbol] || 100;
-      const now = Math.floor(Date.now() / 1000) as Time;
-      const volatility = 0.001;
-      const currentPrice = lastPrice || basePrice;
-      
-      const change = (Math.random() - 0.5) * 2 * volatility;
-      const newPrice = currentPrice * (1 + change);
-      const high = Math.max(currentPrice, newPrice) * (1 + Math.random() * volatility * 0.2);
-      const low = Math.min(currentPrice, newPrice) * (1 - Math.random() * volatility * 0.2);
-
-      candlestickSeriesRef.current?.update({
-        time: now,
-        open: currentPrice,
-        high,
-        low,
-        close: newPrice,
-      });
-
-      setLastPrice(newPrice);
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, [currentSymbol, lastPrice]);
+  // REMOVED: Fake real-time updates – only real data now
 
   const handleSymbolChange = (value: string) => {
     setCurrentSymbol(value);
@@ -318,18 +269,23 @@ export function TradingViewChart({
 
   const handleRefresh = useCallback(async () => {
     if (!candlestickSeriesRef.current || !volumeSeriesRef.current) return;
-    
+
     setIsLoading(true);
-    let candleData = await fetchKlineData(currentSymbol, timeframe);
-    
-    if (candleData.length === 0) {
-      const basePrice = BASE_PRICES[currentSymbol] || 100;
-      candleData = generateCandlestickData(basePrice);
+    setChartError(null);
+
+    const { candles, volumes } = await fetchKlineData(currentSymbol, timeframe);
+
+    if (candles.length === 0) {
+      setChartError(`No chart data for ${currentSymbol}`);
+      candlestickSeriesRef.current?.setData([]);
+      volumeSeriesRef.current?.setData([]);
+      setIsLoading(false);
+      return;
     }
-    
-    const volumeData = generateVolumeData(candleData);
-    
-    candlestickSeriesRef.current?.setData(candleData);
+
+    const volumeData = deriveVolumeData(candles, volumes);
+
+    candlestickSeriesRef.current?.setData(candles);
     volumeSeriesRef.current?.setData(volumeData);
     chartRef.current?.timeScale().fitContent();
     setIsLoading(false);
