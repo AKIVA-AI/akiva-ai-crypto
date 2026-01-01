@@ -49,15 +49,20 @@ const DEFAULT_SYMBOLS = [
 ];
 
 // Symbol format conversion
-function toDisplaySymbol(apiSymbol: string): string {
-  const upper = apiSymbol.toUpperCase();
+function toDisplaySymbol(input: string): string {
+  const upper = input.toUpperCase().replace('/', '-');
+
+  // If already in display format, just normalize any accidental double-dashes
+  if (upper.includes('-')) return upper.replace(/--+/g, '-');
+
   if (upper.endsWith('USDT')) return upper.replace('USDT', '-USDT');
   if (upper.endsWith('BTC')) return upper.replace('BTC', '-BTC');
   return upper;
 }
 
-function toApiSymbol(displaySymbol: string): string {
-  return displaySymbol.replace('-', '').toUpperCase();
+function toApiSymbol(input: string): string {
+  // Remove common separators and normalize case
+  return input.toUpperCase().replace(/[-/]/g, '');
 }
 
 interface Props {
@@ -76,7 +81,15 @@ export function MarketDataProvider({ children, refreshInterval = 5000 }: Props) 
     error: null,
   });
 
-  const subscribedSymbols = useRef<Set<string>>(new Set(DEFAULT_SYMBOLS));
+  // Pinned symbols are ALWAYS tracked and cannot be unsubscribed (prevents "$0" regressions)
+  const pinnedSymbols = useRef<Set<string>>(new Set(DEFAULT_SYMBOLS));
+  // Dynamic symbols come from mounted screens/widgets
+  const dynamicSymbols = useRef<Set<string>>(new Set());
+
+  const getSubscribedApiSymbols = useCallback(() => {
+    return new Set([...pinnedSymbols.current, ...dynamicSymbols.current]);
+  }, []);
+
   const fetchInProgress = useRef(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastFetchTime = useRef(0);
@@ -100,8 +113,12 @@ export function MarketDataProvider({ children, refreshInterval = 5000 }: Props) 
     lastFetchTime.current = now;
 
     try {
-      const symbols = Array.from(subscribedSymbols.current).join(',');
-      
+      const symbols = Array.from(getSubscribedApiSymbols()).join(',');
+      if (!symbols) {
+        setState(prev => ({ ...prev, isLoading: false }));
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke('market-data', {
         body: { symbols },
         method: 'POST',
@@ -115,7 +132,7 @@ export function MarketDataProvider({ children, refreshInterval = 5000 }: Props) 
 
       if (data?.tickers) {
         const newTickers = new Map<string, MarketTicker>();
-        
+
         for (const ticker of data.tickers) {
           const displaySymbol = toDisplaySymbol(ticker.symbol);
           newTickers.set(displaySymbol, {
@@ -123,8 +140,8 @@ export function MarketDataProvider({ children, refreshInterval = 5000 }: Props) 
             price: ticker.price,
             change24h: ticker.change24h,
             volume24h: ticker.volume24h,
-            high24h: ticker.high24h,
-            low24h: ticker.low24h,
+            high24h: ticker.high24h ?? ticker.price,
+            low24h: ticker.low24h ?? ticker.price,
             bid: ticker.bid,
             ask: ticker.ask,
             timestamp: ticker.timestamp,
@@ -146,15 +163,15 @@ export function MarketDataProvider({ children, refreshInterval = 5000 }: Props) 
       }
     } catch (err) {
       console.error('[MarketData] Fetch error:', err);
-      setState(prev => ({ 
-        ...prev, 
+      setState(prev => ({
+        ...prev,
         error: err instanceof Error ? err.message : 'Unknown error',
         isLoading: false,
       }));
     } finally {
       fetchInProgress.current = false;
     }
-  }, []);
+  }, [getSubscribedApiSymbols]);
 
   // Initial fetch and interval setup
   useEffect(() => {
@@ -175,7 +192,7 @@ export function MarketDataProvider({ children, refreshInterval = 5000 }: Props) 
 
   const getTicker = useCallback((symbol: string): MarketTicker | undefined => {
     // Try both display format and API format
-    return state.tickers.get(symbol) || state.tickers.get(toDisplaySymbol(symbol));
+    return state.tickers.get(toDisplaySymbol(symbol)) || state.tickers.get(symbol);
   }, [state.tickers]);
 
   const getAllTickers = useCallback((): MarketTicker[] => {
@@ -190,8 +207,9 @@ export function MarketDataProvider({ children, refreshInterval = 5000 }: Props) 
     let changed = false;
     for (const symbol of symbols) {
       const apiSymbol = toApiSymbol(symbol);
-      if (!subscribedSymbols.current.has(apiSymbol)) {
-        subscribedSymbols.current.add(apiSymbol);
+      if (pinnedSymbols.current.has(apiSymbol)) continue;
+      if (!dynamicSymbols.current.has(apiSymbol)) {
+        dynamicSymbols.current.add(apiSymbol);
         changed = true;
       }
     }
@@ -202,7 +220,7 @@ export function MarketDataProvider({ children, refreshInterval = 5000 }: Props) 
 
   const unsubscribe = useCallback((symbols: string[]) => {
     for (const symbol of symbols) {
-      subscribedSymbols.current.delete(toApiSymbol(symbol));
+      dynamicSymbols.current.delete(toApiSymbol(symbol));
     }
   }, []);
 

@@ -56,17 +56,17 @@ const TabLoadingSkeleton = () => (
 
 interface MarketTicker {
   symbol: string;
-  price: number;
-  change24h: number;
-  volume24h: number;
-  high24h: number;
-  low24h: number;
+  price: number | null;
+  change24h: number | null;
+  volume24h: number | null;
+  high24h: number | null;
+  low24h: number | null;
   isFavorite?: boolean;
 }
 
 const TRACKED_SYMBOLS = [
   'BTC-USDT',
-  'ETH-USDT', 
+  'ETH-USDT',
   'SOL-USDT',
   'ARB-USDT',
   'OP-USDT',
@@ -95,30 +95,31 @@ export default function Markets() {
   const { data: hlHealth } = useHyperliquidHealth();
 
   // Use centralized market data provider
-  const { 
-    tickers,
+  const {
+    getTicker,
     isLoading,
     lastUpdate,
     source: dataSource,
     latencyMs: apiLatency,
     refresh: forceRefresh,
+    error: marketDataError,
   } = useMarketData();
 
   // Convert tickers map to market data format
   const marketData: MarketTicker[] = useMemo(() => {
     return TRACKED_SYMBOLS.map(symbol => {
-      const ticker = tickers.get(symbol);
+      const ticker = getTicker(symbol);
       return {
         symbol,
-        price: ticker?.price || 0,
-        change24h: ticker?.change24h || 0,
-        volume24h: ticker?.volume24h || 0,
-        high24h: ticker?.high24h || 0,
-        low24h: ticker?.low24h || 0,
+        price: ticker?.price ?? null,
+        change24h: ticker?.change24h ?? null,
+        volume24h: ticker?.volume24h ?? null,
+        high24h: ticker?.high24h ?? null,
+        low24h: ticker?.low24h ?? null,
         isFavorite: FAVORITES.has(symbol),
       };
     });
-  }, [tickers]);
+  }, [getTicker]);
 
   const filteredMarkets = marketData.filter(market => {
     const matchesSearch = market.symbol.toLowerCase().includes(searchQuery.toLowerCase());
@@ -251,20 +252,40 @@ export default function Markets() {
                         {market.isFavorite && <Star className="h-3 w-3 text-warning fill-warning" />}
                         <span className="font-semibold">{market.symbol}</span>
                       </div>
-                      <span className={cn(
-                        'text-xs font-medium flex items-center gap-0.5',
-                        market.change24h >= 0 ? 'text-trading-long' : 'text-trading-short'
-                      )}>
-                        {market.change24h >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                        {market.change24h >= 0 ? '+' : ''}{market.change24h.toFixed(2)}%
-                      </span>
+
+                      {typeof market.change24h === 'number' ? (
+                        <span
+                          className={cn(
+                            'text-xs font-medium flex items-center gap-0.5',
+                            market.change24h >= 0 ? 'text-trading-long' : 'text-trading-short'
+                          )}
+                        >
+                          {market.change24h >= 0 ? (
+                            <TrendingUp className="h-3 w-3" />
+                          ) : (
+                            <TrendingDown className="h-3 w-3" />
+                          )}
+                          {market.change24h >= 0 ? '+' : ''}
+                          {market.change24h.toFixed(2)}%
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="font-mono text-sm">
-                        ${market.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {typeof market.price === 'number' && market.price > 0 ? (
+                          <>${market.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>
+                        ) : isLoading ? (
+                          <span className="text-muted-foreground">Loading…</span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        Vol: ${(market.volume24h / 1000000).toFixed(0)}M
+                        {typeof market.volume24h === 'number' && market.volume24h > 0
+                          ? `Vol: ${(market.volume24h / 1000000).toFixed(0)}M`
+                          : 'Vol: —'}
                       </span>
                     </div>
                   </button>
@@ -284,15 +305,27 @@ export default function Markets() {
                       <h2 className="text-xl font-bold">{selectedMarket.symbol}</h2>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-2xl font-mono font-bold">
-                          ${selectedMarket.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          {typeof selectedMarket.price === 'number' && selectedMarket.price > 0 ? (
+                            <>${selectedMarket.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</>
+                          ) : isLoading ? (
+                            <span className="text-muted-foreground">Loading…</span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
                         </span>
-                        <Badge className={cn(
-                          selectedMarket.change24h >= 0 
-                            ? 'bg-trading-long/20 text-trading-long' 
-                            : 'bg-trading-short/20 text-trading-short'
-                        )}>
-                          {selectedMarket.change24h >= 0 ? '+' : ''}{selectedMarket.change24h.toFixed(2)}%
-                        </Badge>
+
+                        {typeof selectedMarket.change24h === 'number' && (
+                          <Badge
+                            className={cn(
+                              selectedMarket.change24h >= 0
+                                ? 'bg-trading-long/20 text-trading-long'
+                                : 'bg-trading-short/20 text-trading-short'
+                            )}
+                          >
+                            {selectedMarket.change24h >= 0 ? '+' : ''}
+                            {selectedMarket.change24h.toFixed(2)}%
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -301,19 +334,25 @@ export default function Markets() {
                     <div className="text-center">
                       <p className="text-xs text-muted-foreground">24h High</p>
                       <p className="font-mono font-medium text-trading-long">
-                        ${selectedMarket.high24h.toLocaleString()}
+                        {typeof selectedMarket.high24h === 'number' && selectedMarket.high24h > 0
+                          ? `$${selectedMarket.high24h.toLocaleString()}`
+                          : '—'}
                       </p>
                     </div>
                     <div className="text-center">
                       <p className="text-xs text-muted-foreground">24h Low</p>
                       <p className="font-mono font-medium text-trading-short">
-                        ${selectedMarket.low24h.toLocaleString()}
+                        {typeof selectedMarket.low24h === 'number' && selectedMarket.low24h > 0
+                          ? `$${selectedMarket.low24h.toLocaleString()}`
+                          : '—'}
                       </p>
                     </div>
                     <div className="text-center">
                       <p className="text-xs text-muted-foreground">24h Volume</p>
                       <p className="font-mono font-medium">
-                        ${(selectedMarket.volume24h / 1000000000).toFixed(2)}B
+                        {typeof selectedMarket.volume24h === 'number' && selectedMarket.volume24h > 0
+                          ? `$${(selectedMarket.volume24h / 1000000000).toFixed(2)}B`
+                          : '—'}
                       </p>
                     </div>
                     <Button 
