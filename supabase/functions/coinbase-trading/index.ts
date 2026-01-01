@@ -25,18 +25,114 @@ interface OrderRequest {
   clientOrderId?: string;
 }
 
-async function base64ToUint8Array(base64: string): Promise<Uint8Array> {
-  // Deno provides atob/btoa for base64 <-> binary string
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
+// Parse PEM EC private key to raw key bytes
+function pemToBytes(pem: string): Uint8Array {
+  // Handle escaped newlines from environment variables
+  let normalizedPem = pem
+    .replace(/\\n/g, '\n')  // Replace literal \n with actual newlines
+    .replace(/\\r/g, '')    // Remove any \r
+    .trim();
+  
+  // Remove PEM headers and all whitespace
+  const pemContents = normalizedPem
+    .replace(/-----BEGIN EC PRIVATE KEY-----/g, '')
+    .replace(/-----END EC PRIVATE KEY-----/g, '')
+    .replace(/-----BEGIN PRIVATE KEY-----/g, '')
+    .replace(/-----END PRIVATE KEY-----/g, '')
+    .replace(/[\s\n\r]/g, '');
+  
+  console.log('[Coinbase] PEM content length:', pemContents.length);
+  
+  if (!pemContents || pemContents.length === 0) {
+    throw new Error('Empty PEM content after parsing');
   }
-  return bytes;
+  
+  // Decode base64
+  try {
+    const binary = atob(pemContents);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+  } catch (e) {
+    console.error('[Coinbase] Base64 decode error. Content preview:', pemContents.substring(0, 50));
+    throw new Error('Failed to decode base64');
+  }
 }
 
-// Generate Coinbase Advanced Trade API signature using Web Crypto API
-async function generateSignature(
+// Generate JWT token for Coinbase CDP API (new key format)
+async function generateJWT(
+  apiKeyName: string,
+  privateKeyPem: string,
+  requestMethod: string,
+  requestPath: string
+): Promise<string> {
+  const header = {
+    alg: 'ES256',
+    typ: 'JWT',
+    kid: apiKeyName,
+    nonce: crypto.randomUUID(),
+  };
+  
+  const now = Math.floor(Date.now() / 1000);
+  const uri = `${requestMethod.toUpperCase()} api.coinbase.com${requestPath}`;
+  
+  const payload = {
+    iss: 'cdp',
+    sub: apiKeyName,
+    nbf: now,
+    exp: now + 120, // 2 minute expiry
+    aud: ['retail_rest_api_proxy'],
+    uri,
+  };
+  
+  // Base64URL encode header and payload
+  const encoder = new TextEncoder();
+  const headerB64 = btoa(JSON.stringify(header)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+  const payloadB64 = btoa(JSON.stringify(payload)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+  
+  const message = `${headerB64}.${payloadB64}`;
+  
+  try {
+    // Import the EC private key - convert to ArrayBuffer for compatibility
+    const keyBytes = pemToBytes(privateKeyPem);
+    const keyBuffer = keyBytes.buffer.slice(keyBytes.byteOffset, keyBytes.byteOffset + keyBytes.byteLength) as ArrayBuffer;
+    
+    const privateKey = await crypto.subtle.importKey(
+      'pkcs8',
+      keyBuffer,
+      { name: 'ECDSA', namedCurve: 'P-256' },
+      false,
+      ['sign']
+    );
+    
+    // Sign the message
+    const messageBuffer = encoder.encode(message);
+    const msgArrayBuffer = messageBuffer.buffer.slice(messageBuffer.byteOffset, messageBuffer.byteOffset + messageBuffer.byteLength) as ArrayBuffer;
+    const signature = await crypto.subtle.sign(
+      { name: 'ECDSA', hash: 'SHA-256' },
+      privateKey,
+      msgArrayBuffer
+    );
+    
+    // Convert signature to base64url
+    const sigBytes = new Uint8Array(signature);
+    let sigBinary = '';
+    for (let i = 0; i < sigBytes.length; i++) {
+      sigBinary += String.fromCharCode(sigBytes[i]);
+    }
+    const signatureB64 = btoa(sigBinary).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+    
+    return `${message}.${signatureB64}`;
+  } catch (error) {
+    console.error('JWT generation error:', error);
+    throw new Error(`Failed to generate JWT: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+// Legacy HMAC signature for old-style API keys
+async function generateLegacySignature(
   secret: string,
   timestamp: string,
   method: string,
@@ -44,39 +140,47 @@ async function generateSignature(
   body: string = ''
 ): Promise<string> {
   const message = timestamp + method.toUpperCase() + requestPath + body;
-
-  // Coinbase API secrets are commonly provided as base64 strings.
-  // If decoding fails, fall back to using the raw secret as-is.
+  const encoder = new TextEncoder();
+  
+  // Try base64 decode first, then fall back to raw
   let secretKeyBytes: Uint8Array;
   try {
-    secretKeyBytes = await base64ToUint8Array(secret);
+    const binary = atob(secret);
+    secretKeyBytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      secretKeyBytes[i] = binary.charCodeAt(i);
+    }
   } catch {
-    secretKeyBytes = new TextEncoder().encode(secret);
+    secretKeyBytes = encoder.encode(secret);
   }
 
-  const encoder = new TextEncoder();
-
-  // Ensure we pass a plain ArrayBuffer (Deno types can treat Uint8Array buffers as ArrayBufferLike)
-  const keyData = new ArrayBuffer(secretKeyBytes.byteLength);
-  new Uint8Array(keyData).set(secretKeyBytes);
-
+  // Convert to ArrayBuffer for compatibility
+  const keyBuffer = secretKeyBytes.buffer.slice(secretKeyBytes.byteOffset, secretKeyBytes.byteOffset + secretKeyBytes.byteLength) as ArrayBuffer;
+  
   const key = await crypto.subtle.importKey(
     'raw',
-    keyData,
+    keyBuffer,
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign']
   );
 
-  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(message));
-
-  // Convert ArrayBuffer to base64
+  const msgBytes = encoder.encode(message);
+  const msgBuffer = msgBytes.buffer.slice(msgBytes.byteOffset, msgBytes.byteOffset + msgBytes.byteLength) as ArrayBuffer;
+  const signature = await crypto.subtle.sign('HMAC', key, msgBuffer);
   const signatureBytes = new Uint8Array(signature);
   let binary = '';
   for (let i = 0; i < signatureBytes.length; i++) {
     binary += String.fromCharCode(signatureBytes[i]);
   }
   return btoa(binary);
+}
+
+// Detect if using new CDP keys (EC/EdDSA private key format)
+function isNewCDPKey(secret: string): boolean {
+  // Normalize escaped newlines first
+  const normalized = secret.replace(/\\n/g, '\n');
+  return normalized.includes('-----BEGIN') && normalized.includes('PRIVATE KEY-----');
 }
 
 // Make authenticated request to Coinbase
@@ -86,23 +190,34 @@ async function coinbaseRequest(
   path: string,
   body?: object
 ): Promise<any> {
-  const timestamp = Math.floor(Date.now() / 1000).toString();
   const bodyString = body ? JSON.stringify(body) : '';
   
-  const signature = await generateSignature(
+  let headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  
+  // Check if using new CDP keys (EC/EdDSA private key) or legacy API keys
+  if (isNewCDPKey(credentials.apiSecret)) {
+    // New CDP API keys use EdDSA which isn't supported in Web Crypto
+    // Inform user they need legacy API keys
+    console.error('[Coinbase] CDP API keys (with EC/EdDSA private key) are not yet supported.');
+    console.error('[Coinbase] Please use legacy API keys from https://www.coinbase.com/settings/api');
+    throw new Error('CDP API keys not supported. Please use legacy API keys from coinbase.com/settings/api (not CDP portal)');
+  }
+  
+  // Legacy API - use HMAC signature
+  console.log('[Coinbase] Using legacy HMAC authentication');
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const signature = await generateLegacySignature(
     credentials.apiSecret,
     timestamp,
     method,
     path,
     bodyString
   );
-  
-  const headers: Record<string, string> = {
-    'CB-ACCESS-KEY': credentials.apiKey,
-    'CB-ACCESS-SIGN': signature,
-    'CB-ACCESS-TIMESTAMP': timestamp,
-    'Content-Type': 'application/json',
-  };
+  headers['CB-ACCESS-KEY'] = credentials.apiKey;
+  headers['CB-ACCESS-SIGN'] = signature;
+  headers['CB-ACCESS-TIMESTAMP'] = timestamp;
   
   const response = await fetch(`${COINBASE_API_URL}${path}`, {
     method,
