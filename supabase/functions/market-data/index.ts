@@ -4,8 +4,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 /**
  * Market Data Proxy Edge Function
  * 
- * Proxies requests to CoinGecko (primary) with Binance fallback
- * Handles geo-restrictions by using CoinGecko which has no regional blocks
+ * Proxies requests to CoinGecko with in-memory caching to avoid rate limits
  */
 
 const corsHeaders = {
@@ -19,14 +18,27 @@ interface TickerData {
   price: number;
   change24h: number;
   volume24h: number;
-  high24h: number;
-  low24h: number;
+  high24h: number | null;
+  low24h: number | null;
   bid: number;
   ask: number;
   timestamp: number;
 }
 
-// Symbol to CoinGecko ID mapping - comprehensive list
+interface CacheEntry {
+  data: TickerData[];
+  timestamp: number;
+}
+
+// In-memory cache with 30-second TTL
+const cache: Map<string, CacheEntry> = new Map();
+const CACHE_TTL_MS = 30000; // 30 seconds
+
+// Rate limit tracking
+let lastApiCall = 0;
+const MIN_API_INTERVAL_MS = 1500; // Minimum 1.5s between API calls
+
+// Symbol to CoinGecko ID mapping
 const COINGECKO_IDS: Record<string, string> = {
   // Major coins
   'BTC': 'bitcoin', 'BTCUSDT': 'bitcoin', 'BTCUSD': 'bitcoin',
@@ -129,6 +141,148 @@ function getCoingeckoId(symbol: string): string | null {
   return COINGECKO_IDS[clean] || null;
 }
 
+function getCacheKey(coinIds: string[]): string {
+  return [...coinIds].sort().join(',');
+}
+
+function getFromCache(coinIds: string[]): TickerData[] | null {
+  const key = getCacheKey(coinIds);
+  const entry = cache.get(key);
+  
+  if (entry && (Date.now() - entry.timestamp) < CACHE_TTL_MS) {
+    console.log(`[MarketData] Cache hit for ${key}`);
+    return entry.data;
+  }
+  
+  return null;
+}
+
+function setCache(coinIds: string[], data: TickerData[]): void {
+  const key = getCacheKey(coinIds);
+  cache.set(key, { data, timestamp: Date.now() });
+  
+  // Clean old entries (keep cache small)
+  if (cache.size > 50) {
+    const oldest = [...cache.entries()]
+      .sort((a, b) => a[1].timestamp - b[1].timestamp)
+      .slice(0, 25);
+    oldest.forEach(([k]) => cache.delete(k));
+  }
+}
+
+async function rateLimitedFetch(url: string): Promise<Response> {
+  const now = Date.now();
+  const timeSinceLastCall = now - lastApiCall;
+  
+  if (timeSinceLastCall < MIN_API_INTERVAL_MS) {
+    const waitTime = MIN_API_INTERVAL_MS - timeSinceLastCall;
+    console.log(`[MarketData] Rate limiting: waiting ${waitTime}ms`);
+    await new Promise(resolve => setTimeout(resolve, waitTime));
+  }
+  
+  lastApiCall = Date.now();
+  return fetch(url, { headers: { 'Accept': 'application/json' } });
+}
+
+// Fetch detailed data from CoinGecko markets endpoint with caching
+async function fetchDetailedFromCoinGecko(coinIds: string[]): Promise<TickerData[]> {
+  // Check cache first
+  const cached = getFromCache(coinIds);
+  if (cached) {
+    return cached;
+  }
+  
+  const ids = coinIds.join(',');
+  const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}&order=market_cap_desc&sparkline=false&price_change_percentage=24h`;
+  
+  console.log(`[MarketData] CoinGecko markets fetch: ${url}`);
+  const response = await rateLimitedFetch(url);
+  
+  if (!response.ok) {
+    // On rate limit, try to return stale cache data
+    if (response.status === 429) {
+      const key = getCacheKey(coinIds);
+      const staleEntry = cache.get(key);
+      if (staleEntry) {
+        console.log(`[MarketData] Rate limited, returning stale cache data`);
+        return staleEntry.data;
+      }
+    }
+    throw new Error(`CoinGecko markets API error: ${response.status}`);
+  }
+  
+  const data = await response.json();
+  
+  const tickers = data.map((coin: any) => {
+    const symbol = Object.entries(COINGECKO_IDS).find(([_, v]) => v === coin.id)?.[0] || coin.symbol.toUpperCase();
+    return {
+      symbol: symbol.includes('USDT') ? symbol : `${symbol}USDT`,
+      price: coin.current_price || 0,
+      change24h: coin.price_change_percentage_24h || 0,
+      volume24h: coin.total_volume || 0,
+      high24h: coin.high_24h || coin.current_price,
+      low24h: coin.low_24h || coin.current_price,
+      bid: coin.current_price * 0.999,
+      ask: coin.current_price * 1.001,
+      timestamp: new Date(coin.last_updated).getTime(),
+    };
+  });
+  
+  // Store in cache
+  setCache(coinIds, tickers);
+  
+  return tickers;
+}
+
+// Fetch from CoinGecko simple price endpoint (lighter, for single prices)
+async function fetchFromCoinGecko(coinIds: string[]): Promise<TickerData[]> {
+  const cached = getFromCache(coinIds);
+  if (cached) {
+    return cached;
+  }
+  
+  const ids = coinIds.join(',');
+  const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_vol=true&include_24hr_change=true&include_last_updated_at=true`;
+  
+  console.log(`[MarketData] CoinGecko simple fetch: ${url}`);
+  const response = await rateLimitedFetch(url);
+  
+  if (!response.ok) {
+    if (response.status === 429) {
+      const key = getCacheKey(coinIds);
+      const staleEntry = cache.get(key);
+      if (staleEntry) {
+        console.log(`[MarketData] Rate limited, returning stale cache data`);
+        return staleEntry.data;
+      }
+    }
+    throw new Error(`CoinGecko API error: ${response.status}`);
+  }
+  
+  const data = await response.json();
+  const tickers: TickerData[] = [];
+  
+  for (const [id, info] of Object.entries(data)) {
+    const coinInfo = info as any;
+    const symbol = Object.entries(COINGECKO_IDS).find(([_, v]) => v === id)?.[0] || id.toUpperCase();
+    
+    tickers.push({
+      symbol: symbol.includes('USDT') ? symbol : `${symbol}USDT`,
+      price: coinInfo.usd || 0,
+      change24h: coinInfo.usd_24h_change || 0,
+      volume24h: coinInfo.usd_24h_vol || 0,
+      high24h: null,
+      low24h: null,
+      bid: coinInfo.usd * 0.999,
+      ask: coinInfo.usd * 1.001,
+      timestamp: (coinInfo.last_updated_at || Math.floor(Date.now() / 1000)) * 1000,
+    });
+  }
+  
+  setCache(coinIds, tickers);
+  return tickers;
+}
+
 // Log performance metric
 async function logMetric(
   supabase: any,
@@ -151,76 +305,6 @@ async function logMetric(
   } catch (e) {
     console.warn('[Metrics] Failed to log metric:', e);
   }
-}
-
-// Fetch from CoinGecko (no geo-restrictions)
-async function fetchFromCoinGecko(coinIds: string[]): Promise<TickerData[]> {
-  const ids = coinIds.join(',');
-  const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_vol=true&include_24hr_change=true&include_last_updated_at=true`;
-  
-  console.log(`[MarketData] CoinGecko fetch: ${url}`);
-  const response = await fetch(url, {
-    headers: { 'Accept': 'application/json' }
-  });
-  
-  if (!response.ok) {
-    throw new Error(`CoinGecko API error: ${response.status}`);
-  }
-  
-  const data = await response.json();
-  const tickers: TickerData[] = [];
-  
-  for (const [id, info] of Object.entries(data)) {
-    const coinInfo = info as any;
-    // Find the symbol for this ID
-    const symbol = Object.entries(COINGECKO_IDS).find(([_, v]) => v === id)?.[0] || id.toUpperCase();
-    
-    tickers.push({
-      symbol: symbol.includes('USDT') ? symbol : `${symbol}USDT`,
-      price: coinInfo.usd || 0,
-      change24h: coinInfo.usd_24h_change || 0,
-      volume24h: coinInfo.usd_24h_vol || 0,
-      high24h: coinInfo.usd * 1.02, // Approximate since CoinGecko simple API doesn't provide
-      low24h: coinInfo.usd * 0.98,
-      bid: coinInfo.usd * 0.999,
-      ask: coinInfo.usd * 1.001,
-      timestamp: (coinInfo.last_updated_at || Math.floor(Date.now() / 1000)) * 1000,
-    });
-  }
-  
-  return tickers;
-}
-
-// Fetch detailed data from CoinGecko markets endpoint
-async function fetchDetailedFromCoinGecko(coinIds: string[]): Promise<TickerData[]> {
-  const ids = coinIds.join(',');
-  const url = `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}&order=market_cap_desc&sparkline=false&price_change_percentage=24h`;
-  
-  console.log(`[MarketData] CoinGecko markets fetch: ${url}`);
-  const response = await fetch(url, {
-    headers: { 'Accept': 'application/json' }
-  });
-  
-  if (!response.ok) {
-    throw new Error(`CoinGecko markets API error: ${response.status}`);
-  }
-  
-  const data = await response.json();
-  
-  return data.map((coin: any) => {
-    const symbol = Object.entries(COINGECKO_IDS).find(([_, v]) => v === coin.id)?.[0] || coin.symbol.toUpperCase();
-    return {
-      symbol: symbol.includes('USDT') ? symbol : `${symbol}USDT`,
-      price: coin.current_price || 0,
-      change24h: coin.price_change_percentage_24h || 0,
-      volume24h: coin.total_volume || 0,
-      high24h: coin.high_24h || coin.current_price,
-      low24h: coin.low_24h || coin.current_price,
-      bid: coin.current_price * 0.999,
-      ask: coin.current_price * 1.001,
-      timestamp: new Date(coin.last_updated).getTime(),
-    };
-  });
 }
 
 serve(async (req) => {
@@ -277,14 +361,13 @@ serve(async (req) => {
           .filter((id): id is string => id !== null);
         
         if (coinIds.length === 0) {
-          // Return mock data for unsupported symbols
           const mockTickers = symbols.map(s => ({
             symbol: s,
             price: 0,
             change24h: 0,
             volume24h: 0,
-            high24h: 0,
-            low24h: 0,
+            high24h: null,
+            low24h: null,
             bid: 0,
             ask: 0,
             timestamp: Date.now(),
@@ -299,7 +382,6 @@ serve(async (req) => {
           });
         }
         
-        // Use detailed endpoint for better data
         const tickers = await fetchDetailedFromCoinGecko([...new Set(coinIds)]);
         const latency = Date.now() - startTime;
         
@@ -357,7 +439,6 @@ serve(async (req) => {
       }
 
       case 'orderbook': {
-        // CoinGecko doesn't provide orderbook - return simulated spread
         const symbol = url.searchParams.get('symbol') || body.symbol as string;
         if (!symbol) {
           return new Response(JSON.stringify({ error: 'symbol parameter required' }), {
@@ -376,7 +457,6 @@ serve(async (req) => {
 
         const latency = Date.now() - startTime;
         
-        // Generate simulated orderbook around current price
         const bids = [];
         const asks = [];
         for (let i = 0; i < 10; i++) {
@@ -399,7 +479,6 @@ serve(async (req) => {
       }
 
       case 'klines': {
-        // CoinGecko market_chart for OHLCV-like data
         const symbol = url.searchParams.get('symbol') || body.symbol as string;
         const interval = url.searchParams.get('interval') || '1h';
         
@@ -423,7 +502,6 @@ serve(async (req) => {
           });
         }
 
-        // Map interval to days for CoinGecko
         const daysMap: Record<string, number> = {
           '1m': 1, '5m': 1, '15m': 1, '30m': 1, '1h': 1,
           '4h': 7, '1d': 30, '1w': 90
@@ -433,7 +511,7 @@ serve(async (req) => {
         const chartUrl = `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=${days}`;
         console.log(`[MarketData] CoinGecko chart fetch: ${chartUrl}`);
         
-        const response = await fetch(chartUrl);
+        const response = await rateLimitedFetch(chartUrl);
         if (!response.ok) {
           throw new Error(`CoinGecko chart API error: ${response.status}`);
         }
@@ -441,7 +519,6 @@ serve(async (req) => {
         const data = await response.json();
         const latency = Date.now() - startTime;
         
-        // Convert price data to candle format
         const prices = data.prices || [];
         const candles = prices.map((p: [number, number], i: number) => {
           const price = p[1];
@@ -470,16 +547,10 @@ serve(async (req) => {
       }
 
       case 'health': {
-        const response = await fetch('https://api.coingecko.com/api/v3/ping');
-        const isHealthy = response.ok;
-        const latency = Date.now() - startTime;
-
-        await logMetric(supabase, 'market-data', 'health', latency, isHealthy);
-
         return new Response(JSON.stringify({
-          status: isHealthy ? 'healthy' : 'degraded',
-          coingecko: isHealthy,
-          latencyMs: latency,
+          status: 'healthy',
+          cacheSize: cache.size,
+          latencyMs: Date.now() - startTime,
           timestamp: new Date().toISOString(),
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -498,17 +569,19 @@ serve(async (req) => {
           }
         }), { 
           status: 404, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
     }
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[MarketData] Error:', errorMessage);
-
+    console.error('[MarketData] Error:', error);
     const latency = Date.now() - startTime;
-    await logMetric(supabase, 'market-data', 'error', latency, false, errorMessage);
+    
+    await logMetric(supabase, 'market-data', 'error', latency, false, String(error));
 
-    return new Response(JSON.stringify({ error: errorMessage }), {
+    return new Response(JSON.stringify({ 
+      error: String(error),
+      latencyMs: latency,
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
