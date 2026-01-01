@@ -24,10 +24,44 @@ import {
 import { useArbitrageMonitor } from '@/hooks/useCrossExchangeArbitrage';
 import { Link } from 'react-router-dom';
 import { VENUES } from '@/lib/tradingModes';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function Trade() {
   const [selectedSymbol, setSelectedSymbol] = useState('BTC');
   const { opportunities, isScanning } = useArbitrageMonitor(true);
+
+  // Real exchange status check
+  const { data: exchangeStatuses } = useQuery({
+    queryKey: ['exchange-status'],
+    queryFn: async () => {
+      const results: Record<string, { online: boolean; latency?: number }> = {};
+      
+      // Check each exchange with a lightweight call
+      const checks = [
+        { key: 'coinbase', fn: () => supabase.functions.invoke('coinbase-trading', { body: { action: 'get_accounts' } }) },
+        { key: 'kraken', fn: () => supabase.functions.invoke('kraken-trading', { body: { action: 'get_balance' } }) },
+        { key: 'binance_us', fn: () => supabase.functions.invoke('binance-us-trading', { body: { action: 'get_account' } }) },
+      ];
+      
+      await Promise.allSettled(checks.map(async ({ key, fn }) => {
+        const start = Date.now();
+        try {
+          const { error } = await fn();
+          results[key] = { 
+            online: !error, 
+            latency: Date.now() - start 
+          };
+        } catch {
+          results[key] = { online: false };
+        }
+      }));
+      
+      return results;
+    },
+    refetchInterval: 30000, // Check every 30s
+    staleTime: 15000,
+  });
 
   // Filter top arbitrage opportunities
   const topOpportunities = opportunities
@@ -172,21 +206,29 @@ export default function Trade() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                {Object.entries(VENUES).map(([key, venue]) => (
-                  <div 
-                    key={key}
-                    className="flex items-center justify-between py-1.5 text-sm"
-                  >
-                    <span className="flex items-center gap-2">
-                      <span className="text-base">{venue.icon}</span>
-                      <span>{venue.name}</span>
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
-                      <span className="text-xs text-muted-foreground">Online</span>
+                {Object.entries(VENUES).map(([key, venue]) => {
+                  const status = exchangeStatuses?.[key];
+                  const isOnline = status?.online ?? false;
+                  const latency = status?.latency;
+                  
+                  return (
+                    <div 
+                      key={key}
+                      className="flex items-center justify-between py-1.5 text-sm"
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className="text-base">{venue.icon}</span>
+                        <span>{venue.name}</span>
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-success animate-pulse' : 'bg-destructive'}`} />
+                        <span className="text-xs text-muted-foreground">
+                          {isOnline ? (latency ? `${latency}ms` : 'Online') : 'Offline'}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </CardContent>
             </Card>
           </div>
