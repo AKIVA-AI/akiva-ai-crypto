@@ -1,7 +1,6 @@
-version: '3.8'
+version: '3.9'
 
 services:
-  # Main API Backend
   api:
     build:
       context: ./backend
@@ -9,24 +8,18 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - ENVIRONMENT=production
+      - ENV=production
       - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
       - REDIS_URL=redis://redis:6379
-      - COINGECKO_API_KEY=${COINGECKO_API_KEY:-}
-      - CRYPTOCOMPARE_API_KEY=${CRYPTOCOMPARE_API_KEY:-}
-      - LUNARCRUSH_API_KEY=${LUNARCRUSH_API_KEY:-}
-      - WHALE_ALERT_API_KEY=${WHALE_ALERT_API_KEY:-}
       - COINBASE_API_KEY=${COINBASE_API_KEY:-}
       - COINBASE_API_SECRET=${COINBASE_API_SECRET:-}
-      - BINANCE_US_API_KEY=${BINANCE_US_API_KEY:-}
-      - BINANCE_US_API_SECRET=${BINANCE_US_API_SECRET:-}
+      - KRAKEN_API_KEY=${KRAKEN_API_KEY:-}
+      - KRAKEN_API_SECRET=${KRAKEN_API_SECRET:-}
+      - ENABLED_VENUES=coinbase,kraken
     depends_on:
-      - redis
-    volumes:
-      - ./backend/logs:/app/logs
-      - ./backend/data:/app/data
+      redis:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -34,35 +27,46 @@ services:
       timeout: 10s
       retries: 3
 
-  # Redis Cache
+  agents:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: python -m app.agents.agent_orchestrator
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - REDIS_URL=redis://redis:6379
+      - COINBASE_API_KEY=${COINBASE_API_KEY:-}
+      - COINBASE_API_SECRET=${COINBASE_API_SECRET:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: always
+
   redis:
-    image: redis:7.2-alpine
+    image: redis:7-alpine
     ports:
       - "6379:6379"
+    command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
     restart: unless-stopped
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-}
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # Frontend (optional - for local dev)
   frontend:
     build:
       context: .
       dockerfile: Dockerfile.frontend
     ports:
-      - "3000:3000"
-    environment:
-      - VITE_SUPABASE_URL=${SUPABASE_URL}
-      - VITE_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - "3000:80"
     depends_on:
       - api
-    restart: unless-stopped
     profiles:
       - with-frontend
 
 volumes:
   redis_data:
-
-networks:
-  default:
-    driver: bridge
