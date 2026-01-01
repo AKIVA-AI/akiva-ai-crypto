@@ -1,27 +1,43 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { usePositions } from '@/hooks/usePositions';
-import { usePriceFeed } from '@/hooks/usePriceFeed';
+import { useLivePriceFeed } from '@/hooks/useLivePriceFeed';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { TrendingUp, TrendingDown, Activity, Wifi, WifiOff } from 'lucide-react';
 
+// Convert position instrument to price feed symbol format
+const toFeedSymbol = (instrument: string): string => {
+  // Handle formats like "BTC/USD", "BTC-USD", "BTCUSD"
+  const cleaned = instrument.replace(/[\/\-]/g, '');
+  // Map USD to USDT for Binance
+  if (cleaned.endsWith('USD') && !cleaned.endsWith('USDT')) {
+    return cleaned.replace('USD', '-USDT');
+  }
+  // Already has proper format like BTC-USDT
+  if (instrument.includes('-')) {
+    return instrument;
+  }
+  return `${cleaned.slice(0, -4)}-${cleaned.slice(-4)}`;
+};
+
 export function LivePositionTracker() {
   const { data: positions = [] } = usePositions();
   
-  // Get unique instruments from positions
-  const instruments = useMemo(() => {
-    return [...new Set(positions.map(p => p.instrument))];
+  // Get unique symbols from positions in Binance format
+  const symbols = useMemo(() => {
+    return [...new Set(positions.map(p => toFeedSymbol(p.instrument)))];
   }, [positions]);
 
-  const { prices, isConnected, getAllPrices } = usePriceFeed({ 
-    instruments, 
-    enabled: instruments.length > 0 
+  const { prices, isConnected } = useLivePriceFeed({ 
+    symbols, 
+    enabled: symbols.length > 0 
   });
 
   // Calculate live P&L for each position
   const livePositions = useMemo(() => {
     return positions.map(position => {
-      const priceUpdate = prices.get(position.instrument);
+      const feedSymbol = toFeedSymbol(position.instrument);
+      const priceUpdate = prices.get(feedSymbol);
       const livePrice = priceUpdate?.price || Number(position.mark_price);
       const entryPrice = Number(position.entry_price);
       const size = Number(position.size);
