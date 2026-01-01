@@ -64,6 +64,7 @@ interface MarketTicker {
   isFavorite?: boolean;
 }
 
+// Only supported symbols with real data
 const TRACKED_SYMBOLS = [
   'BTC-USDT',
   'ETH-USDT',
@@ -71,7 +72,6 @@ const TRACKED_SYMBOLS = [
   'ARB-USDT',
   'OP-USDT',
   'AVAX-USDT',
-  'MATIC-USDT',
   'LINK-USDT',
   'DOGE-USDT',
   'XRP-USDT',

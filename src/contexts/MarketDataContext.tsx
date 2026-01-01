@@ -7,6 +7,11 @@
 
 import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { 
+  toCanonicalSymbol, 
+  toApiSymbol as standardToApiSymbol, 
+  isSymbolSupported 
+} from '@/lib/symbolUtils';
 
 export interface MarketTicker {
   symbol: string;
@@ -19,6 +24,7 @@ export interface MarketTicker {
   ask: number;
   timestamp: number;
   dataQuality: 'realtime' | 'delayed' | 'derived' | 'simulated' | 'unavailable';
+  isSupported: boolean;
 }
 
 interface MarketDataState {
@@ -37,32 +43,25 @@ interface MarketDataContextValue extends MarketDataState {
   refresh: () => Promise<void>;
   subscribe: (symbols: string[]) => void;
   unsubscribe: (symbols: string[]) => void;
+  isSymbolSupported: (symbol: string) => boolean;
 }
 
 const MarketDataContext = createContext<MarketDataContextValue | null>(null);
 
-// Default tracked symbols
+// Default tracked symbols - only supported ones
 const DEFAULT_SYMBOLS = [
   'BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'ARBUSDT', 'OPUSDT',
-  'AVAXUSDT', 'MATICUSDT', 'LINKUSDT', 'DOGEUSDT', 'XRPUSDT',
+  'AVAXUSDT', 'LINKUSDT', 'DOGEUSDT', 'XRPUSDT',
   'ADAUSDT', 'DOTUSDT', 'UNIUSDT', 'AAVEUSDT', 'NEARUSDT', 'ATOMUSDT',
 ];
 
-// Symbol format conversion
+// Symbol format conversion - use standardized utilities
 function toDisplaySymbol(input: string): string {
-  const upper = input.toUpperCase().replace('/', '-');
-
-  // If already in display format, just normalize any accidental double-dashes
-  if (upper.includes('-')) return upper.replace(/--+/g, '-');
-
-  if (upper.endsWith('USDT')) return upper.replace('USDT', '-USDT');
-  if (upper.endsWith('BTC')) return upper.replace('BTC', '-BTC');
-  return upper;
+  return toCanonicalSymbol(input);
 }
 
 function toApiSymbol(input: string): string {
-  // Remove common separators and normalize case
-  return input.toUpperCase().replace(/[-/]/g, '');
+  return standardToApiSymbol(input);
 }
 
 interface Props {
@@ -135,6 +134,9 @@ export function MarketDataProvider({ children, refreshInterval = 5000 }: Props) 
 
         for (const ticker of data.tickers) {
           const displaySymbol = toDisplaySymbol(ticker.symbol);
+          const supported = isSymbolSupported(ticker.symbol);
+          const hasRealPrice = ticker.price > 0 && ticker.dataQuality !== 'simulated';
+          
           newTickers.set(displaySymbol, {
             symbol: displaySymbol,
             price: ticker.price,
@@ -146,6 +148,7 @@ export function MarketDataProvider({ children, refreshInterval = 5000 }: Props) 
             ask: ticker.ask,
             timestamp: ticker.timestamp,
             dataQuality: ticker.dataQuality || 'delayed',
+            isSupported: supported && hasRealPrice,
           });
         }
 
@@ -231,6 +234,7 @@ export function MarketDataProvider({ children, refreshInterval = 5000 }: Props) 
     refresh,
     subscribe,
     unsubscribe,
+    isSymbolSupported,
   };
 
   return (
