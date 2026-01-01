@@ -14,8 +14,9 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
 
-// CoinGecko API configuration
+// API configuration
 const COINGECKO_API_KEY = Deno.env.get('COINGECKO_API_KEY');
+const POLYGON_API_KEY = Deno.env.get('POLYGON_API_KEY');
 const COINGECKO_BASE_URL = COINGECKO_API_KEY 
   ? 'https://pro-api.coingecko.com/api/v3'
   : 'https://api.coingecko.com/api/v3';
@@ -45,7 +46,7 @@ const CACHE_TTL_MS = COINGECKO_API_KEY ? 15000 : 30000; // 15s with Pro, 30s wit
 let lastApiCall = 0;
 const MIN_API_INTERVAL_MS = COINGECKO_API_KEY ? 200 : 1500; // 200ms with Pro, 1.5s with free
 
-console.log(`[MarketData] Using CoinGecko ${COINGECKO_API_KEY ? 'Pro' : 'Free'} API`);
+console.log(`[MarketData] Using CoinGecko ${COINGECKO_API_KEY ? 'Pro' : 'Free'} API, Polygon: ${POLYGON_API_KEY ? 'enabled' : 'disabled'}`);
 const COINGECKO_IDS: Record<string, string> = {
   // Major coins
   'BTC': 'bitcoin', 'BTCUSDT': 'bitcoin', 'BTCUSD': 'bitcoin',

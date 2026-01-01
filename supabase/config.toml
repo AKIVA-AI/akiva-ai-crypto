@@ -83,3 +83,6 @@ verify_jwt = false
 
 [functions.funding-arbitrage]
 verify_jwt = false
+
+[functions.macro-indicators]
+verify_jwt = false
