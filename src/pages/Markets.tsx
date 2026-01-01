@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import { useLivePriceFeed } from '@/hooks/useLivePriceFeed';
+import { useMarketData } from '@/contexts/MarketDataContext';
 import { useHyperliquidHealth } from '@/hooks/useHyperliquid';
 import { formatDistanceToNow } from 'date-fns';
 import { 
@@ -30,7 +30,6 @@ import {
   RefreshCw,
   Clock,
 } from 'lucide-react';
-import { WebSocketHealthMonitor } from '@/components/trading/WebSocketHealthMonitor';
 
 // Lazy load heavy Intelligence components
 const MarketIntelligencePanel = lazy(() => import('@/components/intelligence/MarketIntelligencePanel').then(m => ({ default: m.MarketIntelligencePanel })));
@@ -95,47 +94,31 @@ export default function Markets() {
   // HyperLiquid health check
   const { data: hlHealth } = useHyperliquidHealth();
 
-  // Live WebSocket price feed from Binance (with REST fallback)
+  // Use centralized market data provider
   const { 
-    prices, 
-    isConnected, 
-    isConnecting,
-    reconnectAttempts,
-    latencyMs,
-    usingFallback,
-    dataSource,
-    apiLatency,
-    connect: reconnectPriceFeed,
-    forceRefresh,
-  } = useLivePriceFeed({
-    symbols: TRACKED_SYMBOLS,
-    enabled: true,
-  });
+    tickers,
+    isLoading,
+    lastUpdate,
+    source: dataSource,
+    latencyMs: apiLatency,
+    refresh: forceRefresh,
+  } = useMarketData();
 
-  // Get latest timestamp from any price for freshness indicator
-  const latestTimestamp = useMemo(() => {
-    let latest = 0;
-    prices.forEach(price => {
-      if (price.timestamp > latest) latest = price.timestamp;
-    });
-    return latest;
-  }, [prices]);
-
-  // Convert live prices to market data format
+  // Convert tickers map to market data format
   const marketData: MarketTicker[] = useMemo(() => {
     return TRACKED_SYMBOLS.map(symbol => {
-      const livePrice = prices.get(symbol);
+      const ticker = tickers.get(symbol);
       return {
         symbol,
-        price: livePrice?.price || 0,
-        change24h: livePrice?.change24h || 0,
-        volume24h: livePrice?.volume24h || 0,
-        high24h: livePrice?.high24h || 0,
-        low24h: livePrice?.low24h || 0,
+        price: ticker?.price || 0,
+        change24h: ticker?.change24h || 0,
+        volume24h: ticker?.volume24h || 0,
+        high24h: ticker?.high24h || 0,
+        low24h: ticker?.low24h || 0,
         isFavorite: FAVORITES.has(symbol),
       };
     });
-  }, [prices]);
+  }, [tickers]);
 
   const filteredMarkets = marketData.filter(market => {
     const matchesSearch = market.symbol.toLowerCase().includes(searchQuery.toLowerCase());
@@ -158,43 +141,33 @@ export default function Markets() {
               </h1>
               <p className="text-muted-foreground">Real-time market data and price charts</p>
             </div>
-            <WebSocketHealthMonitor
-              isConnected={isConnected}
-              isConnecting={isConnecting}
-              reconnectAttempts={reconnectAttempts}
-              latencyMs={latencyMs}
-              onReconnect={reconnectPriceFeed}
-              usingFallback={usingFallback}
-              compact
-              className="ml-2"
-            />
             
             {/* Data freshness indicator */}
-            {latestTimestamp > 0 && (
+            {lastUpdate > 0 && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className={cn(
                       "flex items-center gap-1.5 px-2 py-1 rounded-md text-xs ml-2",
-                      Date.now() - latestTimestamp < 10000 
+                      Date.now() - lastUpdate < 10000 
                         ? "bg-success/10 text-success" 
-                        : Date.now() - latestTimestamp < 60000 
+                        : Date.now() - lastUpdate < 60000 
                           ? "bg-warning/10 text-warning"
                           : "bg-destructive/10 text-destructive"
                     )}>
                       <Clock className="h-3 w-3" />
                       <span className="font-medium">
-                        {Date.now() - latestTimestamp < 5000 
+                        {Date.now() - lastUpdate < 5000 
                           ? "Live" 
-                          : formatDistanceToNow(latestTimestamp, { addSuffix: true })}
+                          : formatDistanceToNow(lastUpdate, { addSuffix: true })}
                       </span>
-                      {isConnecting && <RefreshCw className="h-3 w-3 animate-spin" />}
+                      {isLoading && <RefreshCw className="h-3 w-3 animate-spin" />}
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Last update: {new Date(latestTimestamp).toLocaleTimeString()}</p>
+                    <p>Last update: {new Date(lastUpdate).toLocaleTimeString()}</p>
                     <p className="text-xs text-muted-foreground">
-                      Source: {dataSource || (usingFallback ? 'REST API' : 'WebSocket')}
+                      Source: {dataSource || 'API'}
                     </p>
                     {apiLatency > 0 && (
                       <p className="text-xs text-muted-foreground">Latency: {apiLatency}ms</p>
@@ -217,9 +190,9 @@ export default function Markets() {
               size="sm" 
               className="ml-2 h-7 gap-1.5"
               onClick={forceRefresh}
-              disabled={isConnecting}
+              disabled={isLoading}
             >
-              <RefreshCw className={cn("h-3.5 w-3.5", isConnecting && "animate-spin")} />
+              <RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin")} />
               Refresh
             </Button>
           </div>

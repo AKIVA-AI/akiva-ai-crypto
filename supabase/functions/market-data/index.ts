@@ -42,15 +42,18 @@ interface CacheEntry {
   timestamp: number;
 }
 
-// In-memory cache with 30-second TTL (can be shorter with Pro API)
+// In-memory cache with configurable TTL
 const cache: Map<string, CacheEntry> = new Map();
-const CACHE_TTL_MS = COINGECKO_API_KEY ? 15000 : 30000; // 15s with Pro, 30s with free
+const CACHE_TTL_MS = COINGECKO_API_KEY ? 5000 : 15000; // 5s with Pro, 15s with free
 
-// Rate limit tracking (more lenient with Pro API)
+// Request deduplication - prevent multiple in-flight requests for same data
+const pendingRequests: Map<string, Promise<TickerData[]>> = new Map();
+
+// Rate limit tracking
 let lastApiCall = 0;
-const MIN_API_INTERVAL_MS = COINGECKO_API_KEY ? 200 : 1500; // 200ms with Pro, 1.5s with free
+const MIN_API_INTERVAL_MS = COINGECKO_API_KEY ? 100 : 1000; // 100ms with Pro, 1s with free
 
-console.log(`[MarketData] Using CoinGecko ${COINGECKO_API_KEY ? 'Pro' : 'Free'} API, Polygon: ${POLYGON_API_KEY ? 'enabled' : 'disabled'}`);
+console.log(`[MarketData] Cache TTL: ${CACHE_TTL_MS}ms, Min interval: ${MIN_API_INTERVAL_MS}ms`);
 const COINGECKO_IDS: Record<string, string> = {
   // Major coins
   'BTC': 'bitcoin', 'BTCUSDT': 'bitcoin', 'BTCUSD': 'bitcoin',
@@ -202,63 +205,82 @@ async function rateLimitedFetch(url: string): Promise<Response> {
   return fetch(url, { headers });
 }
 
-// Fetch detailed data from CoinGecko markets endpoint with caching
-async function fetchDetailedFromCoinGecko(coinIds: string[]): Promise<TickerData[]> {
+// Fetch detailed data from CoinGecko markets endpoint with caching and deduplication
+async function fetchCoinGeckoTickers(coinIds: string[]): Promise<TickerData[]> {
+  const cacheKey = getCacheKey(coinIds);
+  
   // Check cache first
   const cached = getFromCache(coinIds);
   if (cached) {
     return cached;
   }
   
-  const ids = coinIds.join(',');
-  const url = `${COINGECKO_BASE_URL}/coins/markets?vs_currency=usd&ids=${ids}&order=market_cap_desc&sparkline=false&price_change_percentage=24h`;
-  
-  console.log(`[MarketData] CoinGecko markets fetch: ${url.replace(COINGECKO_API_KEY || '', '***')}`);
-  const response = await rateLimitedFetch(url);
-  
-  if (!response.ok) {
-    // On rate limit, try to return stale cache data
-    if (response.status === 429) {
-      const key = getCacheKey(coinIds);
-      const staleEntry = cache.get(key);
-      if (staleEntry) {
-        console.log(`[MarketData] Rate limited, returning stale cache data`);
-        return staleEntry.data;
-      }
-    }
-    throw new Error(`CoinGecko markets API error: ${response.status}`);
+  // Check if request is already in flight (deduplication)
+  const pendingRequest = pendingRequests.get(cacheKey);
+  if (pendingRequest) {
+    console.log(`[MarketData] Deduplicating request for ${cacheKey}`);
+    return pendingRequest;
   }
   
-  const data = await response.json();
+  // Create the actual fetch promise
+  const fetchPromise = (async () => {
+    try {
+      const ids = coinIds.join(',');
+      const url = `${COINGECKO_BASE_URL}/coins/markets?vs_currency=usd&ids=${ids}&order=market_cap_desc&sparkline=false&price_change_percentage=24h`;
+      
+      console.log(`[MarketData] CoinGecko markets fetch: ${url.replace(COINGECKO_API_KEY || '', '***')}`);
+      const response = await rateLimitedFetch(url);
+      
+      if (!response.ok) {
+        // On rate limit, try to return stale cache data
+        if (response.status === 429) {
+          const staleEntry = cache.get(cacheKey);
+          if (staleEntry) {
+            console.log(`[MarketData] Rate limited, returning stale cache data`);
+            return staleEntry.data;
+          }
+        }
+        throw new Error(`CoinGecko markets API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      const tickers: TickerData[] = data.map((coin: any) => {
+        const symbol = Object.entries(COINGECKO_IDS).find(([_, v]) => v === coin.id)?.[0] || coin.symbol.toUpperCase();
+        
+        // Determine data quality based on data freshness
+        const lastUpdated = new Date(coin.last_updated).getTime();
+        const ageMs = Date.now() - lastUpdated;
+        let dataQuality: DataQuality = 'realtime';
+        if (ageMs > 60000) dataQuality = 'delayed';  // >1 minute old
+        if (ageMs > 300000) dataQuality = 'derived'; // >5 minutes old
+        
+        return {
+          symbol: symbol.includes('USDT') ? symbol : `${symbol}USDT`,
+          price: coin.current_price || 0,
+          change24h: coin.price_change_percentage_24h || 0,
+          volume24h: coin.total_volume || 0,
+          high24h: coin.high_24h || coin.current_price,
+          low24h: coin.low_24h || coin.current_price,
+          bid: coin.current_price * 0.999,
+          ask: coin.current_price * 1.001,
+          timestamp: lastUpdated,
+          dataQuality,
+        };
+      });
+      
+      // Store in cache
+      setCache(coinIds, tickers);
+      return tickers;
+    } finally {
+      // Clean up pending request
+      pendingRequests.delete(cacheKey);
+    }
+  })();
   
-  const tickers = data.map((coin: any) => {
-    const symbol = Object.entries(COINGECKO_IDS).find(([_, v]) => v === coin.id)?.[0] || coin.symbol.toUpperCase();
-    
-    // Determine data quality based on data freshness
-    const lastUpdated = new Date(coin.last_updated).getTime();
-    const ageMs = Date.now() - lastUpdated;
-    let dataQuality: DataQuality = 'realtime';
-    if (ageMs > 60000) dataQuality = 'delayed';  // >1 minute old
-    if (ageMs > 300000) dataQuality = 'derived'; // >5 minutes old
-    
-    return {
-      symbol: symbol.includes('USDT') ? symbol : `${symbol}USDT`,
-      price: coin.current_price || 0,
-      change24h: coin.price_change_percentage_24h || 0,
-      volume24h: coin.total_volume || 0,
-      high24h: coin.high_24h || coin.current_price,
-      low24h: coin.low_24h || coin.current_price,
-      bid: coin.current_price * 0.999,
-      ask: coin.current_price * 1.001,
-      timestamp: lastUpdated,
-      dataQuality,
-    };
-  });
-  
-  // Store in cache
-  setCache(coinIds, tickers);
-  
-  return tickers;
+  // Store in pending requests for deduplication
+  pendingRequests.set(cacheKey, fetchPromise);
+  return fetchPromise;
 }
 
 // Fetch from CoinGecko simple price endpoint (lighter, for single prices)
@@ -428,7 +450,7 @@ serve(async (req) => {
           });
         }
         
-        const tickers = await fetchDetailedFromCoinGecko([...new Set(coinIds)]);
+        const tickers = await fetchCoinGeckoTickers([...new Set(coinIds)]);
         const latency = Date.now() - startTime;
         
         await logMetric(supabase, 'market-data', 'ticker', latency, true, undefined, { 

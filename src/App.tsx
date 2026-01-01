@@ -9,6 +9,7 @@ import { AlertNotificationProvider } from "@/components/alerts/AlertNotification
 import { TradingModeProvider } from "@/contexts/TradingModeContext";
 import { UserModeProvider } from "@/contexts/UserModeContext";
 import { AICopilotProvider } from "@/contexts/AICopilotContext";
+import { MarketDataProvider } from "@/contexts/MarketDataContext";
 import Index from "./pages/Index";
 import Agents from "./pages/Agents";
 import Strategies from "./pages/Strategies";
@@ -39,8 +40,9 @@ const App = () => (
         <AuthProvider>
           <TradingModeProvider>
             <UserModeProvider>
-              <AICopilotProvider>
-                <AlertNotificationProvider>
+              <MarketDataProvider refreshInterval={5000}>
+                <AICopilotProvider>
+                  <AlertNotificationProvider>
                   <Toaster />
                 <Sonner />
                 <Routes>
@@ -66,7 +68,8 @@ const App = () => (
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 </AlertNotificationProvider>
-              </AICopilotProvider>
+                </AICopilotProvider>
+              </MarketDataProvider>
             </UserModeProvider>
           </TradingModeProvider>
         </AuthProvider>
