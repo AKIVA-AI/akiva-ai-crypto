@@ -26,36 +26,102 @@ interface TickerData {
   timestamp: number;
 }
 
-// Symbol to CoinGecko ID mapping
+// Symbol to CoinGecko ID mapping - comprehensive list
 const COINGECKO_IDS: Record<string, string> = {
-  'BTC': 'bitcoin',
-  'BTCUSDT': 'bitcoin',
-  'ETH': 'ethereum',
-  'ETHUSDT': 'ethereum',
-  'SOL': 'solana',
-  'SOLUSDT': 'solana',
-  'BNB': 'binancecoin',
-  'BNBUSDT': 'binancecoin',
-  'XRP': 'ripple',
-  'XRPUSDT': 'ripple',
-  'ADA': 'cardano',
-  'ADAUSDT': 'cardano',
-  'DOGE': 'dogecoin',
-  'DOGEUSDT': 'dogecoin',
-  'AVAX': 'avalanche-2',
-  'AVAXUSDT': 'avalanche-2',
-  'LINK': 'chainlink',
-  'LINKUSDT': 'chainlink',
-  'MATIC': 'matic-network',
-  'MATICUSDT': 'matic-network',
-  'DOT': 'polkadot',
-  'DOTUSDT': 'polkadot',
-  'UNI': 'uniswap',
-  'UNIUSDT': 'uniswap',
-  'ATOM': 'cosmos',
-  'ATOMUSDT': 'cosmos',
-  'LTC': 'litecoin',
-  'LTCUSDT': 'litecoin',
+  // Major coins
+  'BTC': 'bitcoin', 'BTCUSDT': 'bitcoin', 'BTCUSD': 'bitcoin',
+  'ETH': 'ethereum', 'ETHUSDT': 'ethereum', 'ETHUSD': 'ethereum',
+  'SOL': 'solana', 'SOLUSDT': 'solana', 'SOLUSD': 'solana',
+  'BNB': 'binancecoin', 'BNBUSDT': 'binancecoin',
+  'XRP': 'ripple', 'XRPUSDT': 'ripple',
+  'ADA': 'cardano', 'ADAUSDT': 'cardano',
+  'DOGE': 'dogecoin', 'DOGEUSDT': 'dogecoin',
+  'AVAX': 'avalanche-2', 'AVAXUSDT': 'avalanche-2',
+  'LINK': 'chainlink', 'LINKUSDT': 'chainlink',
+  'MATIC': 'matic-network', 'MATICUSDT': 'matic-network',
+  'DOT': 'polkadot', 'DOTUSDT': 'polkadot',
+  'UNI': 'uniswap', 'UNIUSDT': 'uniswap',
+  'ATOM': 'cosmos', 'ATOMUSDT': 'cosmos',
+  'LTC': 'litecoin', 'LTCUSDT': 'litecoin',
+  
+  // Layer 2 & Scaling
+  'ARB': 'arbitrum', 'ARBUSDT': 'arbitrum',
+  'OP': 'optimism', 'OPUSDT': 'optimism',
+  'IMX': 'immutable-x', 'IMXUSDT': 'immutable-x',
+  'STRK': 'starknet', 'STRKUSDT': 'starknet',
+  'MANTA': 'manta-network', 'MANTAUSDT': 'manta-network',
+  'METIS': 'metis-token', 'METISUSDT': 'metis-token',
+  'ZK': 'zksync', 'ZKUSDT': 'zksync',
+  
+  // DeFi
+  'AAVE': 'aave', 'AAVEUSDT': 'aave',
+  'CRV': 'curve-dao-token', 'CRVUSDT': 'curve-dao-token',
+  'MKR': 'maker', 'MKRUSDT': 'maker',
+  'SNX': 'havven', 'SNXUSDT': 'havven',
+  'COMP': 'compound-governance-token', 'COMPUSDT': 'compound-governance-token',
+  'SUSHI': 'sushi', 'SUSHIUSDT': 'sushi',
+  '1INCH': '1inch', '1INCHUSDT': '1inch',
+  'LDO': 'lido-dao', 'LDOUSDT': 'lido-dao',
+  'RPL': 'rocket-pool', 'RPLUSDT': 'rocket-pool',
+  'GMX': 'gmx', 'GMXUSDT': 'gmx',
+  'DYDX': 'dydx-chain', 'DYDXUSDT': 'dydx-chain',
+  'PENDLE': 'pendle', 'PENDLEUSDT': 'pendle',
+  
+  // Infrastructure & Smart Contract Platforms
+  'NEAR': 'near', 'NEARUSDT': 'near',
+  'FTM': 'fantom', 'FTMUSDT': 'fantom',
+  'ALGO': 'algorand', 'ALGOUSDT': 'algorand',
+  'ICP': 'internet-computer', 'ICPUSDT': 'internet-computer',
+  'FIL': 'filecoin', 'FILUSDT': 'filecoin',
+  'HBAR': 'hedera-hashgraph', 'HBARUSDT': 'hedera-hashgraph',
+  'VET': 'vechain', 'VETUSDT': 'vechain',
+  'APT': 'aptos', 'APTUSDT': 'aptos',
+  'SUI': 'sui', 'SUIUSDT': 'sui',
+  'SEI': 'sei-network', 'SEIUSDT': 'sei-network',
+  'INJ': 'injective-protocol', 'INJUSDT': 'injective-protocol',
+  'TIA': 'celestia', 'TIAUSDT': 'celestia',
+  'STX': 'blockstack', 'STXUSDT': 'blockstack',
+  
+  // Gaming & Metaverse
+  'SAND': 'the-sandbox', 'SANDUSDT': 'the-sandbox',
+  'MANA': 'decentraland', 'MANAUSDT': 'decentraland',
+  'AXS': 'axie-infinity', 'AXSUSDT': 'axie-infinity',
+  'GALA': 'gala', 'GALAUSDT': 'gala',
+  'ENJ': 'enjincoin', 'ENJUSDT': 'enjincoin',
+  'RONIN': 'ronin', 'RONINUSDT': 'ronin',
+  'BEAM': 'beam-2', 'BEAMUSDT': 'beam-2',
+  
+  // Meme Coins
+  'SHIB': 'shiba-inu', 'SHIBUSDT': 'shiba-inu',
+  'PEPE': 'pepe', 'PEPEUSDT': 'pepe',
+  'FLOKI': 'floki', 'FLOKIUSDT': 'floki',
+  'BONK': 'bonk', 'BONKUSDT': 'bonk',
+  'WIF': 'dogwifcoin', 'WIFUSDT': 'dogwifcoin',
+  
+  // AI & Compute
+  'FET': 'fetch-ai', 'FETUSDT': 'fetch-ai',
+  'RNDR': 'render-token', 'RNDRUSDT': 'render-token',
+  'AGIX': 'singularitynet', 'AGIXUSDT': 'singularitynet',
+  'TAO': 'bittensor', 'TAOUSDT': 'bittensor',
+  'AR': 'arweave', 'ARUSDT': 'arweave',
+  'OCEAN': 'ocean-protocol', 'OCEANUSDT': 'ocean-protocol',
+  
+  // Oracles & Data
+  'PYTH': 'pyth-network', 'PYTHUSDT': 'pyth-network',
+  'API3': 'api3', 'API3USDT': 'api3',
+  'BAND': 'band-protocol', 'BANDUSDT': 'band-protocol',
+  
+  // Privacy
+  'XMR': 'monero', 'XMRUSDT': 'monero',
+  'ZEC': 'zcash', 'ZECUSDT': 'zcash',
+  
+  // Exchange Tokens
+  'OKB': 'okb', 'OKBUSDT': 'okb',
+  'CRO': 'crypto-com-chain', 'CROUSDT': 'crypto-com-chain',
+  'LEO': 'leo-token', 'LEOUSDT': 'leo-token',
+  
+  // Stablecoins (for reference)
+  'USDT': 'tether', 'USDC': 'usd-coin', 'DAI': 'dai',
 };
 
 function getCoingeckoId(symbol: string): string | null {
