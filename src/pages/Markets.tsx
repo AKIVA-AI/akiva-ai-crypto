@@ -11,9 +11,11 @@ import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { useLivePriceFeed } from '@/hooks/useLivePriceFeed';
 import { useHyperliquidHealth } from '@/hooks/useHyperliquid';
+import { formatDistanceToNow } from 'date-fns';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -25,6 +27,8 @@ import {
   Wallet,
   Brain,
   Layers,
+  RefreshCw,
+  Clock,
 } from 'lucide-react';
 import { WebSocketHealthMonitor } from '@/components/trading/WebSocketHealthMonitor';
 
@@ -105,6 +109,15 @@ export default function Markets() {
     enabled: true,
   });
 
+  // Get latest timestamp from any price for freshness indicator
+  const latestTimestamp = useMemo(() => {
+    let latest = 0;
+    prices.forEach(price => {
+      if (price.timestamp > latest) latest = price.timestamp;
+    });
+    return latest;
+  }, [prices]);
+
   // Convert live prices to market data format
   const marketData: MarketTicker[] = useMemo(() => {
     return TRACKED_SYMBOLS.map(symbol => {
@@ -152,6 +165,38 @@ export default function Markets() {
               compact
               className="ml-2"
             />
+            
+            {/* Data freshness indicator */}
+            {latestTimestamp > 0 && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className={cn(
+                      "flex items-center gap-1.5 px-2 py-1 rounded-md text-xs ml-2",
+                      Date.now() - latestTimestamp < 10000 
+                        ? "bg-success/10 text-success" 
+                        : Date.now() - latestTimestamp < 60000 
+                          ? "bg-warning/10 text-warning"
+                          : "bg-destructive/10 text-destructive"
+                    )}>
+                      <Clock className="h-3 w-3" />
+                      <span className="font-medium">
+                        {Date.now() - latestTimestamp < 5000 
+                          ? "Live" 
+                          : formatDistanceToNow(latestTimestamp, { addSuffix: true })}
+                      </span>
+                      {isConnecting && <RefreshCw className="h-3 w-3 animate-spin" />}
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Last update: {new Date(latestTimestamp).toLocaleTimeString()}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Source: {usingFallback ? 'REST API' : 'WebSocket'}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </div>
           <Sheet open={isTradeTicketOpen} onOpenChange={setIsTradeTicketOpen}>
             <SheetTrigger asChild>
