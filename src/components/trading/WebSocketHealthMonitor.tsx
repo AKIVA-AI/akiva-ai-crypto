@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Activity, Wifi, WifiOff, RefreshCw, AlertCircle } from 'lucide-react';
+import { Activity, Wifi, WifiOff, RefreshCw, AlertCircle, Cloud } from 'lucide-react';
 
 interface WebSocketHealthMonitorProps {
   isConnected: boolean;
@@ -14,6 +14,7 @@ interface WebSocketHealthMonitorProps {
   onReconnect?: () => void;
   compact?: boolean;
   className?: string;
+  usingFallback?: boolean;
 }
 
 export function WebSocketHealthMonitor({
@@ -27,6 +28,7 @@ export function WebSocketHealthMonitor({
   onReconnect,
   compact = false,
   className,
+  usingFallback = false,
 }: WebSocketHealthMonitorProps) {
   const getLatencyColor = (ms: number) => {
     if (ms < 50) return 'text-success';
@@ -35,6 +37,7 @@ export function WebSocketHealthMonitor({
   };
 
   const getConnectionStatus = () => {
+    if (usingFallback) return 'fallback';
     if (isConnected) return 'connected';
     if (isConnecting) return 'connecting';
     if (error) return 'error';
@@ -49,7 +52,13 @@ export function WebSocketHealthMonitor({
       icon: Wifi,
       color: 'text-success border-success/50',
       bg: 'bg-success/10',
-      label: 'Connected',
+      label: 'Live',
+    },
+    fallback: {
+      icon: Cloud,
+      color: 'text-chart-3 border-chart-3/50',
+      bg: 'bg-chart-3/10',
+      label: 'REST API',
     },
     connecting: {
       icon: RefreshCw,

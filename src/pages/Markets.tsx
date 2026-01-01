@@ -91,13 +91,14 @@ export default function Markets() {
   // HyperLiquid health check
   const { data: hlHealth } = useHyperliquidHealth();
 
-  // Live WebSocket price feed from Binance
+  // Live WebSocket price feed from Binance (with REST fallback)
   const { 
     prices, 
     isConnected, 
     isConnecting,
     reconnectAttempts,
     latencyMs,
+    usingFallback,
     connect: reconnectPriceFeed 
   } = useLivePriceFeed({
     symbols: TRACKED_SYMBOLS,
@@ -147,6 +148,7 @@ export default function Markets() {
               reconnectAttempts={reconnectAttempts}
               latencyMs={latencyMs}
               onReconnect={reconnectPriceFeed}
+              usingFallback={usingFallback}
               compact
               className="ml-2"
             />
