@@ -42,12 +42,15 @@ class AkivaFreqAIStrategy(IStrategy):
 
     INTERFACE_VERSION = 3
 
+    # Timeframe for the strategy
+    timeframe = "5m"
+
     # Conservative ROI for ML strategy
     minimal_roi = {"0": 0.1, "240": -1}
 
     # Moderate stoploss - ML should handle exits
     stoploss = -0.05
-    
+
     # Allow both long and short for ML strategies
     can_short = True
 
