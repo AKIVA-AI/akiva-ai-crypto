@@ -8,7 +8,11 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
+    typecheck: {
+      tsconfig: './tsconfig.app.json',
+    },
     testTimeout: 10000, // 10 second timeout per test
+    hookTimeout: 10000, // 10 second timeout for hooks
     hookTimeout: 10000, // 10 second timeout for hooks
     coverage: {
       provider: 'v8',

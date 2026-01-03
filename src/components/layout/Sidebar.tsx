@@ -81,11 +81,9 @@ export function Sidebar() {
         {/* Logo */}
         <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
           {!collapsed && (
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-sm">CO</span>
-              </div>
-              <span className="font-semibold text-sidebar-foreground">CryptoOps</span>
+            <div className="flex items-center gap-1">
+              <span className="font-semibold text-sidebar-foreground tracking-tight">enterprise crypto</span>
+              <span className="text-primary font-bold text-lg">.</span>
             </div>
           )}
           <button
