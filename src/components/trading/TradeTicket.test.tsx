@@ -89,15 +89,15 @@ describe('TradeTicket', () => {
     it('should submit market order successfully', async () => {
       const onClose = vi.fn();
       renderTradeTicket({ defaultBookId: 'book-123', onClose });
-      
+
       // Set size
       const sizeInput = screen.getByLabelText(/Size/i);
       fireEvent.change(sizeInput, { target: { value: '0.5' } });
-      
-      // Submit
-      const submitButton = screen.getByRole('button', { name: /BUY/i });
+
+      // Submit - look for button with size in text
+      const submitButton = screen.getByRole('button', { name: /BUY 0\.5/i });
       fireEvent.click(submitButton);
-      
+
       await waitFor(() => {
         expect(onClose).toHaveBeenCalled();
       });
@@ -106,21 +106,21 @@ describe('TradeTicket', () => {
     it('should submit limit order with price', async () => {
       const onClose = vi.fn();
       renderTradeTicket({ defaultBookId: 'book-123', onClose });
-      
+
       // Switch to limit order
       const limitButton = screen.getByText(/Limit/i);
       fireEvent.click(limitButton);
-      
+
       // Set size and price
       const sizeInput = screen.getByLabelText(/Size/i);
       const priceInput = screen.getByLabelText(/Price/i);
       fireEvent.change(sizeInput, { target: { value: '0.5' } });
       fireEvent.change(priceInput, { target: { value: '50000' } });
-      
-      // Submit
-      const submitButton = screen.getByRole('button', { name: /BUY/i });
+
+      // Submit - look for button with size in text
+      const submitButton = screen.getByRole('button', { name: /BUY 0\.5/i });
       fireEvent.click(submitButton);
-      
+
       await waitFor(() => {
         expect(onClose).toHaveBeenCalled();
       });
@@ -128,18 +128,17 @@ describe('TradeTicket', () => {
 
     it('should handle sell orders', async () => {
       renderTradeTicket({ defaultBookId: 'book-123' });
-      
+
       // Switch to sell
-      const sellButton = screen.getByText(/Sell/i);
+      const sellButton = screen.getAllByRole('button', { name: /SELL/i })[0];
       fireEvent.click(sellButton);
-      
+
       // Set size
       const sizeInput = screen.getByLabelText(/Size/i);
       fireEvent.change(sizeInput, { target: { value: '0.5' } });
-      
-      // Submit button should show SELL
-      const submitButton = screen.getByRole('button', { name: /SELL/i });
-      expect(submitButton).toBeInTheDocument();
+
+      // Submit button should show SELL with size
+      expect(screen.getByRole('button', { name: /SELL 0\.5/i })).toBeInTheDocument();
     });
   });
 

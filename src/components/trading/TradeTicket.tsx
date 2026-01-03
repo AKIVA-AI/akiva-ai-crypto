@@ -326,8 +326,9 @@ export function TradeTicket({ onClose, defaultInstrument = 'BTC/USDT', defaultBo
 
         {/* Size */}
         <div className="space-y-2">
-          <Label>Size</Label>
+          <Label htmlFor="trade-size">Size</Label>
           <Input
+            id="trade-size"
             type="number"
             value={size}
             onChange={(e) => setSize(e.target.value)}
@@ -340,8 +341,9 @@ export function TradeTicket({ onClose, defaultInstrument = 'BTC/USDT', defaultBo
         {/* Price (for limit orders) */}
         {orderType === 'limit' && (
           <div className="space-y-2">
-            <Label>Limit Price</Label>
+            <Label htmlFor="trade-price">Limit Price</Label>
             <Input
+              id="trade-price"
               type="number"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
