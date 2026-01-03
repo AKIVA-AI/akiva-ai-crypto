@@ -1,8 +1,8 @@
-# 🏛️ Hedge Fund Trading Platform
+# enterprise crypto.
 
 > **Institutional-grade cryptocurrency trading system** with advanced risk management, quantitative strategies, and enterprise security.
 
-[![Production Ready](https://img.shields.io/badge/Production-Ready-green.svg)](https://github.com/AKIVA-AI/akiva-ai-crypto)
+[![Production Ready](https://img.shields.io/badge/Production-Ready-green.svg)](https://github.com/enterprise-crypto)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](docker-compose.yml)
 [![FreqTrade Enhanced](https://img.shields.io/badge/FreqTrade-Enhanced-blue.svg)](FREQTRADE_INTEGRATION_README.md)
@@ -129,7 +129,7 @@ After successful deployment:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    HEDGE FUND TRADING PLATFORM               │
+│                      enterprise crypto.                      │
 ├─────────────────────────────────────────────────────────────┤
 │  🌐 Frontend (React/TypeScript)    🔧 Backend (FastAPI)      │
 │  🗄️ Database (Supabase/PostgreSQL)  ⚡ Cache (Redis)         │
@@ -432,6 +432,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Built for institutional excellence. Powered by advanced quantitative methods.** 🏛️
+**Built for institutional excellence. Powered by advanced quantitative methods.**
 
-*Developed by AKIVA-AI for the next generation of hedge fund technology.*
+*enterprise crypto. — Next generation cryptocurrency trading technology.*
