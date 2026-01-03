@@ -62,11 +62,15 @@ vi.mock('sonner', () => ({
 
 // Mock useLivePriceFeed
 vi.mock('@/hooks/useLivePriceFeed', () => ({
-  useLivePriceFeed: () => ({
-    prices: { 'BTC-USDT': 51000 },
-    isConnected: true,
-    getPrice: (symbol: string) => symbol === 'BTC-USDT' ? 51000 : null
-  })
+  useLivePriceFeed: () => {
+    const pricesMap = new Map();
+    pricesMap.set('BTC-USDT', { price: 51000, timestamp: Date.now() });
+    return {
+      prices: pricesMap,
+      isConnected: true,
+      getPrice: (symbol: string) => symbol === 'BTC-USDT' ? 51000 : null
+    };
+  }
 }));
 
 describe('PositionManagementPanel', () => {
@@ -103,27 +107,27 @@ describe('PositionManagementPanel', () => {
 
     it('should show position details', async () => {
       renderPanel();
-      
+
       await waitFor(() => {
         expect(screen.getByText('BTC/USDT')).toBeInTheDocument();
-        expect(screen.getByText(/0.5/)).toBeInTheDocument(); // size
-        expect(screen.getByText(/50000/)).toBeInTheDocument(); // entry price
+        expect(screen.getByText(/0\.5/)).toBeInTheDocument(); // size
+        expect(screen.getByText(/50,000/)).toBeInTheDocument(); // entry price (formatted with comma)
       });
     });
 
     it('should show unrealized P&L', async () => {
       renderPanel();
-      
+
       await waitFor(() => {
-        expect(screen.getByText(/500/)).toBeInTheDocument(); // unrealized PnL
+        expect(screen.getByText(/\+\$500\.00/)).toBeInTheDocument(); // unrealized PnL formatted as +$500.00
       });
     });
 
     it('should show position side (buy/sell)', async () => {
       renderPanel();
-      
+
       await waitFor(() => {
-        expect(screen.getByText(/buy/i)).toBeInTheDocument();
+        expect(screen.getByText(/LONG/i)).toBeInTheDocument(); // Component shows LONG/SHORT not buy/sell
       });
     });
   });
@@ -131,15 +135,15 @@ describe('PositionManagementPanel', () => {
   describe('Position Actions', () => {
     it('should close position when close button clicked', async () => {
       renderPanel();
-      
+
       await waitFor(() => {
         expect(screen.getByText('BTC/USDT')).toBeInTheDocument();
       });
-      
-      // Find and click close button
-      const closeButton = screen.getByRole('button', { name: /close/i });
-      fireEvent.click(closeButton);
-      
+
+      // Find and click close button by title
+      const closeButtons = screen.getAllByTitle('Close Position');
+      fireEvent.click(closeButtons[0]);
+
       await waitFor(() => {
         expect(supabase.from).toHaveBeenCalledWith('positions');
       });
@@ -147,16 +151,16 @@ describe('PositionManagementPanel', () => {
 
     it('should show loading state when closing position', async () => {
       renderPanel();
-      
+
       await waitFor(() => {
         expect(screen.getByText('BTC/USDT')).toBeInTheDocument();
       });
-      
-      const closeButton = screen.getByRole('button', { name: /close/i });
-      fireEvent.click(closeButton);
-      
+
+      const closeButtons = screen.getAllByTitle('Close Position');
+      fireEvent.click(closeButtons[0]);
+
       // Button should be disabled during close
-      expect(closeButton).toBeDisabled();
+      expect(closeButtons[0]).toBeDisabled();
     });
   });
 
@@ -179,14 +183,19 @@ describe('PositionManagementPanel', () => {
       // Mock empty positions
       vi.mocked(supabase.from).mockReturnValue({
         select: vi.fn(() => ({
-          eq: vi.fn(() => Promise.resolve({ data: [], error: null }))
+          eq: vi.fn(() => ({
+            order: vi.fn(() => Promise.resolve({ data: [], error: null }))
+          }))
+        })),
+        update: vi.fn(() => ({
+          eq: vi.fn(() => Promise.resolve({ data: null, error: null }))
         }))
       } as any);
-      
+
       renderPanel();
-      
+
       await waitFor(() => {
-        expect(screen.getByText(/No positions/i)).toBeInTheDocument();
+        expect(screen.getByText(/No open positions/i)).toBeInTheDocument();
       });
     });
   });
@@ -196,35 +205,40 @@ describe('PositionManagementPanel', () => {
       // Mock position with liquidation price
       vi.mocked(supabase.from).mockReturnValue({
         select: vi.fn(() => ({
-          eq: vi.fn(() => Promise.resolve({ 
-            data: [{
-              id: 'pos-1',
-              instrument: 'BTC/USDT',
-              side: 'buy',
-              size: 0.5,
-              entry_price: 50000,
-              mark_price: 51000,
-              unrealized_pnl: 500,
-              realized_pnl: 0,
-              leverage: 10,
-              liquidation_price: 45000,
-              is_open: true,
-              book_id: 'book-1',
-              strategy_id: null,
-              venue_id: 'venue-1',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              venues: { name: 'Binance' }
-            }], 
-            error: null 
+          eq: vi.fn(() => ({
+            order: vi.fn(() => Promise.resolve({
+              data: [{
+                id: 'pos-1',
+                instrument: 'BTC/USDT',
+                side: 'buy',
+                size: 0.5,
+                entry_price: 50000,
+                mark_price: 51000,
+                unrealized_pnl: 500,
+                realized_pnl: 0,
+                leverage: 10,
+                liquidation_price: 45000,
+                is_open: true,
+                book_id: 'book-1',
+                strategy_id: null,
+                venue_id: 'venue-1',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                venues: { name: 'Binance' }
+              }],
+              error: null
+            }))
           }))
+        })),
+        update: vi.fn(() => ({
+          eq: vi.fn(() => Promise.resolve({ data: null, error: null }))
         }))
       } as any);
-      
+
       renderPanel();
-      
+
       await waitFor(() => {
-        expect(screen.getByText(/45000/)).toBeInTheDocument();
+        expect(screen.getByText(/45,000/)).toBeInTheDocument(); // formatted with comma
       });
     });
   });
