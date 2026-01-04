@@ -186,21 +186,39 @@ export function AICopilotSidebar({ isOpen, onToggle }: AICopilotSidebarProps) {
         </div>
       </div>
 
-      {/* Messages Area */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto">
-        <div className="p-4 pb-2">
+      {/* Quick Actions - Always visible at top when no messages */}
+      {messages.length === 0 && (
+        <div className="px-4 py-3 border-b border-border shrink-0 bg-muted/30">
+          <p className="text-xs text-muted-foreground mb-2">Quick actions</p>
+          <div className="flex flex-wrap gap-1.5">
+            {SUGGESTIONS.map((suggestion) => (
+              <button
+                key={suggestion}
+                onClick={() => handleSuggestionClick(suggestion)}
+                className="px-3 py-1.5 text-xs rounded-full bg-background border border-border hover:bg-muted hover:border-primary/30 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Messages Area - Takes all available space */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-0">
+        <div className="p-4">
           {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center min-h-[300px]">
-              <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-5 shadow-lg">
-                <Sparkles className="h-8 w-8 text-primary" />
+            <div className="flex flex-col items-center justify-center h-full min-h-[400px]">
+              <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-6 shadow-lg">
+                <Sparkles className="h-10 w-10 text-primary" />
               </div>
-              <h3 className="font-semibold text-lg mb-2">AI Assistant</h3>
-              <p className="text-sm text-muted-foreground text-center max-w-[280px] leading-relaxed">
+              <h3 className="font-semibold text-xl mb-3">How can I help?</h3>
+              <p className="text-sm text-muted-foreground text-center max-w-[300px] leading-relaxed">
                 Ask me about market conditions, trading strategies, risk analysis, or portfolio insights.
               </p>
             </div>
           ) : (
-            <div className="space-y-4 pb-4">
+            <div className="space-y-4">
               {messages.map((msg, idx) => (
                 <div
                   key={idx}
@@ -210,13 +228,13 @@ export function AICopilotSidebar({ isOpen, onToggle }: AICopilotSidebarProps) {
                   )}
                 >
                   {msg.role === 'assistant' && (
-                    <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
                       <Bot className="h-4 w-4 text-primary" />
                     </div>
                   )}
                   <div
                     className={cn(
-                      'max-w-[85%] rounded-2xl p-3.5 space-y-2',
+                      'max-w-[85%] rounded-2xl p-4 space-y-2',
                       msg.role === 'user'
                         ? 'bg-primary text-primary-foreground rounded-br-md'
                         : 'bg-muted rounded-bl-md'
@@ -254,7 +272,7 @@ export function AICopilotSidebar({ isOpen, onToggle }: AICopilotSidebarProps) {
                     </span>
                   </div>
                   {msg.role === 'user' && (
-                    <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center shrink-0 mt-0.5">
+                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0 mt-0.5">
                       <User className="h-4 w-4 text-primary-foreground" />
                     </div>
                   )}
@@ -263,7 +281,7 @@ export function AICopilotSidebar({ isOpen, onToggle }: AICopilotSidebarProps) {
 
               {isTyping && (
                 <div className="flex gap-3">
-                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                     <Bot className="h-4 w-4 text-primary" />
                   </div>
                   <div className="bg-muted rounded-2xl rounded-bl-sm px-4 py-3">
@@ -279,39 +297,24 @@ export function AICopilotSidebar({ isOpen, onToggle }: AICopilotSidebarProps) {
         </div>
       </div>
 
-      {/* Input Area */}
-      <div className="p-4 border-t border-border shrink-0 bg-card/80 backdrop-blur-sm space-y-3">
-        {/* Suggestion chips - only when input is empty and no messages */}
-        {!input && messages.length === 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {SUGGESTIONS.map((suggestion) => (
-              <button
-                key={suggestion}
-                onClick={() => handleSuggestionClick(suggestion)}
-                className="px-2.5 py-1 text-xs rounded-full bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {suggestion}
-              </button>
-            ))}
-          </div>
-        )}
-
+      {/* Input Area - Fixed at bottom */}
+      <div className="p-4 border-t border-border shrink-0 bg-card/80 backdrop-blur-sm">
         <div className="relative">
           <Textarea
             ref={textareaRef}
-            placeholder="Ask about markets, strategies, risk..."
+            placeholder="Message AI Assistant..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyPress}
             disabled={isSending}
             rows={1}
-            className="w-full resize-none bg-background pr-12 py-3 px-4 text-sm rounded-xl border-border focus-visible:ring-1 focus-visible:ring-primary min-h-[48px] max-h-[120px]"
+            className="w-full resize-none bg-background pr-12 py-3 px-4 text-sm rounded-xl border-border focus-visible:ring-1 focus-visible:ring-primary min-h-[52px] max-h-[150px]"
           />
           <Button
             onClick={handleSend}
             disabled={!input.trim() || isSending}
             size="icon"
-            className="absolute right-2 bottom-2 h-8 w-8 rounded-lg"
+            className="absolute right-2 bottom-2 h-9 w-9 rounded-lg"
           >
             {isSending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -320,7 +323,7 @@ export function AICopilotSidebar({ isOpen, onToggle }: AICopilotSidebarProps) {
             )}
           </Button>
         </div>
-        <p className="text-[10px] text-muted-foreground text-center">
+        <p className="text-[10px] text-muted-foreground text-center mt-2">
           Enter to send • Shift+Enter for new line
         </p>
       </div>

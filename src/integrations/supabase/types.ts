@@ -101,6 +101,44 @@ export type Database = {
         }
         Relationships: []
       }
+      allocator_decisions: {
+        Row: {
+          allocation_snapshot_json: Json
+          decision_id: string
+          id: string
+          rationale_json: Json
+          regime_state: Json
+          tenant_id: string
+          ts: string
+        }
+        Insert: {
+          allocation_snapshot_json: Json
+          decision_id: string
+          id?: string
+          rationale_json: Json
+          regime_state: Json
+          tenant_id: string
+          ts?: string
+        }
+        Update: {
+          allocation_snapshot_json?: Json
+          decision_id?: string
+          id?: string
+          rationale_json?: Json
+          regime_state?: Json
+          tenant_id?: string
+          ts?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "allocator_decisions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       arbitrage_executions: {
         Row: {
           buy_exchange: string
@@ -228,6 +266,124 @@ export type Database = {
             columns: ["book_id"]
             isOneToOne: false
             referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      basis_pnl: {
+        Row: {
+          fees_pnl: number
+          funding_pnl: number
+          id: string
+          intent_id: string
+          realized_pnl: number
+          slippage_pnl: number
+          tenant_id: string
+          ts: string
+          unrealized_pnl: number
+        }
+        Insert: {
+          fees_pnl?: number
+          funding_pnl?: number
+          id?: string
+          intent_id: string
+          realized_pnl?: number
+          slippage_pnl?: number
+          tenant_id: string
+          ts?: string
+          unrealized_pnl?: number
+        }
+        Update: {
+          fees_pnl?: number
+          funding_pnl?: number
+          id?: string
+          intent_id?: string
+          realized_pnl?: number
+          slippage_pnl?: number
+          tenant_id?: string
+          ts?: string
+          unrealized_pnl?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "basis_pnl_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      basis_quotes: {
+        Row: {
+          basis_bps: number
+          basis_z: number
+          deriv_venue_id: string
+          id: string
+          instrument_id: string
+          perp_ask: number
+          perp_bid: number
+          spot_ask: number
+          spot_bid: number
+          spot_venue_id: string
+          tenant_id: string
+          ts: string
+        }
+        Insert: {
+          basis_bps: number
+          basis_z: number
+          deriv_venue_id: string
+          id?: string
+          instrument_id: string
+          perp_ask: number
+          perp_bid: number
+          spot_ask: number
+          spot_bid: number
+          spot_venue_id: string
+          tenant_id: string
+          ts?: string
+        }
+        Update: {
+          basis_bps?: number
+          basis_z?: number
+          deriv_venue_id?: string
+          id?: string
+          instrument_id?: string
+          perp_ask?: number
+          perp_bid?: number
+          spot_ask?: number
+          spot_bid?: number
+          spot_venue_id?: string
+          tenant_id?: string
+          ts?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "basis_quotes_deriv_venue_id_fkey"
+            columns: ["deriv_venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "basis_quotes_instrument_id_fkey"
+            columns: ["instrument_id"]
+            isOneToOne: false
+            referencedRelation: "instruments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "basis_quotes_spot_venue_id_fkey"
+            columns: ["spot_venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "basis_quotes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -542,6 +698,57 @@ export type Database = {
         }
         Relationships: []
       }
+      fees: {
+        Row: {
+          created_at: string
+          effective_from: string
+          id: string
+          maker_bps: number
+          taker_bps: number
+          tenant_id: string
+          tier: string
+          venue_id: string
+          withdraw_fees: Json
+        }
+        Insert: {
+          created_at?: string
+          effective_from?: string
+          id?: string
+          maker_bps?: number
+          taker_bps?: number
+          tenant_id: string
+          tier?: string
+          venue_id: string
+          withdraw_fees?: Json
+        }
+        Update: {
+          created_at?: string
+          effective_from?: string
+          id?: string
+          maker_bps?: number
+          taker_bps?: number
+          tenant_id?: string
+          tier?: string
+          venue_id?: string
+          withdraw_fees?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fees_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fees_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fills: {
         Row: {
           created_at: string
@@ -599,6 +806,61 @@ export type Database = {
           },
         ]
       }
+      funding_rates: {
+        Row: {
+          created_at: string
+          funding_rate: number
+          funding_time: string
+          id: string
+          instrument_id: string
+          mark_price: number
+          tenant_id: string
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          funding_rate: number
+          funding_time: string
+          id?: string
+          instrument_id: string
+          mark_price: number
+          tenant_id: string
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          funding_rate?: number
+          funding_time?: string
+          id?: string
+          instrument_id?: string
+          mark_price?: number
+          tenant_id?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "funding_rates_instrument_id_fkey"
+            columns: ["instrument_id"]
+            isOneToOne: false
+            referencedRelation: "instruments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "funding_rates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "funding_rates_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       global_settings: {
         Row: {
           api_base_url: string
@@ -634,6 +896,57 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: []
+      }
+      instruments: {
+        Row: {
+          common_symbol: string
+          contract_type: string
+          created_at: string
+          id: string
+          multiplier: number
+          tenant_id: string
+          updated_at: string
+          venue_id: string
+          venue_symbol: string
+        }
+        Insert: {
+          common_symbol: string
+          contract_type?: string
+          created_at?: string
+          id?: string
+          multiplier?: number
+          tenant_id: string
+          updated_at?: string
+          venue_id: string
+          venue_symbol: string
+        }
+        Update: {
+          common_symbol?: string
+          contract_type?: string
+          created_at?: string
+          id?: string
+          multiplier?: number
+          tenant_id?: string
+          updated_at?: string
+          venue_id?: string
+          venue_symbol?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instruments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "instruments_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       intelligence_signals: {
         Row: {
@@ -691,6 +1004,44 @@ export type Database = {
           venue?: string | null
         }
         Relationships: []
+      }
+      leg_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          intent_id: string
+          leg_id: string
+          payload_json: Json
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          intent_id: string
+          leg_id: string
+          payload_json?: Json
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          intent_id?: string
+          leg_id?: string
+          payload_json?: Json
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leg_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       market_data_metrics: {
         Row: {
@@ -772,6 +1123,47 @@ export type Database = {
           url?: string | null
         }
         Relationships: []
+      }
+      market_regimes: {
+        Row: {
+          direction: string
+          id: string
+          liquidity: string
+          regime_state: Json
+          risk_bias: string
+          tenant_id: string
+          ts: string
+          volatility: string
+        }
+        Insert: {
+          direction: string
+          id?: string
+          liquidity: string
+          regime_state: Json
+          risk_bias: string
+          tenant_id: string
+          ts?: string
+          volatility: string
+        }
+        Update: {
+          direction?: string
+          id?: string
+          liquidity?: string
+          regime_state?: Json
+          risk_bias?: string
+          tenant_id?: string
+          ts?: string
+          volatility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "market_regimes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       market_snapshots: {
         Row: {
@@ -949,6 +1341,41 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "meme_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      multi_leg_intents: {
+        Row: {
+          created_at: string
+          id: string
+          intent_id: string
+          legs_json: Json
+          status: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          intent_id: string
+          legs_json: Json
+          status?: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          intent_id?: string
+          legs_json?: Json
+          status?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "multi_leg_intents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -1459,7 +1886,7 @@ export type Database = {
           risk_tier: number
           status: Database["public"]["Enums"]["strategy_status"]
           strategy_type: Database["public"]["Enums"]["strategy_type"]
-          tenant_id: string | null
+          tenant_id: string
           timeframe: string
           updated_at: string
           venue_scope: string[]
@@ -1489,7 +1916,7 @@ export type Database = {
           risk_tier?: number
           status?: Database["public"]["Enums"]["strategy_status"]
           strategy_type?: Database["public"]["Enums"]["strategy_type"]
-          tenant_id?: string | null
+          tenant_id: string
           timeframe: string
           updated_at?: string
           venue_scope?: string[]
@@ -1519,7 +1946,7 @@ export type Database = {
           risk_tier?: number
           status?: Database["public"]["Enums"]["strategy_status"]
           strategy_type?: Database["public"]["Enums"]["strategy_type"]
-          tenant_id?: string | null
+          tenant_id?: string
           timeframe?: string
           updated_at?: string
           venue_scope?: string[]
@@ -1530,6 +1957,61 @@ export type Database = {
             columns: ["book_id"]
             isOneToOne: false
             referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "strategies_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      strategy_allocations: {
+        Row: {
+          allocated_capital: number
+          allocation_pct: number
+          id: string
+          leverage_cap: number
+          risk_multiplier: number
+          strategy_id: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          allocated_capital: number
+          allocation_pct: number
+          id?: string
+          leverage_cap?: number
+          risk_multiplier?: number
+          strategy_id: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          allocated_capital?: number
+          allocation_pct?: number
+          id?: string
+          leverage_cap?: number
+          risk_multiplier?: number
+          strategy_id?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "strategy_allocations_strategy_id_fkey"
+            columns: ["strategy_id"]
+            isOneToOne: false
+            referencedRelation: "strategies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "strategy_allocations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -1571,6 +2053,172 @@ export type Database = {
             columns: ["strategy_id"]
             isOneToOne: false
             referencedRelation: "strategies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      strategy_performance: {
+        Row: {
+          id: string
+          max_drawdown: number
+          pnl: number
+          sharpe: number
+          sortino: number
+          strategy_id: string
+          tenant_id: string
+          ts: string
+          turnover: number
+          win_rate: number
+          window: string
+        }
+        Insert: {
+          id?: string
+          max_drawdown?: number
+          pnl?: number
+          sharpe?: number
+          sortino?: number
+          strategy_id: string
+          tenant_id: string
+          ts?: string
+          turnover?: number
+          win_rate?: number
+          window: string
+        }
+        Update: {
+          id?: string
+          max_drawdown?: number
+          pnl?: number
+          sharpe?: number
+          sortino?: number
+          strategy_id?: string
+          tenant_id?: string
+          ts?: string
+          turnover?: number
+          win_rate?: number
+          window?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "strategy_performance_strategy_id_fkey"
+            columns: ["strategy_id"]
+            isOneToOne: false
+            referencedRelation: "strategies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "strategy_performance_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      strategy_positions: {
+        Row: {
+          avg_entry_basis_bps: number
+          deriv_position: number
+          hedged_ratio: number
+          id: string
+          instrument_id: string
+          spot_position: number
+          strategy_id: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          avg_entry_basis_bps?: number
+          deriv_position?: number
+          hedged_ratio?: number
+          id?: string
+          instrument_id: string
+          spot_position?: number
+          strategy_id: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          avg_entry_basis_bps?: number
+          deriv_position?: number
+          hedged_ratio?: number
+          id?: string
+          instrument_id?: string
+          spot_position?: number
+          strategy_id?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "strategy_positions_instrument_id_fkey"
+            columns: ["instrument_id"]
+            isOneToOne: false
+            referencedRelation: "instruments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "strategy_positions_strategy_id_fkey"
+            columns: ["strategy_id"]
+            isOneToOne: false
+            referencedRelation: "strategies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "strategy_positions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      strategy_risk_metrics: {
+        Row: {
+          correlation_cluster: string | null
+          gross_exposure: number
+          id: string
+          net_exposure: number
+          strategy_id: string
+          stress_loss_estimate: number
+          tenant_id: string
+          ts: string
+          var_estimate: number
+        }
+        Insert: {
+          correlation_cluster?: string | null
+          gross_exposure?: number
+          id?: string
+          net_exposure?: number
+          strategy_id: string
+          stress_loss_estimate?: number
+          tenant_id: string
+          ts?: string
+          var_estimate?: number
+        }
+        Update: {
+          correlation_cluster?: string | null
+          gross_exposure?: number
+          id?: string
+          net_exposure?: number
+          strategy_id?: string
+          stress_loss_estimate?: number
+          tenant_id?: string
+          ts?: string
+          var_estimate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "strategy_risk_metrics_strategy_id_fkey"
+            columns: ["strategy_id"]
+            isOneToOne: false
+            referencedRelation: "strategies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "strategy_risk_metrics_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -1640,6 +2288,27 @@ export type Database = {
           id?: string
           last_check_at?: string
           status?: string
+        }
+        Relationships: []
+      }
+      tenants: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1796,6 +2465,41 @@ export type Database = {
         }
         Relationships: []
       }
+      user_tenants: {
+        Row: {
+          created_at: string
+          id: string
+          is_default: boolean
+          role: Database["public"]["Enums"]["app_role"]
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          role?: Database["public"]["Enums"]["app_role"]
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          role?: Database["public"]["Enums"]["app_role"]
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_tenants_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       venue_health: {
         Row: {
           error_rate: number
@@ -1859,7 +2563,7 @@ export type Database = {
           supported_instruments: string[]
           supports_ioc_fok: boolean
           supports_reduce_only: boolean
-          tenant_id: string | null
+          tenant_id: string
           updated_at: string
           venue_type: Database["public"]["Enums"]["venue_type"]
         }
@@ -1878,7 +2582,7 @@ export type Database = {
           supported_instruments?: string[]
           supports_ioc_fok?: boolean
           supports_reduce_only?: boolean
-          tenant_id?: string | null
+          tenant_id: string
           updated_at?: string
           venue_type?: Database["public"]["Enums"]["venue_type"]
         }
@@ -1897,11 +2601,19 @@ export type Database = {
           supported_instruments?: string[]
           supports_ioc_fok?: boolean
           supports_reduce_only?: boolean
-          tenant_id?: string | null
+          tenant_id?: string
           updated_at?: string
           venue_type?: Database["public"]["Enums"]["venue_type"]
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "venues_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       wallets: {
         Row: {
@@ -2058,657 +2770,37 @@ export type Database = {
         }
         Relationships: []
       }
-      arb_pnl: {
-        Row: {
-          fees: number
-          gross_pnl: number
-          id: string
-          intent_id: string
-          net_pnl: number
-          slippage: number
-          tenant_id: string
-          ts: string
-        }
-        Insert: {
-          fees?: number
-          gross_pnl?: number
-          id?: string
-          intent_id: string
-          net_pnl?: number
-          slippage?: number
-          tenant_id: string
-          ts?: string
-        }
-        Update: {
-          fees?: number
-          gross_pnl?: number
-          id?: string
-          intent_id?: string
-          net_pnl?: number
-          slippage?: number
-          tenant_id?: string
-          ts?: string
-        }
-        Relationships: []
-      }
-      arb_spreads: {
-        Row: {
-          buy_venue_id: string
-          executable_spread_bps: number
-          id: string
-          instrument_id: string
-          latency_score: number
-          liquidity_score: number
-          net_edge_bps: number
-          sell_venue_id: string
-          tenant_id: string
-          ts: string
-        }
-        Insert: {
-          buy_venue_id: string
-          executable_spread_bps: number
-          id?: string
-          instrument_id: string
-          latency_score: number
-          liquidity_score: number
-          net_edge_bps: number
-          sell_venue_id: string
-          tenant_id: string
-          ts?: string
-        }
-        Update: {
-          buy_venue_id?: string
-          executable_spread_bps?: number
-          id?: string
-          instrument_id?: string
-          latency_score?: number
-          liquidity_score?: number
-          net_edge_bps?: number
-          sell_venue_id?: string
-          tenant_id?: string
-          ts?: string
-        }
-        Relationships: []
-      }
-      basis_quotes: {
-        Row: {
-          basis_bps: number
-          basis_z: number
-          deriv_venue_id: string
-          id: string
-          instrument_id: string
-          perp_ask: number
-          perp_bid: number
-          spot_ask: number
-          spot_bid: number
-          spot_venue_id: string
-          tenant_id: string
-          ts: string
-        }
-        Insert: {
-          basis_bps: number
-          basis_z: number
-          deriv_venue_id: string
-          id?: string
-          instrument_id: string
-          perp_ask: number
-          perp_bid: number
-          spot_ask: number
-          spot_bid: number
-          spot_venue_id: string
-          tenant_id: string
-          ts?: string
-        }
-        Update: {
-          basis_bps?: number
-          basis_z?: number
-          deriv_venue_id?: string
-          id?: string
-          instrument_id?: string
-          perp_ask?: number
-          perp_bid?: number
-          spot_ask?: number
-          spot_bid?: number
-          spot_venue_id?: string
-          tenant_id?: string
-          ts?: string
-        }
-        Relationships: []
-      }
-      basis_pnl: {
-        Row: {
-          fees_pnl: number
-          funding_pnl: number
-          id: string
-          intent_id: string
-          realized_pnl: number
-          slippage_pnl: number
-          tenant_id: string
-          ts: string
-          unrealized_pnl: number
-        }
-        Insert: {
-          fees_pnl?: number
-          funding_pnl?: number
-          id?: string
-          intent_id: string
-          realized_pnl?: number
-          slippage_pnl?: number
-          tenant_id: string
-          ts?: string
-          unrealized_pnl?: number
-        }
-        Update: {
-          fees_pnl?: number
-          funding_pnl?: number
-          id?: string
-          intent_id?: string
-          realized_pnl?: number
-          slippage_pnl?: number
-          tenant_id?: string
-          ts?: string
-          unrealized_pnl?: number
-        }
-        Relationships: []
-      }
-      fees: {
-        Row: {
-          created_at: string
-          effective_from: string
-          id: string
-          maker_bps: number
-          taker_bps: number
-          tenant_id: string
-          tier: string
-          venue_id: string
-          withdraw_fees: Json
-        }
-        Insert: {
-          created_at?: string
-          effective_from?: string
-          id?: string
-          maker_bps?: number
-          taker_bps?: number
-          tenant_id: string
-          tier?: string
-          venue_id: string
-          withdraw_fees?: Json
-        }
-        Update: {
-          created_at?: string
-          effective_from?: string
-          id?: string
-          maker_bps?: number
-          taker_bps?: number
-          tenant_id?: string
-          tier?: string
-          venue_id?: string
-          withdraw_fees?: Json
-        }
-        Relationships: []
-      }
-      funding_rates: {
-        Row: {
-          created_at: string
-          funding_rate: number
-          funding_time: string
-          id: string
-          instrument_id: string
-          mark_price: number
-          tenant_id: string
-          venue_id: string
-        }
-        Insert: {
-          created_at?: string
-          funding_rate: number
-          funding_time: string
-          id?: string
-          instrument_id: string
-          mark_price: number
-          tenant_id: string
-          venue_id: string
-        }
-        Update: {
-          created_at?: string
-          funding_rate?: number
-          funding_time?: string
-          id?: string
-          instrument_id?: string
-          mark_price?: number
-          tenant_id?: string
-          venue_id?: string
-        }
-        Relationships: []
-      }
-      instruments: {
-        Row: {
-          common_symbol: string
-          contract_type: string
-          created_at: string
-          id: string
-          multiplier: number
-          tenant_id: string
-          updated_at: string
-          venue_id: string
-          venue_symbol: string
-        }
-        Insert: {
-          common_symbol: string
-          contract_type?: string
-          created_at?: string
-          id?: string
-          multiplier?: number
-          tenant_id: string
-          updated_at?: string
-          venue_id: string
-          venue_symbol: string
-        }
-        Update: {
-          common_symbol?: string
-          contract_type?: string
-          created_at?: string
-          id?: string
-          multiplier?: number
-          tenant_id?: string
-          updated_at?: string
-          venue_id?: string
-          venue_symbol?: string
-        }
-        Relationships: []
-      }
-      leg_events: {
-        Row: {
-          created_at: string
-          event_type: string
-          id: string
-          intent_id: string
-          leg_id: string
-          payload_json: Json
-          tenant_id: string
-        }
-        Insert: {
-          created_at?: string
-          event_type: string
-          id?: string
-          intent_id: string
-          leg_id: string
-          payload_json?: Json
-          tenant_id: string
-        }
-        Update: {
-          created_at?: string
-          event_type?: string
-          id?: string
-          intent_id?: string
-          leg_id?: string
-          payload_json?: Json
-          tenant_id?: string
-        }
-        Relationships: []
-      }
-      multi_leg_intents: {
-        Row: {
-          created_at: string
-          execution_mode: string
-          id: string
-          intent_id: string
-          legs_json: Json
-          status: string
-          tenant_id: string
-        }
-        Insert: {
-          created_at?: string
-          execution_mode?: string
-          id?: string
-          intent_id: string
-          legs_json: Json
-          status?: string
-          tenant_id: string
-        }
-        Update: {
-          created_at?: string
-          execution_mode?: string
-          id?: string
-          intent_id?: string
-          legs_json?: Json
-          status?: string
-          tenant_id?: string
-        }
-        Relationships: []
-      }
-      spot_quotes: {
-        Row: {
-          ask_price: number
-          ask_size: number
-          bid_price: number
-          bid_size: number
-          id: string
-          instrument_id: string
-          spread_bps: number
-          tenant_id: string
-          ts: string
-          venue_id: string
-        }
-        Insert: {
-          ask_price: number
-          ask_size: number
-          bid_price: number
-          bid_size: number
-          id?: string
-          instrument_id: string
-          spread_bps: number
-          tenant_id: string
-          ts?: string
-          venue_id: string
-        }
-        Update: {
-          ask_price?: number
-          ask_size?: number
-          bid_price?: number
-          bid_size?: number
-          id?: string
-          instrument_id?: string
-          spread_bps?: number
-          tenant_id?: string
-          ts?: string
-          venue_id?: string
-        }
-        Relationships: []
-      }
-      strategy_allocations: {
-        Row: {
-          allocated_capital: number
-          allocation_pct: number
-          id: string
-          leverage_cap: number
-          risk_multiplier: number
-          strategy_id: string
-          tenant_id: string
-          updated_at: string
-        }
-        Insert: {
-          allocated_capital: number
-          allocation_pct: number
-          id?: string
-          leverage_cap?: number
-          risk_multiplier?: number
-          strategy_id: string
-          tenant_id: string
-          updated_at?: string
-        }
-        Update: {
-          allocated_capital?: number
-          allocation_pct?: number
-          id?: string
-          leverage_cap?: number
-          risk_multiplier?: number
-          strategy_id?: string
-          tenant_id?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      strategy_performance: {
-        Row: {
-          id: string
-          max_drawdown: number
-          pnl: number
-          sharpe: number
-          sortino: number
-          strategy_id: string
-          tenant_id: string
-          ts: string
-          turnover: number
-          win_rate: number
-          window: string
-        }
-        Insert: {
-          id?: string
-          max_drawdown?: number
-          pnl?: number
-          sharpe?: number
-          sortino?: number
-          strategy_id: string
-          tenant_id: string
-          ts?: string
-          turnover?: number
-          win_rate?: number
-          window: string
-        }
-        Update: {
-          id?: string
-          max_drawdown?: number
-          pnl?: number
-          sharpe?: number
-          sortino?: number
-          strategy_id?: string
-          tenant_id?: string
-          ts?: string
-          turnover?: number
-          win_rate?: number
-          window?: string
-        }
-        Relationships: []
-      }
-      strategy_positions: {
-        Row: {
-          avg_entry_basis_bps: number
-          deriv_position: number
-          hedged_ratio: number
-          id: string
-          instrument_id: string
-          spot_position: number
-          strategy_id: string
-          tenant_id: string
-          updated_at: string
-        }
-        Insert: {
-          avg_entry_basis_bps?: number
-          deriv_position?: number
-          hedged_ratio?: number
-          id?: string
-          instrument_id: string
-          spot_position?: number
-          strategy_id: string
-          tenant_id: string
-          updated_at?: string
-        }
-        Update: {
-          avg_entry_basis_bps?: number
-          deriv_position?: number
-          hedged_ratio?: number
-          id?: string
-          instrument_id?: string
-          spot_position?: number
-          strategy_id?: string
-          tenant_id?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      strategy_risk_metrics: {
-        Row: {
-          correlation_cluster: string | null
-          gross_exposure: number
-          id: string
-          net_exposure: number
-          stress_loss_estimate: number
-          strategy_id: string
-          tenant_id: string
-          ts: string
-          var_estimate: number
-        }
-        Insert: {
-          correlation_cluster?: string | null
-          gross_exposure?: number
-          id?: string
-          net_exposure?: number
-          stress_loss_estimate?: number
-          strategy_id: string
-          tenant_id: string
-          ts?: string
-          var_estimate?: number
-        }
-        Update: {
-          correlation_cluster?: string | null
-          gross_exposure?: number
-          id?: string
-          net_exposure?: number
-          stress_loss_estimate?: number
-          strategy_id?: string
-          tenant_id?: string
-          ts?: string
-          var_estimate?: number
-        }
-        Relationships: []
-      }
-      tenants: {
-        Row: {
-          created_at: string
-          id: string
-          name: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          name: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          name?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      user_tenants: {
-        Row: {
-          created_at: string
-          id: string
-          is_default: boolean
-          role: Database["public"]["Enums"]["app_role"]
-          tenant_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          is_default?: boolean
-          role?: Database["public"]["Enums"]["app_role"]
-          tenant_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          is_default?: boolean
-          role?: Database["public"]["Enums"]["app_role"]
-          tenant_id?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      venue_inventory: {
-        Row: {
-          available_qty: number
-          id: string
-          instrument_id: string
-          reserved_qty: number
-          tenant_id: string
-          updated_at: string
-          venue_id: string
-        }
-        Insert: {
-          available_qty?: number
-          id?: string
-          instrument_id: string
-          reserved_qty?: number
-          tenant_id: string
-          updated_at?: string
-          venue_id: string
-        }
-        Update: {
-          available_qty?: number
-          id?: string
-          instrument_id?: string
-          reserved_qty?: number
-          tenant_id?: string
-          updated_at?: string
-          venue_id?: string
-        }
-        Relationships: []
-      }
-      allocator_decisions: {
-        Row: {
-          allocation_snapshot_json: Json
-          decision_id: string
-          id: string
-          rationale_json: Json
-          regime_state: Json
-          tenant_id: string
-          ts: string
-        }
-        Insert: {
-          allocation_snapshot_json: Json
-          decision_id: string
-          id?: string
-          rationale_json: Json
-          regime_state: Json
-          tenant_id: string
-          ts?: string
-        }
-        Update: {
-          allocation_snapshot_json?: Json
-          decision_id?: string
-          id?: string
-          rationale_json?: Json
-          regime_state?: Json
-          tenant_id?: string
-          ts?: string
-        }
-        Relationships: []
-      }
-      market_regimes: {
-        Row: {
-          direction: string
-          id: string
-          liquidity: string
-          regime_state: Json
-          risk_bias: string
-          tenant_id: string
-          ts: string
-          volatility: string
-        }
-        Insert: {
-          direction: string
-          id?: string
-          liquidity: string
-          regime_state: Json
-          risk_bias: string
-          tenant_id: string
-          ts?: string
-          volatility: string
-        }
-        Update: {
-          direction?: string
-          id?: string
-          liquidity?: string
-          regime_state?: Json
-          risk_bias?: string
-          tenant_id?: string
-          ts?: string
-          volatility?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
       cleanup_old_metrics: { Args: never; Returns: undefined }
+      current_tenant_id: { Args: never; Returns: string }
+      decrypt_api_key: {
+        Args: { ciphertext: string; encryption_key: string }
+        Returns: string
+      }
+      encrypt_api_key: {
+        Args: { encryption_key: string; plaintext: string }
+        Returns: string
+      }
+      get_decrypted_exchange_keys: {
+        Args: {
+          p_encryption_key: string
+          p_exchange: string
+          p_user_id: string
+        }
+        Returns: {
+          api_key: string
+          api_secret: string
+          exchange: string
+          id: string
+          label: string
+          passphrase: string
+        }[]
+      }
+      get_vault_secret: { Args: { secret_name: string }; Returns: string }
       has_any_role: {
         Args: {
           _roles: Database["public"]["Enums"]["app_role"][]
