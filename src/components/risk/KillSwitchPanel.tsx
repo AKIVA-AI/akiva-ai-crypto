@@ -60,13 +60,18 @@ export function KillSwitchPanel() {
 
   // Execute kill switch after 2FA
   const executeKillSwitch = async (enabled: boolean) => {
+    if (!settings?.id) {
+      toast.error('Settings not loaded');
+      return;
+    }
+    
     const { error } = await supabase
       .from('global_settings')
       .update({ 
         global_kill_switch: enabled,
         updated_at: new Date().toISOString()
       })
-      .eq('id', settings?.id);
+      .eq('id', settings.id);
     
     if (error) throw error;
 
@@ -110,10 +115,11 @@ export function KillSwitchPanel() {
   // Toggle reduce-only mode
   const toggleReduceOnly = useMutation({
     mutationFn: async (enabled: boolean) => {
+      if (!settings?.id) throw new Error('Settings not loaded');
       const { error } = await supabase
         .from('global_settings')
         .update({ reduce_only_mode: enabled })
-        .eq('id', settings?.id);
+        .eq('id', settings.id);
       if (error) throw error;
     },
     onSuccess: (_, enabled) => {
@@ -125,10 +131,11 @@ export function KillSwitchPanel() {
   // Toggle paper trading
   const togglePaperTrading = useMutation({
     mutationFn: async (enabled: boolean) => {
+      if (!settings?.id) throw new Error('Settings not loaded');
       const { error } = await supabase
         .from('global_settings')
         .update({ paper_trading_mode: enabled })
-        .eq('id', settings?.id);
+        .eq('id', settings.id);
       if (error) throw error;
     },
     onSuccess: (_, enabled) => {

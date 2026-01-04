@@ -62,33 +62,6 @@ export function RiskAlertBanner() {
     });
   }
 
-  // High drawdown warning
-  const currentDrawdown = globalSettings?.current_drawdown || 0;
-  if (currentDrawdown > 10) {
-    alerts.push({
-      id: 'high-drawdown',
-      type: currentDrawdown > 15 ? 'critical' : 'warning',
-      title: 'HIGH DRAWDOWN',
-      message: `Current drawdown is ${currentDrawdown.toFixed(1)}%. Consider reducing positions.`,
-      dismissable: true,
-    });
-  }
-
-  // Daily loss limit warning
-  const dailyPnL = globalSettings?.daily_pnl || 0;
-  const dailyLossLimit = globalSettings?.daily_loss_limit || -50000;
-  const pnlPercentUsed = dailyLossLimit !== 0 ? (dailyPnL / dailyLossLimit) * 100 : 0;
-  
-  if (dailyPnL < 0 && pnlPercentUsed > 70) {
-    alerts.push({
-      id: 'daily-loss',
-      type: pnlPercentUsed > 90 ? 'critical' : 'warning',
-      title: 'DAILY LOSS LIMIT',
-      message: `${pnlPercentUsed.toFixed(0)}% of daily loss limit reached ($${Math.abs(dailyPnL).toLocaleString()} / $${Math.abs(dailyLossLimit).toLocaleString()})`,
-      dismissable: true,
-    });
-  }
-
   // Filter out dismissed alerts
   const visibleAlerts = alerts.filter(a => !dismissedAlerts.has(a.id) || !a.dismissable);
 

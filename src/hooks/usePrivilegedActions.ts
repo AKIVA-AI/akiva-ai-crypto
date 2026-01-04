@@ -101,8 +101,8 @@ export function useToggleStrategy() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ strategyId, targetStatus }: ToggleStrategyParams) => {
-      return invokeEdgeFunction('toggle-strategy', {
+    mutationFn: async ({ strategyId, targetStatus }: ToggleStrategyParams): Promise<{ strategy?: { status: string } }> => {
+      return invokeEdgeFunction<{ strategy?: { status: string } }>('toggle-strategy', {
         strategy_id: strategyId,
         target_status: targetStatus,
       });

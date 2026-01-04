@@ -105,7 +105,8 @@ export function useLivePriceFeed({ symbols, enabled = true }: UseLivePriceFeedOp
     return `wss://stream.binance.com:9443/stream?streams=${streams}`;
   }, [symbols]);
 
-  const handleMessage = useCallback((message: BinanceTickerMessage) => {
+  const handleMessage = useCallback((rawData: unknown) => {
+    const message = rawData as BinanceTickerMessage;
     if (message.data) {
       const ticker = message.data;
       const symbol = fromBinanceSymbol(ticker.s);

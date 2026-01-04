@@ -121,8 +121,8 @@ describe('AdvancedRiskDashboard', () => {
       fireEvent.click(selector);
 
       await waitFor(() => {
-        expect(screen.getByText('Main Book', { hidden: true })).toBeInTheDocument();
-        expect(screen.getByText('Test Book', { hidden: true })).toBeInTheDocument();
+        expect(screen.getByText('Main Book')).toBeInTheDocument();
+        expect(screen.getByText('Test Book')).toBeInTheDocument();
       });
     });
 

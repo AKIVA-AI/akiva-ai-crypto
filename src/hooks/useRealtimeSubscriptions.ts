@@ -28,16 +28,17 @@ export function useRealtimeSubscription<T = Record<string, unknown>>({
   useEffect(() => {
     const channelName = `realtime-${table}-${Date.now()}`;
     
-    const channel = supabase
-      .channel(channelName)
+    const channel = supabase.channel(channelName);
+    
+    channel
       .on(
-        'postgres_changes' as 'system',
+        'postgres_changes' as any,
         {
           event,
           schema: 'public',
           table,
-        } as Parameters<typeof channel.on>[1],
-        (payload: unknown) => {
+        },
+        (payload: any) => {
           const typedPayload = payload as RealtimePayload<T>;
           console.log(`[Realtime] ${table}:`, typedPayload.eventType, typedPayload);
 

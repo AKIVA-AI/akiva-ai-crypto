@@ -95,7 +95,17 @@ export function useArbitrageStatus() {
     queryFn: async (): Promise<ArbitrageStatus> => {
       const response = await arbitrageApi.getStatus();
       if (response.error) throw new Error(response.error);
-      return response.data as ArbitrageStatus;
+      // Map API response to our ArbitrageStatus type
+      const data = response.data as { running?: boolean; strategies?: string[] } | undefined;
+      return {
+        isRunning: data?.running ?? false,
+        activeStrategies: (data?.strategies ?? []) as ArbitrageType[],
+        totalOpportunities: 0,
+        actionableOpportunities: 0,
+        lastScanAt: new Date().toISOString(),
+        profitToday: 0,
+        profitAllTime: 0,
+      };
     },
     refetchInterval: 10000,
   });

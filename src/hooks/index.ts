@@ -77,10 +77,9 @@ export { useStrategyLifecycle } from './useStrategyLifecycle';
 export { useVenues } from './useVenues';
 
 // Real-time & WebSocket
-export { useRealtimeSubscriptions, useDashboardRealtime } from './useRealtimeSubscriptions';
+export { useRealtimeSubscription, useDashboardRealtime } from './useRealtimeSubscriptions';
 export { useLivePriceFeed } from './useLivePriceFeed';
 export { useLiveOrderBook } from './useLiveOrderBook';
-export { useLiveTrading } from './useLiveTrading';
 export { useRealtimeStream } from './useRealtimeStream';
 export { useWebSocketManager } from './useWebSocketManager';
 export { useWebSocketStream } from './useWebSocketStream';
@@ -92,17 +91,13 @@ export { usePerformanceMetrics } from './usePerformanceMetrics';
 export { useTokenMetrics } from './useTokenMetrics';
 export { useSystemHealth } from './useSystemHealth';
 export { useOrderFlowAnalysis } from './useOrderFlowAnalysis';
-export { useSignalScoring } from './useSignalScoring';
-export { useMarketIntelligence } from './useMarketIntelligence';
-export { useDerivativesData } from './useDerivativesData';
 
 // Trading Features
 export { useTradingAlerts } from './useTradingAlerts';
 export { useTradingShortcuts } from './useTradingShortcuts';
 export { useTradingCopilot } from './useTradingCopilot';
-export { useTradingApi } from './useTradingApi';
 export { usePositionProtection } from './usePositionProtection';
-export { useWhaleAlerts } from './useWhaleAlerts';
+export { useWhaleWallets } from './useWhaleAlerts';
 
 // Agents & AI
 export { useAgents } from './useAgents';
@@ -110,9 +105,8 @@ export { useFreqTradeStrategies } from './useFreqTradeStrategies';
 export { useDecisionTraces } from './useDecisionTraces';
 
 // Control & Settings
-export { useControlPlane } from './useControlPlane';
 export { useEngineControl } from './useEngineControl';
-export { usePrivilegedActions } from './usePrivilegedActions';
+export { useToggleStrategy } from './usePrivilegedActions';
 export { useUserRoles } from './useUserRoles';
 
 // Wallets & Portfolio
@@ -121,7 +115,7 @@ export { useWallets } from './useWallets';
 export { useUnifiedPortfolio } from './useUnifiedPortfolio';
 
 // Utilities
-export { useMobile } from './use-mobile';
+export { useIsMobile } from './use-mobile';
 export { useToast } from './use-toast';
 
 // ============================================================================

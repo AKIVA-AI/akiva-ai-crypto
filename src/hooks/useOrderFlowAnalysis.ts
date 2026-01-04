@@ -200,7 +200,8 @@ export function useOrderFlowAnalysis(
   }, [mergedConfig]);
 
   // Handle incoming trade data
-  const handleMessage = useCallback((data: BinanceTradeMessage) => {
+  const handleMessage = useCallback((rawData: unknown) => {
+    const data = rawData as BinanceTradeMessage;
     if (data.e !== 'trade') return;
 
     const newTrade: Trade = {

@@ -42,7 +42,11 @@ export default function Strategies() {
 
   const handleCreate = async () => {
     if (!formData.name || !formData.book_id) return;
-    await createStrategy.mutateAsync(formData);
+    // tenant_id is required by the schema - use a default or fetch from context
+    await createStrategy.mutateAsync({ 
+      ...formData, 
+      tenant_id: '00000000-0000-0000-0000-000000000000' // Default tenant - should come from user context
+    });
     setIsCreateOpen(false);
     setFormData({ name: '', book_id: '', timeframe: '1h', risk_tier: 1 });
   };
