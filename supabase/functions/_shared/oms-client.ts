@@ -78,7 +78,8 @@ export async function createMultiLegIntent(
     return { intent_id: data.intent_id };
   } catch (error) {
     console.error('[OMS Client] Failed to create intent:', error);
-    return { intent_id: '', error: error.message };
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    return { intent_id: '', error: errorMessage };
   }
 }
 
@@ -161,4 +162,3 @@ export async function checkIdempotency(
     return { exists: false };
   }
 }
-

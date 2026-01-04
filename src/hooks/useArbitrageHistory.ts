@@ -8,6 +8,7 @@ export interface ArbPnlRow {
   fees: number;
   slippage: number;
   net_pnl: number;
+  tenant_id: string;
   ts: string;
 }
 
@@ -22,7 +23,19 @@ export function useArbitrageHistory(limit: number = 50) {
         .limit(limit);
 
       if (error) throw error;
-      return data as ArbPnlRow[];
+
+      // Type guard to ensure data is valid ArbPnlRow[]
+      return (data || []).filter((item): item is ArbPnlRow => 
+        item && 
+        typeof item.id === 'string' &&
+        typeof item.intent_id === 'string' &&
+        typeof item.gross_pnl === 'number' &&
+        typeof item.fees === 'number' &&
+        typeof item.slippage === 'number' &&
+        typeof item.net_pnl === 'number' &&
+        typeof item.tenant_id === 'string' &&
+        typeof item.ts === 'string'
+      );
     },
     refetchInterval: 10000,
   });

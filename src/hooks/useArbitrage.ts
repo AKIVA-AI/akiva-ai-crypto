@@ -1,7 +1,6 @@
 import { toast } from 'sonner';
 import { useArbitrageScan, useArbitrageStatus as useCrossExchangeStatus, useExecuteArbitrage } from '@/hooks/useCrossExchangeArbitrage';
-import { useFundingOpportunities, useExecuteFundingArb } from '@/hooks/useFundingArbitrage';
-import { toast } from 'sonner';
+import { useFundingOpportunities as useFundingOpportunitiesBase, useExecuteFundingArb as useExecuteFundingArbBase } from '@/hooks/useFundingArbitrage';
 
 export type ArbitrageType = 'cross_exchange' | 'funding' | 'statistical' | 'triangular';
 
@@ -63,7 +62,7 @@ export function useCrossExchangeOpportunities(
 }
 
 export function useFundingOpportunitiesUnified(enabled = true) {
-  return useFundingOpportunities();
+  return useFundingOpportunitiesBase();
 }
 
 export function useAllArbitrageOpportunities(enabled = true) {
@@ -118,7 +117,31 @@ export function useExecuteCrossExchangeArb() {
 }
 
 export function useExecuteFundingArbUnified() {
-  return useExecuteFundingArb();
+  return useExecuteFundingArbBase();
+}
+
+// Add the missing exports that the index file expects
+export function useFundingOpportunities(enabled = true) {
+  return useFundingOpportunitiesUnified(enabled);
+}
+
+export function useFundingHistory() {
+  // Placeholder implementation - would need to be implemented
+  return { data: [], isLoading: false, error: null };
+}
+
+export function useExecuteFundingArb() {
+  return useExecuteFundingArbUnified();
+}
+
+export function useArbitragePositions() {
+  // Placeholder implementation - would need to be implemented
+  return { data: [], isLoading: false, error: null };
+}
+
+export function useActiveFundingPositions() {
+  // Placeholder implementation - would need to be implemented
+  return { data: [], isLoading: false, error: null };
 }
 
 export interface UseArbitrageOptions {

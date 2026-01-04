@@ -17,7 +17,14 @@ interface CopilotMessage {
 
 interface CopilotContext {
   instrument?: string;
-  positions?: any[];
+  positions?: Array<{
+    symbol: string;
+    size: number;
+    side: 'buy' | 'sell';
+    entry_price: number;
+    current_price?: number;
+    pnl?: number;
+  }>;
   portfolio_value?: number;
   page?: string;
 }
@@ -66,7 +73,7 @@ export function useTradingCopilot() {
         insights: data.insights,
       }]);
     },
-    onError: (error: any) => {
+    onError: (error: Error | { message?: string }) => {
       const errorMsg = error?.message || 'Failed to get response';
       toast.error(errorMsg);
       setMessages(prev => [...prev, {

@@ -67,7 +67,17 @@ export function useArbPnlAnalytics(limit = 200) {
 
       if (error) throw error;
 
-      const entries = (data as ArbPnlEntry[]).slice().reverse();
+      // Type guard to ensure data is valid ArbPnlEntry[]
+      const entries = (data || []).filter((item): item is ArbPnlEntry => 
+        item && 
+        typeof item.id === 'string' &&
+        typeof item.intent_id === 'string' &&
+        typeof item.net_pnl === 'number' &&
+        typeof item.gross_pnl === 'number' &&
+        typeof item.fees === 'number' &&
+        typeof item.slippage === 'number' &&
+        typeof item.ts === 'string'
+      ).slice().reverse();
       const pnlSeries = entries.map((entry) => entry.net_pnl);
       const totalProfit = entries
         .filter((entry) => entry.net_pnl > 0)

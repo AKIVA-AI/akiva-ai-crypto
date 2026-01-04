@@ -391,8 +391,9 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error('[Basis Arb] Error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errorMessage }),
       {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -400,5 +401,3 @@ serve(async (req) => {
     );
   }
 });
-
-

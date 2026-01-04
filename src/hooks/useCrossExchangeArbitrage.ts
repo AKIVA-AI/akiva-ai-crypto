@@ -140,6 +140,22 @@ export function useArbitrageScan(
       });
 
       const opportunities: ArbitrageOpportunity[] = (spreads ?? [])
+        .filter((spread): spread is typeof spread & { 
+          buy_venue_id: string; 
+          sell_venue_id: string; 
+          instrument_id: string;
+          net_edge_bps: number;
+          liquidity_score: number;
+          ts: string;
+        } => 
+          spread && 
+          typeof spread.buy_venue_id === 'string' &&
+          typeof spread.sell_venue_id === 'string' &&
+          typeof spread.instrument_id === 'string' &&
+          typeof spread.net_edge_bps === 'number' &&
+          typeof spread.liquidity_score === 'number' &&
+          typeof spread.ts === 'string'
+        )
         .map((spread) => {
           const symbol = instrumentById.get(spread.instrument_id) ?? 'UNKNOWN';
           const buyVenueKey = venueKeyById.get(spread.buy_venue_id) ?? 'unknown';

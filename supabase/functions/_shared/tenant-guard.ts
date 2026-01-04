@@ -146,10 +146,11 @@ export async function tenantGuard(
     return { auth, error: null };
   } catch (error) {
     console.error('[Tenant Guard] Authorization failed:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Authorization failed';
     return {
       auth: null,
       error: new Response(
-        JSON.stringify({ error: error.message }),
+        JSON.stringify({ error: errorMessage }),
         {
           status: 401,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -158,4 +159,3 @@ export async function tenantGuard(
     };
   }
 }
-
