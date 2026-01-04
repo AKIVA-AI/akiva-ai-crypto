@@ -22,6 +22,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
+      - name: Free Disk Space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          sudo apt-get clean
+          docker system prune -af
+          npm cache clean --force || true
+      
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -60,4 +69,3 @@ jobs:
           name: test-screenshots
           path: test-results/
           retention-days: 7
-
