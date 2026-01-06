@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 
 export interface SpotArbSpreadRow {
   id: string;
@@ -13,18 +12,15 @@ export interface SpotArbSpreadRow {
   ts: string;
 }
 
+// Note: The arb_spreads table does not exist in the current schema.
+// This hook returns mock data until the table is created.
+
 export function useSpotArbSpreads(enabled = true) {
   return useQuery({
     queryKey: ['spot-arb-spreads'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('arb_spreads')
-        .select('*')
-        .order('ts', { ascending: false })
-        .limit(50);
-
-      if (error) throw error;
-      return data as SpotArbSpreadRow[];
+    queryFn: async (): Promise<SpotArbSpreadRow[]> => {
+      // TODO: Implement when arb_spreads table is created
+      return [];
     },
     enabled,
     refetchInterval: enabled ? 10000 : false,

@@ -37,16 +37,16 @@ serve(async (req) => {
 
     switch (action) {
       case 'scan_opportunities':
-        return await scanOpportunities(supabase, { tier, venue, product_type });
+        return await scanOpportunities(supabase, { tier, venue, product_type }, corsHeaders);
       
       case 'compute_scores':
-        return await computeScores(supabase, instruments || []);
+        return await computeScores(supabase, instruments || [], corsHeaders);
       
       case 'get_high_probability':
-        return await getHighProbabilitySignals(supabase, { tier, venue, product_type });
+        return await getHighProbabilitySignals(supabase, { tier, venue, product_type }, corsHeaders);
       
       case 'get_tradeable_instruments':
-        return await getTradeableInstruments(supabase, { tier, venue, product_type });
+        return await getTradeableInstruments(supabase, { tier, venue, product_type }, corsHeaders);
       
       default:
         return new Response(
@@ -64,7 +64,7 @@ serve(async (req) => {
   }
 });
 
-async function getTradeableInstruments(supabase: any, filters: { tier?: number, venue?: string, product_type?: string }) {
+async function getTradeableInstruments(supabase: any, filters: { tier?: number, venue?: string, product_type?: string }, corsHeaders: Record<string, string>) {
   let query = supabase
     .from('tradeable_instruments')
     .select('*')
@@ -92,7 +92,7 @@ async function getTradeableInstruments(supabase: any, filters: { tier?: number, 
   );
 }
 
-async function scanOpportunities(supabase: any, filters: { tier?: number, venue?: string, product_type?: string }) {
+async function scanOpportunities(supabase: any, filters: { tier?: number, venue?: string, product_type?: string }, corsHeaders: Record<string, string>) {
   // Get tradeable instruments based on filters
   let instrumentQuery = supabase
     .from('tradeable_instruments')
@@ -339,7 +339,7 @@ function generateReasoning(factors: FactorScores, direction: string, score: numb
   return `${direction.toUpperCase()}: ${reasons.join(', ')}. Composite score: ${Math.round(score * 100)}%`;
 }
 
-async function computeScores(supabase: any, instruments: string[]) {
+async function computeScores(supabase: any, instruments: string[], corsHeaders: Record<string, string>) {
   if (instruments.length === 0) {
     // Default to Tier 1 instruments
     const { data } = await supabase
@@ -363,7 +363,7 @@ async function computeScores(supabase: any, instruments: string[]) {
   );
 }
 
-async function getHighProbabilitySignals(supabase: any, filters: { tier?: number, venue?: string, product_type?: string }) {
+async function getHighProbabilitySignals(supabase: any, filters: { tier?: number, venue?: string, product_type?: string }, corsHeaders: Record<string, string>) {
   let query = supabase
     .from('intelligence_signals')
     .select('*')

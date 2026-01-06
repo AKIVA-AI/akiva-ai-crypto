@@ -44,37 +44,8 @@ export interface ArbitrageOpportunity {
   };
 }
 
-const normalizeVenueKey = (name: string) => {
-  const normalized = name.toLowerCase();
-  if (normalized.includes('coinbase')) return 'coinbase';
-  if (normalized.includes('kraken')) return 'kraken';
-  if (normalized.includes('binance') && normalized.includes('us')) return 'binance_us';
-  if (normalized.includes('binance')) return 'binance';
-  if (normalized.includes('bybit')) return 'bybit';
-  if (normalized.includes('okx')) return 'okx';
-  if (normalized.includes('hyperliquid')) return 'hyperliquid';
-  return normalized.replace(/\s+/g, '_');
-};
-
-const fetchVenues = async () => {
-  const { data, error } = await supabase
-    .from('venues')
-    .select('id, name');
-
-  if (error) throw error;
-  return data;
-};
-
-const fetchInstruments = async (symbols: string[]) => {
-  const { data, error } = await supabase
-    .from('instruments')
-    .select('id, common_symbol, venue_id, contract_type')
-    .in('common_symbol', symbols)
-    .eq('contract_type', 'spot');
-
-  if (error) throw error;
-  return data;
-};
+// Note: The arb_spreads and spot_quotes tables do not exist in the current schema.
+// These hooks return mock data until the tables are created.
 
 export function useArbitrageScan(
   symbols: string[] = ['BTC/USD', 'ETH/USD', 'SOL/USD', 'AVAX/USD', 'LINK/USD'],
@@ -84,109 +55,10 @@ export function useArbitrageScan(
   return useQuery({
     queryKey: ['arb-spreads-scan', symbols, minSpreadPercent],
     queryFn: async () => {
-      const [venues, instruments] = await Promise.all([
-        fetchVenues(),
-        fetchInstruments(symbols),
-      ]);
-
-      const venueNameById = new Map<string, string>();
-      const venueKeyById = new Map<string, string>();
-      venues.forEach((venue) => {
-        venueNameById.set(venue.id, venue.name);
-        venueKeyById.set(venue.id, normalizeVenueKey(venue.name));
-      });
-
-      const instrumentById = new Map<string, string>();
-      instruments.forEach((instrument) => {
-        instrumentById.set(instrument.id, instrument.common_symbol);
-      });
-
-      const instrumentIds = Array.from(instrumentById.keys());
-      if (instrumentIds.length === 0) {
-        return { opportunities: [], timestamp: Date.now() };
-      }
-
-      const { data: spreads, error: spreadError } = await supabase
-        .from('arb_spreads')
-        .select('*')
-        .in('instrument_id', instrumentIds)
-        .order('ts', { ascending: false })
-        .limit(200);
-
-      if (spreadError) throw spreadError;
-
-      const venueIds = new Set<string>();
-      (spreads ?? []).forEach((spread) => {
-        venueIds.add(spread.buy_venue_id);
-        venueIds.add(spread.sell_venue_id);
-      });
-
-      const { data: quotes, error: quoteError } = await supabase
-        .from('spot_quotes')
-        .select('*')
-        .in('instrument_id', instrumentIds)
-        .in('venue_id', Array.from(venueIds))
-        .order('ts', { ascending: false })
-        .limit(500);
-
-      if (quoteError) throw quoteError;
-
-      const latestQuoteByKey = new Map<string, typeof quotes[0]>();
-      (quotes ?? []).forEach((quote) => {
-        const key = `${quote.instrument_id}:${quote.venue_id}`;
-        if (!latestQuoteByKey.has(key)) {
-          latestQuoteByKey.set(key, quote);
-        }
-      });
-
-      const opportunities: ArbitrageOpportunity[] = (spreads ?? [])
-        .filter((spread): spread is typeof spread & { 
-          buy_venue_id: string; 
-          sell_venue_id: string; 
-          instrument_id: string;
-          net_edge_bps: number;
-          liquidity_score: number;
-          ts: string;
-        } => 
-          spread && 
-          typeof spread.buy_venue_id === 'string' &&
-          typeof spread.sell_venue_id === 'string' &&
-          typeof spread.instrument_id === 'string' &&
-          typeof spread.net_edge_bps === 'number' &&
-          typeof spread.liquidity_score === 'number' &&
-          typeof spread.ts === 'string'
-        )
-        .map((spread) => {
-          const symbol = instrumentById.get(spread.instrument_id) ?? 'UNKNOWN';
-          const buyVenueKey = venueKeyById.get(spread.buy_venue_id) ?? 'unknown';
-          const sellVenueKey = venueKeyById.get(spread.sell_venue_id) ?? 'unknown';
-          const buyQuote = latestQuoteByKey.get(`${spread.instrument_id}:${spread.buy_venue_id}`);
-          const sellQuote = latestQuoteByKey.get(`${spread.instrument_id}:${spread.sell_venue_id}`);
-          const buyPrice = buyQuote?.ask_price ?? 0;
-          const sellPrice = sellQuote?.bid_price ?? 0;
-          const spreadValue = sellPrice - buyPrice;
-          const spreadPercent = buyPrice > 0 ? (spreadValue / buyPrice) * 100 : 0;
-          const volume = Math.min(buyQuote?.ask_size ?? 0, sellQuote?.bid_size ?? 0);
-
-          return {
-            id: spread.id,
-            symbol,
-            buyExchange: buyVenueKey,
-            sellExchange: sellVenueKey,
-            buyPrice,
-            sellPrice,
-            spread: spreadValue,
-            spreadPercent,
-            estimatedProfit: spread.net_edge_bps,
-            volume,
-            confidence: spread.liquidity_score,
-            timestamp: new Date(spread.ts).getTime(),
-          };
-        })
-        .filter((opp) => opp.spreadPercent >= minSpreadPercent);
-
+      // Return empty data since arb_spreads/spot_quotes tables don't exist yet
+      // TODO: Implement when arb_spreads and spot_quotes tables are created
       return {
-        opportunities,
+        opportunities: [] as ArbitrageOpportunity[],
         timestamp: Date.now(),
       };
     },
@@ -200,48 +72,9 @@ export function useArbitragePrices(symbol: string) {
   return useQuery({
     queryKey: ['arb-prices', symbol],
     queryFn: async () => {
-      const [venues, instruments] = await Promise.all([
-        fetchVenues(),
-        fetchInstruments([symbol]),
-      ]);
-
-      const venueKeyById = new Map<string, string>();
-      venues.forEach((venue) => {
-        venueKeyById.set(venue.id, normalizeVenueKey(venue.name));
-      });
-
-      const instrumentIds = instruments.map((instrument) => instrument.id);
-      if (instrumentIds.length === 0) return [];
-
-      const { data: quotes, error } = await supabase
-        .from('spot_quotes')
-        .select('*')
-        .in('instrument_id', instrumentIds)
-        .order('ts', { ascending: false })
-        .limit(200);
-
-      if (error) throw error;
-
-      const latestByVenue = new Map<string, typeof quotes[0]>();
-      (quotes ?? []).forEach((quote) => {
-        const key = quote.venue_id;
-        if (!latestByVenue.has(key)) {
-          latestByVenue.set(key, quote);
-        }
-      });
-
-      return Array.from(latestByVenue.values()).map((quote) => {
-        const exchange = venueKeyById.get(quote.venue_id) ?? 'unknown';
-        const spread = quote.ask_price - quote.bid_price;
-        const spreadPercent = quote.bid_price > 0 ? (spread / quote.bid_price) * 100 : 0;
-        return {
-          exchange,
-          bid: quote.bid_price,
-          ask: quote.ask_price,
-          spread,
-          spreadPercent,
-        };
-      });
+      // Return empty data since spot_quotes table doesn't exist yet
+      // TODO: Implement when spot_quotes table is created
+      return [];
     },
     staleTime: 2 * 1000,
     refetchInterval: 5 * 1000,
@@ -253,25 +86,14 @@ export function useArbitrageStatus() {
   return useQuery({
     queryKey: ['arb-status'],
     queryFn: async () => {
-      const cutoff = new Date(Date.now() - 60 * 1000).toISOString();
-      const { data, error } = await supabase
-        .from('arb_spreads')
-        .select('id, ts')
-        .gt('ts', cutoff)
-        .order('ts', { ascending: false })
-        .limit(100);
-
-      if (error) throw error;
-
-      const lastScanAt = data?.[0]?.ts ?? null;
-      const totalOpportunities = data?.length ?? 0;
-
+      // Return default status since arb_spreads table doesn't exist yet
+      // TODO: Implement when arb_spreads table is created
       return {
-        isRunning: !!lastScanAt,
-        activeStrategies: ['cross_exchange'],
-        totalOpportunities,
-        actionableOpportunities: totalOpportunities,
-        lastScanAt: lastScanAt ?? new Date().toISOString(),
+        isRunning: false,
+        activeStrategies: [] as string[],
+        totalOpportunities: 0,
+        actionableOpportunities: 0,
+        lastScanAt: new Date().toISOString(),
         profitToday: 0,
         profitAllTime: 0,
       };

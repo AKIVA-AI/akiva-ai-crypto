@@ -44,7 +44,7 @@ export function useCreateStrategy() {
   
   return useMutation({
     mutationFn: async (strategy: StrategyInsert) => {
-      let tenantId = strategy.tenant_id;
+      let tenantId: string | undefined = strategy.tenant_id;
       if (!tenantId) {
         const { data: tenantRow, error: tenantError } = await supabase
           .from('user_tenants')
@@ -54,7 +54,7 @@ export function useCreateStrategy() {
           .maybeSingle();
 
         if (tenantError) throw tenantError;
-        tenantId = tenantRow?.tenant_id ?? null;
+        tenantId = tenantRow?.tenant_id ?? undefined;
       }
 
       if (!tenantId) {

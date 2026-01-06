@@ -62,19 +62,19 @@ serve(async (req) => {
 
     switch (action) {
       case 'scan_funding_opportunities':
-        return await scanFundingOpportunities(supabase);
+        return await scanFundingOpportunities(supabase, corsHeaders);
       
       case 'get_funding_history':
-        return await getFundingHistory(supabase, symbol);
+        return await getFundingHistory(supabase, symbol, corsHeaders);
       
       case 'execute_funding_arb':
-        return await executeFundingArb(supabase, body, paperMode);
+        return await executeFundingArb(supabase, body, paperMode, corsHeaders);
       
       case 'get_active_positions':
-        return await getActiveFundingPositions(supabase);
+        return await getActiveFundingPositions(supabase, corsHeaders);
       
       case 'close_funding_position':
-        return await closeFundingPosition(supabase, body, paperMode);
+        return await closeFundingPosition(supabase, body, paperMode, corsHeaders);
       
       default:
         return new Response(
@@ -92,7 +92,7 @@ serve(async (req) => {
   }
 });
 
-async function scanFundingOpportunities(supabase: any): Promise<Response> {
+async function scanFundingOpportunities(supabase: any, corsHeaders: Record<string, string>): Promise<Response> {
   console.log('[Funding Arb] Starting scan...');
   
   const opportunities: FundingOpportunity[] = [];
@@ -249,7 +249,7 @@ async function scanFundingOpportunities(supabase: any): Promise<Response> {
   );
 }
 
-async function getFundingHistory(supabase: any, symbol: string): Promise<Response> {
+async function getFundingHistory(supabase: any, symbol: string, corsHeaders: Record<string, string>): Promise<Response> {
   const { data, error } = await supabase
     .from('derivatives_metrics')
     .select('instrument, funding_rate, recorded_at, venue')
@@ -279,7 +279,7 @@ async function getFundingHistory(supabase: any, symbol: string): Promise<Respons
   );
 }
 
-async function executeFundingArb(supabase: any, params: ArbitrageExecution, paperMode: boolean): Promise<Response> {
+async function executeFundingArb(supabase: any, params: ArbitrageExecution, paperMode: boolean, corsHeaders: Record<string, string>): Promise<Response> {
   const { opportunityId, symbol, direction, spotVenue, perpVenue, spotSize, perpSize } = params;
 
   console.log(`[Funding Arb] Executing: ${symbol} ${direction} (paper: ${paperMode})`);
@@ -335,7 +335,7 @@ async function executeFundingArb(supabase: any, params: ArbitrageExecution, pape
   );
 }
 
-async function getActiveFundingPositions(supabase: any): Promise<Response> {
+async function getActiveFundingPositions(supabase: any, corsHeaders: Record<string, string>): Promise<Response> {
   const { data, error } = await supabase
     .from('arbitrage_executions')
     .select('*')
@@ -351,7 +351,7 @@ async function getActiveFundingPositions(supabase: any): Promise<Response> {
   );
 }
 
-async function closeFundingPosition(supabase: any, params: { executionId: string }, paperMode: boolean): Promise<Response> {
+async function closeFundingPosition(supabase: any, params: { executionId: string }, paperMode: boolean, corsHeaders: Record<string, string>): Promise<Response> {
   const { executionId } = params;
 
   const { data, error } = await supabase
