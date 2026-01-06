@@ -89,42 +89,30 @@ export function MarketDataProvider({ children, refreshInterval = 5000 }: Props) 
     return new Set([...pinnedSymbols.current, ...dynamicSymbols.current]);
   }, []);
 
-  const fetchInProgress = useRef(false);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const lastFetchTime = useRef(0);
-  const MIN_FETCH_INTERVAL = 2000; // Minimum 2 seconds between fetches
+  const eventSourceRef = useRef<EventSource | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectAttempts = useRef(0);
+  const MAX_RECONNECT_ATTEMPTS = 5;
+  const RECONNECT_DELAY = 3000;
+  const useWebSocket = useRef(true); // Flag to enable/disable WebSocket
+  const fallbackIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchMarketData = useCallback(async (force = false) => {
-    // Prevent duplicate fetches
-    if (fetchInProgress.current) {
-      console.log('[MarketData] Fetch already in progress, skipping');
+  // Fallback polling method (used if WebSocket fails)
+  const fetchMarketDataPolling = useCallback(async () => {
+    const symbols = Array.from(getSubscribedApiSymbols()).join(',');
+    if (!symbols) {
+      setState(prev => ({ ...prev, isLoading: false }));
       return;
     }
-
-    // Rate limit
-    const now = Date.now();
-    if (!force && now - lastFetchTime.current < MIN_FETCH_INTERVAL) {
-      console.log('[MarketData] Rate limited, skipping fetch');
-      return;
-    }
-
-    fetchInProgress.current = true;
-    lastFetchTime.current = now;
 
     try {
-      const symbols = Array.from(getSubscribedApiSymbols()).join(',');
-      if (!symbols) {
-        setState(prev => ({ ...prev, isLoading: false }));
-        return;
-      }
-
       const { data, error } = await supabase.functions.invoke('market-data', {
         body: { symbols },
         method: 'POST',
       });
 
       if (error) {
-        console.error('[MarketData] API error:', error);
+        console.error('[MarketData] Polling API error:', error);
         setState(prev => ({ ...prev, error: error.message, isLoading: false }));
         return;
       }
@@ -136,7 +124,7 @@ export function MarketDataProvider({ children, refreshInterval = 5000 }: Props) 
           const displaySymbol = toDisplaySymbol(ticker.symbol);
           const supported = isSymbolSupported(ticker.symbol);
           const hasRealPrice = ticker.price > 0 && ticker.dataQuality !== 'simulated';
-          
+
           newTickers.set(displaySymbol, {
             symbol: displaySymbol,
             price: ticker.price,
@@ -156,42 +144,154 @@ export function MarketDataProvider({ children, refreshInterval = 5000 }: Props) 
           tickers: newTickers,
           isLoading: false,
           lastUpdate: Date.now(),
-          source: data.source || 'unknown',
+          source: data.source || 'coingecko-polling',
           latencyMs: data.latencyMs || 0,
           tradingAllowed: data.tradingAllowed ?? true,
           error: null,
         });
 
-        console.log(`[MarketData] Updated ${newTickers.size} tickers from ${data.source}`);
+        console.log(`[MarketData] Polling updated ${newTickers.size} tickers from ${data.source}`);
       }
     } catch (err) {
-      console.error('[MarketData] Fetch error:', err);
+      console.error('[MarketData] Polling fetch error:', err);
       setState(prev => ({
         ...prev,
         error: err instanceof Error ? err.message : 'Unknown error',
         isLoading: false,
       }));
-    } finally {
-      fetchInProgress.current = false;
     }
   }, [getSubscribedApiSymbols]);
 
-  // Initial fetch and interval setup
-  useEffect(() => {
-    // Initial fetch
-    fetchMarketData(true);
+  // WebSocket connection management
+  const connectWebSocket = useCallback(() => {
+    if (!useWebSocket.current) {
+      console.log('[MarketData] WebSocket disabled, using polling fallback');
+      return;
+    }
 
-    // Set up refresh interval
-    intervalRef.current = setInterval(() => {
-      fetchMarketData();
-    }, refreshInterval);
+    const symbols = Array.from(getSubscribedApiSymbols());
+    if (symbols.length === 0) {
+      setState(prev => ({ ...prev, isLoading: false }));
+      return;
+    }
 
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
+    // Close existing connection
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+
+    const symbolsParam = symbols.join(',');
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    const streamUrl = `${supabaseUrl}/functions/v1/market-data-stream?symbols=${symbolsParam}`;
+
+    console.log(`[MarketData] Connecting to WebSocket stream for ${symbols.length} symbols`);
+
+    const eventSource = new EventSource(streamUrl, {
+      headers: {
+        'Authorization': `Bearer ${supabaseKey}`,
+      },
+    } as any);
+
+    eventSource.onopen = () => {
+      console.log('[MarketData] WebSocket connected');
+      reconnectAttempts.current = 0;
+      setState(prev => ({
+        ...prev,
+        isLoading: false,
+        error: null,
+        source: 'binance-websocket',
+      }));
+    };
+
+    eventSource.onmessage = (event) => {
+      try {
+        const ticker = JSON.parse(event.data);
+
+        setState(prev => {
+          const newTickers = new Map(prev.tickers);
+          const displaySymbol = toDisplaySymbol(ticker.symbol);
+          const supported = isSymbolSupported(ticker.symbol);
+          const hasRealPrice = ticker.price > 0 && ticker.dataQuality !== 'simulated';
+
+          newTickers.set(displaySymbol, {
+            symbol: displaySymbol,
+            price: ticker.price,
+            change24h: ticker.change24h,
+            volume24h: ticker.volume24h,
+            high24h: ticker.high24h ?? ticker.price,
+            low24h: ticker.low24h ?? ticker.price,
+            bid: ticker.bid,
+            ask: ticker.ask,
+            timestamp: ticker.timestamp,
+            dataQuality: ticker.dataQuality || 'realtime',
+            isSupported: supported && hasRealPrice,
+          });
+
+          return {
+            ...prev,
+            tickers: newTickers,
+            lastUpdate: Date.now(),
+            tradingAllowed: ticker.dataQuality !== 'simulated',
+          };
+        });
+      } catch (err) {
+        console.error('[MarketData] Error parsing WebSocket message:', err);
       }
     };
-  }, [fetchMarketData, refreshInterval]);
+
+    eventSource.onerror = (error) => {
+      console.error('[MarketData] WebSocket error:', error);
+      eventSource.close();
+
+      // Attempt reconnection with exponential backoff
+      if (reconnectAttempts.current < MAX_RECONNECT_ATTEMPTS) {
+        reconnectAttempts.current++;
+        const delay = RECONNECT_DELAY * Math.pow(2, reconnectAttempts.current - 1);
+        console.log(`[MarketData] Reconnecting in ${delay}ms (attempt ${reconnectAttempts.current}/${MAX_RECONNECT_ATTEMPTS})`);
+
+        reconnectTimeoutRef.current = setTimeout(() => {
+          connectWebSocket();
+        }, delay);
+      } else {
+        console.warn('[MarketData] WebSocket failed after max attempts, falling back to polling');
+        useWebSocket.current = false;
+
+        // Start polling fallback
+        fetchMarketDataPolling();
+        fallbackIntervalRef.current = setInterval(fetchMarketDataPolling, refreshInterval);
+
+        setState(prev => ({
+          ...prev,
+          error: 'Using polling fallback (WebSocket unavailable)',
+          isLoading: false,
+        }));
+      }
+    };
+
+    eventSourceRef.current = eventSource;
+  }, [getSubscribedApiSymbols, fetchMarketDataPolling, refreshInterval]);
+
+  // Initial connection and cleanup
+  useEffect(() => {
+    connectWebSocket();
+
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      if (fallbackIntervalRef.current) {
+        clearInterval(fallbackIntervalRef.current);
+        fallbackIntervalRef.current = null;
+      }
+    };
+  }, [connectWebSocket]);
 
   const getTicker = useCallback((symbol: string): MarketTicker | undefined => {
     // Try both display format and API format
@@ -203,8 +303,9 @@ export function MarketDataProvider({ children, refreshInterval = 5000 }: Props) 
   }, [state.tickers]);
 
   const refresh = useCallback(async () => {
-    await fetchMarketData(true);
-  }, [fetchMarketData]);
+    // Reconnect WebSocket to force refresh
+    connectWebSocket();
+  }, [connectWebSocket]);
 
   const subscribe = useCallback((symbols: string[]) => {
     let changed = false;
@@ -217,15 +318,23 @@ export function MarketDataProvider({ children, refreshInterval = 5000 }: Props) 
       }
     }
     if (changed) {
-      fetchMarketData(true);
+      connectWebSocket();
     }
-  }, [fetchMarketData]);
+  }, [connectWebSocket]);
 
   const unsubscribe = useCallback((symbols: string[]) => {
+    let changed = false;
     for (const symbol of symbols) {
-      dynamicSymbols.current.delete(toApiSymbol(symbol));
+      const apiSymbol = toApiSymbol(symbol);
+      if (dynamicSymbols.current.has(apiSymbol)) {
+        dynamicSymbols.current.delete(apiSymbol);
+        changed = true;
+      }
     }
-  }, []);
+    if (changed) {
+      connectWebSocket();
+    }
+  }, [connectWebSocket]);
 
   const value: MarketDataContextValue = {
     ...state,

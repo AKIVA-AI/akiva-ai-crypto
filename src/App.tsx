@@ -31,6 +31,7 @@ import Operations from "./pages/Operations";
 import Screener from "./pages/Screener";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import MultiExchangeDemo from "./pages/MultiExchangeDemo";
 
 const queryClient = new QueryClient();
 
@@ -67,6 +68,7 @@ const App = () => (
                   <Route path="/trade" element={<ProtectedRoute><Trade /></ProtectedRoute>} />
                   <Route path="/screener" element={<ProtectedRoute><Screener /></ProtectedRoute>} />
                   <Route path="/operations" element={<ProtectedRoute><Operations /></ProtectedRoute>} />
+                  <Route path="/multi-exchange-demo" element={<ProtectedRoute><MultiExchangeDemo /></ProtectedRoute>} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 </AlertNotificationProvider>
