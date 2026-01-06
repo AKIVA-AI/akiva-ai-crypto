@@ -1,6 +1,20 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getSecureCorsHeaders, RATE_LIMITS, rateLimitMiddleware, validateAuth } from "../_shared/security.ts";
+import { getSecureCorsHeaders } from "../_shared/security.ts";
+
+// Input validation constants
+const MAX_TICKER_LENGTH = 50;
+const MAX_STRING_LENGTH = 500;
+const MAX_PRICE = 10000000; // $10 million max price
+const MIN_POSITION_SIZE_PCT = 0.1;
+const MAX_POSITION_SIZE_PCT = 10;
+const MAX_STOP_LOSS_DEVIATION = 0.5; // 50% max deviation from price
+const MAX_TAKE_PROFIT_DEVIATION = 1.0; // 100% max deviation from price
+
+// Simple in-memory rate limiter for webhook endpoint
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_REQUESTS = 30; // 30 requests per minute per secret
+const RATE_LIMIT_WINDOW_MS = 60000;
 
 interface TradingViewAlert {
   // Standard TradingView fields
@@ -34,6 +48,142 @@ interface TradingViewAlert {
   secret?: string;
 }
 
+interface ValidationResult {
+  valid: boolean;
+  errors: string[];
+  sanitized: TradingViewAlert;
+}
+
+/**
+ * Sanitize a string value by trimming and limiting length
+ */
+function sanitizeString(value: unknown, maxLength: number): string {
+  if (typeof value !== 'string') return '';
+  // Remove control characters and trim
+  return value.replace(/[\x00-\x1F\x7F]/g, '').trim().slice(0, maxLength);
+}
+
+/**
+ * Validate and sanitize numeric value within bounds
+ */
+function sanitizeNumber(value: unknown, min: number, max: number, defaultValue: number): number {
+  if (value === undefined || value === null) return defaultValue;
+  const num = typeof value === 'number' ? value : parseFloat(String(value));
+  if (isNaN(num)) return defaultValue;
+  return Math.min(max, Math.max(min, num));
+}
+
+/**
+ * Check if rate limit is exceeded for a given key
+ */
+function isRateLimited(key: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(key);
+  
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return false;
+  }
+  
+  entry.count++;
+  return entry.count > RATE_LIMIT_REQUESTS;
+}
+
+/**
+ * Comprehensive input validation for TradingView alerts
+ */
+function validateAlert(alert: TradingViewAlert): ValidationResult {
+  const errors: string[] = [];
+  const sanitized: TradingViewAlert = {};
+
+  // Validate and sanitize ticker/instrument
+  const ticker = sanitizeString(alert.ticker, MAX_TICKER_LENGTH);
+  const instrument = sanitizeString(alert.instrument, MAX_TICKER_LENGTH);
+  sanitized.ticker = ticker || undefined;
+  sanitized.instrument = instrument || undefined;
+  
+  if (!ticker && !instrument) {
+    errors.push('No ticker or instrument provided');
+  }
+
+  // Validate action
+  const validActions = ['buy', 'sell', 'close', 'neutral', 'long', 'short'];
+  if (alert.action && !validActions.includes(String(alert.action).toLowerCase())) {
+    errors.push(`Invalid action: ${alert.action}. Must be one of: ${validActions.join(', ')}`);
+  } else {
+    sanitized.action = alert.action ? String(alert.action).toLowerCase() as TradingViewAlert['action'] : undefined;
+  }
+
+  // Validate price (must be positive and reasonable)
+  if (alert.price !== undefined) {
+    const price = sanitizeNumber(alert.price, 0.0001, MAX_PRICE, 0);
+    if (price <= 0) {
+      errors.push('Price must be a positive number');
+    } else {
+      sanitized.price = price;
+    }
+  }
+
+  // Validate strength and confidence (0-1 range)
+  sanitized.strength = sanitizeNumber(alert.strength, 0, 1, 0.7);
+  sanitized.confidence = sanitizeNumber(alert.confidence, 0, 1, 0.65);
+
+  // Validate stop_loss relative to price
+  if (alert.stop_loss !== undefined && sanitized.price) {
+    const stopLoss = sanitizeNumber(alert.stop_loss, 0.0001, MAX_PRICE, 0);
+    const deviation = Math.abs((stopLoss - sanitized.price) / sanitized.price);
+    if (stopLoss <= 0) {
+      errors.push('Stop loss must be a positive number');
+    } else if (deviation > MAX_STOP_LOSS_DEVIATION) {
+      errors.push(`Stop loss deviation (${(deviation * 100).toFixed(1)}%) exceeds maximum (${MAX_STOP_LOSS_DEVIATION * 100}%)`);
+    } else {
+      sanitized.stop_loss = stopLoss;
+    }
+  } else if (alert.stop_loss !== undefined) {
+    sanitized.stop_loss = sanitizeNumber(alert.stop_loss, 0.0001, MAX_PRICE, 0);
+  }
+
+  // Validate take_profit relative to price
+  if (alert.take_profit !== undefined && sanitized.price) {
+    const takeProfit = sanitizeNumber(alert.take_profit, 0.0001, MAX_PRICE, 0);
+    const deviation = Math.abs((takeProfit - sanitized.price) / sanitized.price);
+    if (takeProfit <= 0) {
+      errors.push('Take profit must be a positive number');
+    } else if (deviation > MAX_TAKE_PROFIT_DEVIATION) {
+      errors.push(`Take profit deviation (${(deviation * 100).toFixed(1)}%) exceeds maximum (${MAX_TAKE_PROFIT_DEVIATION * 100}%)`);
+    } else {
+      sanitized.take_profit = takeProfit;
+    }
+  } else if (alert.take_profit !== undefined) {
+    sanitized.take_profit = sanitizeNumber(alert.take_profit, 0.0001, MAX_PRICE, 0);
+  }
+
+  // Validate position_size_pct
+  sanitized.position_size_pct = sanitizeNumber(
+    alert.position_size_pct, 
+    MIN_POSITION_SIZE_PCT, 
+    MAX_POSITION_SIZE_PCT, 
+    2 // Default 2%
+  );
+
+  // Sanitize string fields with length limits
+  sanitized.strategy = sanitizeString(alert.strategy, MAX_STRING_LENGTH) || undefined;
+  sanitized.indicator = sanitizeString(alert.indicator, MAX_STRING_LENGTH) || undefined;
+  sanitized.comment = sanitizeString(alert.comment, MAX_STRING_LENGTH) || undefined;
+  sanitized.signal_type = sanitizeString(alert.signal_type, MAX_STRING_LENGTH) || undefined;
+  sanitized.exchange = sanitizeString(alert.exchange, MAX_TICKER_LENGTH) || undefined;
+  sanitized.time = sanitizeString(alert.time, MAX_STRING_LENGTH) || undefined;
+  sanitized.interval = sanitizeString(alert.interval, 20) || undefined;
+  sanitized.timeframe = sanitizeString(alert.timeframe, 20) || undefined;
+  sanitized.secret = alert.secret; // Don't sanitize secret, just pass through
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    sanitized,
+  };
+}
+
 serve(async (req) => {
   // TradingView webhook needs to accept external origin, but uses secret validation
   const corsHeaders = getSecureCorsHeaders(req.headers.get('Origin'));
@@ -53,21 +203,30 @@ serve(async (req) => {
 
     // Parse incoming alert
     const alertText = await req.text();
-    let alert: TradingViewAlert;
+    
+    // Limit raw input size (prevent DoS)
+    if (alertText.length > 10000) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Request body too large' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 413 }
+      );
+    }
+    
+    let rawAlert: TradingViewAlert;
 
     // TradingView can send JSON or plain text
     try {
-      alert = JSON.parse(alertText);
+      rawAlert = JSON.parse(alertText);
     } catch {
       // Parse plain text format
-      alert = parseTextAlert(alertText);
+      rawAlert = parseTextAlert(alertText);
     }
 
-    console.log('[tradingview-webhook] Received alert:', JSON.stringify(alert));
+    console.log('[tradingview-webhook] Received alert:', JSON.stringify(rawAlert));
 
     // Validate webhook secret if configured
     const headerSecret = req.headers.get('x-tv-secret');
-    const providedSecret = alert.secret || headerSecret;
+    const providedSecret = rawAlert.secret || headerSecret;
     
     if (webhookSecret && webhookSecret !== providedSecret) {
       console.error('[tradingview-webhook] Invalid secret provided');
@@ -78,7 +237,7 @@ serve(async (req) => {
         resource_type: 'external_signal',
         severity: 'warning',
         after_state: { 
-          alert_ticker: alert.ticker,
+          alert_ticker: sanitizeString(rawAlert.ticker, MAX_TICKER_LENGTH),
           ip: req.headers.get('x-forwarded-for') || 'unknown',
         },
       });
@@ -88,6 +247,32 @@ serve(async (req) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
       );
     }
+
+    // Apply rate limiting per webhook secret
+    const rateLimitKey = providedSecret ? `secret:${providedSecret.slice(0, 8)}` : 'anonymous';
+    if (isRateLimited(rateLimitKey)) {
+      console.warn('[tradingview-webhook] Rate limit exceeded for:', rateLimitKey);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Rate limit exceeded. Try again later.' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 429 }
+      );
+    }
+
+    // Validate and sanitize all inputs
+    const validation = validateAlert(rawAlert);
+    if (!validation.valid) {
+      console.warn('[tradingview-webhook] Validation failed:', validation.errors);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Validation failed', 
+          details: validation.errors 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+
+    const alert = validation.sanitized;
 
     // Normalize instrument name
     const instrument = normalizeInstrument(alert.ticker || alert.instrument || '');
@@ -101,8 +286,8 @@ serve(async (req) => {
     // Map TradingView action to our signal direction
     const direction = mapActionToDirection(alert.action);
     const signalType = alert.signal_type || alert.indicator || alert.strategy || 'tradingview_custom';
-    const strength = Math.min(1, Math.max(0, alert.strength || 0.7));
-    const confidence = Math.min(1, Math.max(0, alert.confidence || 0.65));
+    const strength = alert.strength ?? 0.7;
+    const confidence = alert.confidence ?? 0.65;
 
     // Create intelligence signal
     const signal = {
@@ -182,7 +367,7 @@ serve(async (req) => {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('[tradingview-webhook] Error:', errorMessage);
     return new Response(
-      JSON.stringify({ success: false, error: errorMessage }),
+      JSON.stringify({ success: false, error: 'Internal server error' }), // Don't expose internal error details
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }
@@ -195,30 +380,30 @@ function parseTextAlert(text: string): TradingViewAlert {
   // Format 3: JSON-like but malformed
   
   const alert: TradingViewAlert = {};
-  const cleanText = text.trim();
+  const cleanText = text.trim().slice(0, 2000); // Limit text parsing length
   
   // Try comma-separated format first
   if (cleanText.includes(',')) {
-    const parts = cleanText.split(',').map(p => p.trim());
+    const parts = cleanText.split(',').map(p => p.trim()).slice(0, 20); // Limit parts
     if (parts.length >= 1) alert.ticker = parts[0];
     if (parts.length >= 2) {
       const action = parts[1].toLowerCase();
       if (['buy', 'sell', 'long', 'short', 'close', 'neutral'].includes(action)) {
-        alert.action = action as any;
+        alert.action = action as TradingViewAlert['action'];
       }
     }
     if (parts.length >= 3 && !isNaN(parseFloat(parts[2]))) {
       alert.price = parseFloat(parts[2]);
     }
-    // Parse remaining key=value pairs
-    for (const part of parts.slice(3)) {
+    // Parse remaining key=value pairs (limit to prevent DoS)
+    for (const part of parts.slice(3).slice(0, 10)) {
       parseKeyValue(part, alert);
     }
     return alert;
   }
   
   // Space-separated format
-  const parts = cleanText.split(/\s+/);
+  const parts = cleanText.split(/\s+/).slice(0, 20); // Limit parts
   
   if (parts.length >= 1) {
     alert.ticker = parts[0];
@@ -226,15 +411,15 @@ function parseTextAlert(text: string): TradingViewAlert {
   if (parts.length >= 2) {
     const action = parts[1].toLowerCase();
     if (['buy', 'sell', 'long', 'short', 'close', 'neutral'].includes(action)) {
-      alert.action = action as any;
+      alert.action = action as TradingViewAlert['action'];
     }
   }
   if (parts.length >= 3 && !isNaN(parseFloat(parts[2]))) {
     alert.price = parseFloat(parts[2]);
   }
 
-  // Parse key=value pairs
-  for (const part of parts.slice(3)) {
+  // Parse key=value pairs (limit to prevent DoS)
+  for (const part of parts.slice(3).slice(0, 10)) {
     parseKeyValue(part, alert);
   }
 
@@ -295,8 +480,8 @@ function parseKeyValue(part: string, alert: TradingViewAlert): void {
 function normalizeInstrument(ticker: string): string {
   if (!ticker) return '';
   
-  // Clean up common ticker formats
-  const normalized = ticker.toUpperCase()
+  // Clean up common ticker formats (limit input length first)
+  const normalized = ticker.slice(0, MAX_TICKER_LENGTH).toUpperCase()
     .replace(/[/_-]/g, '') // Remove separators first for processing
     .replace('PERP', '')
     .replace('PERPETUAL', '')
@@ -457,9 +642,9 @@ async function createTradeIntent(
       return;
     }
 
-    // Calculate position sizing
+    // Calculate position sizing with validated bounds
     const portfolioValue = book.capital_allocated || 100000;
-    const positionSizePct = alert.position_size_pct || 2; // Default 2% of portfolio
+    const positionSizePct = alert.position_size_pct || 2; // Already validated to 0.1-10%
     const targetExposure = Math.min(portfolioValue * (positionSizePct / 100), 10000); // Cap at $10k
     
     // Calculate stop loss
@@ -468,6 +653,8 @@ async function createTradeIntent(
     
     if (alert.stop_loss && price) {
       stopLossPct = Math.abs((alert.stop_loss - price) / price);
+      // Already validated in validateAlert, but double-check
+      stopLossPct = Math.min(stopLossPct, MAX_STOP_LOSS_DEVIATION);
     }
     
     const maxLoss = targetExposure * stopLossPct;
