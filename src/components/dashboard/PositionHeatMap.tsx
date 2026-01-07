@@ -103,7 +103,7 @@ export function PositionHeatMap() {
       venueList: Array.from(venueSet),
       totalExposure: cells.reduce((sum, cell) => sum + cell.exposure, 0),
     };
-  }, [positions, venues]);
+  }, [positions]);
 
   const getCell = (instrument: string, venue: string) => {
     return heatMapData.find(c => c.instrument === instrument && c.venue === venue);

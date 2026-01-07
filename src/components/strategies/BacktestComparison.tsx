@@ -144,11 +144,27 @@ export function BacktestComparison({
     
     // For BacktestDetail, metrics are nested under 'metrics'
     if ('metrics' in backtest) {
-      return (backtest.metrics as any)[field] || 0;
+      const detail = backtest as BacktestDetail;
+      switch (field) {
+        case 'totalReturn': return detail.metrics.totalReturn || 0;
+        case 'sharpeRatio': return detail.metrics.sharpeRatio || 0;
+        case 'maxDrawdown': return detail.metrics.maxDrawdown || 0;
+        case 'totalTrades': return detail.metrics.totalTrades || 0;
+        case 'winRate': return detail.metrics.winRate || 0;
+        default: return 0;
+      }
     }
     
     // For BacktestSummary, metrics are top-level
-    return (backtest as any)[field] || 0;
+    const summary = backtest as BacktestSummary;
+    switch (field) {
+      case 'totalReturn': return summary.totalReturn || 0;
+      case 'sharpeRatio': return summary.sharpeRatio || 0;
+      case 'maxDrawdown': return summary.maxDrawdown || 0;
+      case 'totalTrades': return summary.totalTrades || 0;
+      case 'winRate': return summary.winRate || 0;
+      default: return 0;
+    }
   };
 
   const getCellValue = (backtest: BacktestDetail | BacktestSummary, field: SortField) => {
@@ -217,7 +233,7 @@ export function BacktestComparison({
                     <TableCell key={metric.key} className={cn(getCellClassName(backtest, metric.key))}>
                       <div className="flex items-center gap-2">
                         {bestValue !== null && metric.key !== 'strategyName' && (
-                          getComparisonIcon((backtest as any)[metric.key] || 0, metric, bestValue)
+                          getComparisonIcon(getMetricValue(backtest, metric.key) || 0, metric, bestValue)
                         )}
                         {getCellValue(backtest, metric.key)}
                       </div>

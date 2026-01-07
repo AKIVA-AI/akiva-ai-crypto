@@ -21,6 +21,7 @@ import {
   BarChart3,
   Activity,
   LineChart,
+  LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BacktestEquityCurve } from './BacktestCharts';
@@ -115,7 +116,7 @@ export function BacktestPanel() {
   }: { 
     label: string; 
     value: number; 
-    icon: any;
+    icon: LucideIcon;
     format?: 'number' | 'percent' | 'currency' | 'ratio';
     positive?: boolean;
   }) => {

@@ -406,7 +406,7 @@ export default function AdvancedRiskDashboard() {
                     </div>
                   ) : stressData ? (
                     <div className="space-y-4">
-                      {stressData.map((scenario: any) => (
+                      {stressData.map((scenario: StressTestScenario) => (
                         <div key={scenario.scenario_name} className="p-4 border rounded-lg">
                           <div className="flex items-center justify-between mb-3">
                             <h4 className="font-semibold capitalize">

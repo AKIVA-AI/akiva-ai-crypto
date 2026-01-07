@@ -73,7 +73,7 @@ export function TradeJournal({
 
   // Filter and sort trades
   const filteredAndSortedTrades = useMemo(() => {
-    let filtered = trades.filter(trade => {
+    const filtered = trades.filter(trade => {
       // Search filter
       if (searchTerm && !trade.symbol.toLowerCase().includes(searchTerm.toLowerCase())) {
         return false;
@@ -100,8 +100,8 @@ export function TradeJournal({
 
     // Sort trades
     return filtered.sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
+      let aValue: number | string;
+      let bValue: number | string;
 
       switch (sortField) {
         case 'timestamp':
@@ -116,9 +116,29 @@ export function TradeJournal({
           aValue = a.side.localeCompare(b.side);
           bValue = 0;
           break;
+        case 'entryPrice':
+          aValue = a.entryPrice;
+          bValue = b.entryPrice;
+          break;
+        case 'exitPrice':
+          aValue = a.exitPrice || 0;
+          bValue = b.exitPrice || 0;
+          break;
+        case 'pnl':
+          aValue = a.pnl || 0;
+          bValue = b.pnl || 0;
+          break;
+        case 'pnlPercent':
+          aValue = a.pnlPercent || 0;
+          bValue = b.pnlPercent || 0;
+          break;
+        case 'duration':
+          aValue = a.duration || 0;
+          bValue = b.duration || 0;
+          break;
         default:
-          aValue = (a as any)[sortField] || 0;
-          bValue = (b as any)[sortField] || 0;
+          aValue = 0;
+          bValue = 0;
       }
 
       if (sortDirection === 'asc') {

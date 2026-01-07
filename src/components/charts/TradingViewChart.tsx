@@ -62,7 +62,16 @@ async function fetchKlineData(
       return { candles: [], volumes: [] };
     }
 
-    const candles: CandlestickData<Time>[] = data.candles.map((c: any) => ({
+    interface CandleData {
+      time: number;
+      open: number;
+      high: number;
+      low: number;
+      close: number;
+      volume?: number;
+    }
+
+    const candles: CandlestickData<Time>[] = data.candles.map((c: CandleData) => ({
       time: Math.floor(c.time / 1000) as Time,
       open: c.open,
       high: c.high,
@@ -70,7 +79,7 @@ async function fetchKlineData(
       close: c.close,
     }));
 
-    const volumes: number[] = data.candles.map((c: any) => c.volume ?? 0);
+    const volumes: number[] = data.candles.map((c: CandleData) => c.volume ?? 0);
 
     return { candles, volumes };
   } catch (err) {
@@ -116,7 +125,7 @@ export function TradingViewChart({
     if (symbol !== currentSymbol) {
       setCurrentSymbol(symbol);
     }
-  }, [symbol]);
+  }, [symbol, currentSymbol]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [lastPrice, setLastPrice] = useState<number | null>(null);
   const [priceChange, setPriceChange] = useState<number>(0);

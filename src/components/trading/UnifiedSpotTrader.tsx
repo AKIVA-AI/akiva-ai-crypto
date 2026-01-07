@@ -120,7 +120,7 @@ export function UnifiedSpotTrader() {
     });
 
     return Array.from(latestByExchange.values());
-  }, [spotQuotes]);
+  }, [spotQuotes, venueKeyById]);
   
   // Get current exchange price
   const currentExchangePrice = exchangePrices.find(p => p.exchange === selectedExchange);

@@ -47,14 +47,17 @@ export function UserRoleManager() {
   const userRoleMap = new Map<string, { email: string; fullName: string | null; roles: AppRole[] }>();
   
   userRoles?.forEach((ur) => {
-    const profile = (ur as any).profiles;
+    // Handle case where profiles relation might not exist
+    const profile = 'profiles' in ur ? ur.profiles : null;
     const existing = userRoleMap.get(ur.user_id);
     if (existing) {
       existing.roles.push(ur.role);
     } else {
+      // Type assertion to handle complex union type
+      const profileData = profile as { email?: string; full_name?: string } | null;
       userRoleMap.set(ur.user_id, {
-        email: profile?.email || 'Unknown',
-        fullName: profile?.full_name || null,
+        email: profileData?.email || 'Unknown',
+        fullName: profileData?.full_name || null,
         roles: [ur.role],
       });
     }

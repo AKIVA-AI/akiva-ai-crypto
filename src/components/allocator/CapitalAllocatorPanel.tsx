@@ -19,9 +19,14 @@ export function CapitalAllocatorPanel() {
 
   const latestRegime = regimes?.[0];
 
+  interface Strategy {
+    id: string;
+    name: string;
+  }
+
   const strategyNameById = useMemo(() => {
     const map = new Map<string, string>();
-    (strategies ?? []).forEach((strategy: any) => {
+    (strategies ?? []).forEach((strategy: Strategy) => {
       map.set(strategy.id, strategy.name);
     });
     return map;

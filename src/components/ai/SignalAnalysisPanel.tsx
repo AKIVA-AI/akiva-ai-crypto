@@ -45,9 +45,10 @@ export function SignalAnalysisPanel({ signalId, strategyId, instrument, onClose 
 
       setAnalysis(data.analysis);
       toast.success('Analysis complete');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Analysis error:', err);
-      setError(err.message || 'Failed to analyze signal');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to analyze signal';
+      setError(errorMessage);
       toast.error('Analysis failed');
     } finally {
       setIsLoading(false);
