@@ -1,8 +1,8 @@
 /**
  * useExchangeKeys - Hook for managing user exchange API keys
  *
- * Note: The user_exchange_keys table does not exist in the current schema.
- * This hook returns mock data until the table is created.
+ * Provides secure CRUD operations for exchange API credentials.
+ * Uses edge functions for encryption/decryption operations.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -14,7 +14,6 @@ export interface ExchangeKey {
   user_id: string;
   exchange: string;
   label: string;
-  api_key_encrypted: string;
   permissions: string[];
   is_active: boolean;
   is_validated: boolean;
@@ -43,19 +42,58 @@ const maskKey = (encrypted: string): string => {
 export function useExchangeKeys() {
   const queryClient = useQueryClient();
 
-  // Fetch user's exchange keys - returns empty array since table doesn't exist
+  // Fetch user's exchange keys
   const { data: keys, isLoading, error } = useQuery({
     queryKey: ['exchange-keys'],
     queryFn: async (): Promise<ExchangeKey[]> => {
-      // TODO: Implement when user_exchange_keys table is created
-      return [];
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        return [];
+      }
+
+      // Use edge function to fetch keys (avoids TypeScript issues with unmapped table)
+      const { data, error } = await supabase.functions.invoke('exchange-keys', {
+        body: { action: 'list' },
+      });
+
+      if (error) {
+        console.warn('Exchange keys fetch failed:', error.message);
+        return [];
+      }
+
+      if (!data?.success) {
+        console.warn('Exchange keys fetch returned error:', data?.error);
+        return [];
+      }
+
+      return (data.keys || []) as ExchangeKey[];
     },
   });
 
-  // Add new exchange key - not implemented yet
+  // Add new exchange key via edge function (handles encryption)
   const addKey = useMutation({
-    mutationFn: async (params: AddExchangeKeyParams) => {
-      throw new Error('user_exchange_keys table not yet implemented');
+    mutationFn: async (params: AddExchangeKeyParams): Promise<ExchangeKey> => {
+      const { data, error } = await supabase.functions.invoke('exchange-keys', {
+        body: {
+          action: 'add',
+          exchange: params.exchange,
+          label: params.label,
+          apiKey: params.apiKey,
+          apiSecret: params.apiSecret,
+          passphrase: params.passphrase,
+          permissions: params.permissions,
+        },
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to add exchange key');
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to add exchange key');
+      }
+
+      return data.key;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['exchange-keys'] });
@@ -66,10 +104,26 @@ export function useExchangeKeys() {
     },
   });
 
-  // Update exchange key - not implemented yet
+  // Update exchange key via edge function
   const updateKey = useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<ExchangeKey> & { id: string }) => {
-      throw new Error('user_exchange_keys table not yet implemented');
+    mutationFn: async ({ id, ...updates }: Partial<ExchangeKey> & { id: string }): Promise<ExchangeKey> => {
+      const { data, error } = await supabase.functions.invoke('exchange-keys', {
+        body: {
+          action: 'update',
+          id,
+          ...updates,
+        },
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to update exchange key');
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to update exchange key');
+      }
+
+      return data.key;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['exchange-keys'] });
@@ -80,10 +134,23 @@ export function useExchangeKeys() {
     },
   });
 
-  // Delete exchange key - not implemented yet
+  // Delete exchange key via edge function
   const deleteKey = useMutation({
-    mutationFn: async (id: string) => {
-      throw new Error('user_exchange_keys table not yet implemented');
+    mutationFn: async (id: string): Promise<void> => {
+      const { data, error } = await supabase.functions.invoke('exchange-keys', {
+        body: {
+          action: 'delete',
+          id,
+        },
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to delete exchange key');
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to delete exchange key');
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['exchange-keys'] });
@@ -94,10 +161,18 @@ export function useExchangeKeys() {
     },
   });
 
-  // Validate exchange connection via Edge Function - not implemented yet
+  // Validate exchange connection via Edge Function
   const validateKey = useMutation({
-    mutationFn: async (id: string) => {
-      throw new Error('user_exchange_keys table not yet implemented');
+    mutationFn: async (id: string): Promise<{ valid: boolean; error?: string }> => {
+      const { data, error } = await supabase.functions.invoke('exchange-validate', {
+        body: { keyId: id },
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Validation request failed');
+      }
+
+      return data;
     },
     onSuccess: (data: { valid: boolean; error?: string }) => {
       queryClient.invalidateQueries({ queryKey: ['exchange-keys'] });
