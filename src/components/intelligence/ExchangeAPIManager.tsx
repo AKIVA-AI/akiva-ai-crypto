@@ -312,7 +312,7 @@ export function ExchangeAPIManager() {
 
                     <div className="flex items-center gap-2">
                       <code className="text-xs bg-muted px-2 py-1 rounded font-mono">
-                        {maskKey(keyData.api_key_encrypted)}
+                        {keyData.exchange}-{keyData.label}
                       </code>
                       <div className="flex flex-wrap gap-1">
                         {keyData.permissions.map((perm) => (
