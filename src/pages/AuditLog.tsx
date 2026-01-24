@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useIsAdmin } from '@/hooks/useUserRoles';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -74,6 +75,7 @@ const severityStyles = {
 
 export default function AuditLog() {
   const queryClient = useQueryClient();
+  const isAdmin = useIsAdmin();
   const [searchQuery, setSearchQuery] = useState('');
   const [isRegexSearch, setIsRegexSearch] = useState(false);
   const [severityFilter, setSeverityFilter] = useState<string>('all');
@@ -83,24 +85,30 @@ export default function AuditLog() {
   const [isLive, setIsLive] = useState(true);
   const [activeTab, setActiveTab] = useState<'events' | 'analytics'>('events');
 
+  // Use the redacted view for non-admin users to protect sensitive data
+  const auditTable = isAdmin ? 'audit_events' : 'audit_events_redacted';
+
   const { data: events = [], isLoading, refetch } = useQuery({
-    queryKey: ['audit-events', severityFilter, resourceFilter],
+    queryKey: ['audit-events', severityFilter, resourceFilter, isAdmin],
     queryFn: async () => {
-      let query = supabase
-        .from('audit_events')
+      // Build query with filters - use type assertion since audit_events_redacted is a view
+      // that has the same structure as audit_events
+      const baseQuery = supabase
+        .from(auditTable as 'audit_events')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(200);
 
-      if (severityFilter !== 'all') {
-        query = query.eq('severity', severityFilter as 'info' | 'warning' | 'critical');
-      }
+      // Apply filters
+      const filteredQuery = severityFilter !== 'all' 
+        ? baseQuery.eq('severity', severityFilter as 'info' | 'warning' | 'critical')
+        : baseQuery;
+      
+      const finalQuery = resourceFilter !== 'all'
+        ? filteredQuery.eq('resource_type', resourceFilter)
+        : filteredQuery;
 
-      if (resourceFilter !== 'all') {
-        query = query.eq('resource_type', resourceFilter);
-      }
-
-      const { data, error } = await query;
+      const { data, error } = await finalQuery;
       if (error) throw error;
       return (data || []) as AuditEvent[];
     },

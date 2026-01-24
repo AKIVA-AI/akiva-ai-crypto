@@ -5,6 +5,7 @@ import { useAlerts } from '@/hooks/useAlerts';
 import { useMetricsSummary } from '@/hooks/usePerformanceMetrics';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useIsAdmin } from '@/hooks/useUserRoles';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,15 +43,19 @@ interface AuditEvent {
   created_at: string;
 }
 
-function useAuditEvents() {
+function useAuditEvents(isAdmin: boolean) {
+  // Use the redacted view for non-admin users to protect sensitive data
+  const auditTable = isAdmin ? 'audit_events' : 'audit_events_redacted';
+  
   return useQuery({
-    queryKey: ['audit_events', 'recent'],
+    queryKey: ['audit_events', 'recent', isAdmin],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('audit_events')
+      // Use type assertion since audit_events_redacted is not in generated types
+      const { data, error } = await (supabase
+        .from(auditTable as 'audit_events')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(100);
+        .limit(100));
       
       if (error) throw error;
       return data as AuditEvent[];
@@ -62,7 +67,8 @@ function useAuditEvents() {
 export default function Observability() {
   const { data: agents } = useAgents();
   const { data: alerts } = useAlerts();
-  const { data: events, isLoading: eventsLoading, refetch, isRefetching } = useAuditEvents();
+  const isAdmin = useIsAdmin();
+  const { data: events, isLoading: eventsLoading, refetch, isRefetching } = useAuditEvents(isAdmin);
   const { summary: metricsSummary, isLoading: metricsLoading } = useMetricsSummary(60);
   
   const [filter, setFilter] = useState('');

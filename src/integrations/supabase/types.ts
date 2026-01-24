@@ -2772,7 +2772,59 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      audit_events_redacted: {
+        Row: {
+          action: string | null
+          after_state: Json | null
+          before_state: Json | null
+          book_id: string | null
+          created_at: string | null
+          id: string | null
+          ip_address: string | null
+          resource_id: string | null
+          resource_type: string | null
+          severity: Database["public"]["Enums"]["alert_severity"] | null
+          user_email: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action?: string | null
+          after_state?: Json | null
+          before_state?: Json | null
+          book_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          ip_address?: never
+          resource_id?: string | null
+          resource_type?: string | null
+          severity?: Database["public"]["Enums"]["alert_severity"] | null
+          user_email?: never
+          user_id?: string | null
+        }
+        Update: {
+          action?: string | null
+          after_state?: Json | null
+          before_state?: Json | null
+          book_id?: string | null
+          created_at?: string | null
+          id?: string | null
+          ip_address?: never
+          resource_id?: string | null
+          resource_type?: string | null
+          severity?: Database["public"]["Enums"]["alert_severity"] | null
+          user_email?: never
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_events_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       cleanup_old_metrics: { Args: never; Returns: undefined }
