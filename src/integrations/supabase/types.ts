@@ -2444,6 +2444,41 @@ export type Database = {
         }
         Relationships: []
       }
+      user_book_assignments: {
+        Row: {
+          access_level: string
+          book_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          access_level?: string
+          book_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          access_level?: string
+          book_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_book_assignments_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -2827,6 +2862,10 @@ export type Database = {
       }
     }
     Functions: {
+      can_view_order: {
+        Args: { _book_id: string; _user_id: string }
+        Returns: boolean
+      }
       cleanup_old_metrics: { Args: never; Returns: undefined }
       current_tenant_id: { Args: never; Returns: string }
       decrypt_api_key: {
@@ -2858,6 +2897,10 @@ export type Database = {
           _roles: Database["public"]["Enums"]["app_role"][]
           _user_id: string
         }
+        Returns: boolean
+      }
+      has_book_access: {
+        Args: { _book_id: string; _user_id: string }
         Returns: boolean
       }
       has_role: {
