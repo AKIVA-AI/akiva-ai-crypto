@@ -1,6 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getSecureCorsHeaders, RATE_LIMITS, rateLimitMiddleware, validateAuth } from "../_shared/security.ts";
+import {
+  validateExternalSignalsInput,
+  validationErrorResponse,
+} from "../_shared/validation.ts";
 
 interface ExternalSignalRequest {
   action: 'list_sources' | 'fetch_signals' | 'fetch_all' | 'get_aggregated' | 'configure_source' | 'get_status' | 'health_check';
@@ -65,7 +69,21 @@ serve(async (req) => {
       );
     }
 
-    const { action, source, instruments = ['BTC-USDT', 'ETH-USDT', 'SOL-USDT'], config } = await req.json() as ExternalSignalRequest;
+    // Parse and validate input
+    const rawBody = await req.json().catch(() => ({}));
+    const validationResult = validateExternalSignalsInput(rawBody);
+    
+    if (!validationResult.success) {
+      console.log(`[external-signals] Validation failed: ${validationResult.errors?.join(', ')}`);
+      return validationErrorResponse(validationResult.errors || [], corsHeaders);
+    }
+    
+    const { 
+      action, 
+      source, 
+      instruments = ['BTC-USDT', 'ETH-USDT', 'SOL-USDT'], 
+      config 
+    } = { ...rawBody, ...validationResult.data } as ExternalSignalRequest;
 
     console.log(`[external-signals] Action: ${action}, source: ${source}, instruments: ${instruments.join(',')}`);
 

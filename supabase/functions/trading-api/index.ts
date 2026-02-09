@@ -6,6 +6,10 @@ import {
   rateLimitMiddleware,
   RATE_LIMITS
 } from "../_shared/security.ts";
+import {
+  validatePlaceOrderInput,
+  validationErrorResponse,
+} from "../_shared/validation.ts";
 
 serve(async (req) => {
   const corsHeaders = getSecureCorsHeaders(req.headers.get('Origin'));
@@ -225,12 +229,21 @@ serve(async (req) => {
         const { data, error } = await query;
         if (error) throw error;
         
+        // Audit log: track access to sensitive trading data
+        await supabase.from('audit_events').insert({
+          action: 'view_positions',
+          resource_type: 'position',
+          user_id: userId,
+          severity: 'info',
+          after_state: { count: data?.length || 0, book_id: bookId },
+        });
+        
         return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
       case 'orders': {
         const status = url.searchParams.get('status');
-        const limit = parseInt(url.searchParams.get('limit') || '50');
+        const limit = Math.min(Math.max(1, parseInt(url.searchParams.get('limit') || '50')), 500); // Bound limit 1-500
         
         let query = supabase.from('orders').select('*, books(name), strategies(name), venues(name)').order('created_at', { ascending: false }).limit(limit);
         
@@ -241,6 +254,15 @@ serve(async (req) => {
         const { data, error } = await query;
         if (error) throw error;
         
+        // Audit log: track access to sensitive trading data
+        await supabase.from('audit_events').insert({
+          action: 'view_orders',
+          resource_type: 'order',
+          user_id: userId,
+          severity: 'info',
+          after_state: { count: data?.length || 0, status, limit },
+        });
+        
         return new Response(JSON.stringify(data), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
@@ -249,12 +271,14 @@ serve(async (req) => {
           return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: corsHeaders });
         }
 
-        const { book_id, instrument, side, size, price, order_type = 'market', strategy_id, venue_id } = body as any;
-
-        // Validate required fields
-        if (!book_id || !instrument || !side || !size) {
-          return new Response(JSON.stringify({ error: 'Missing required fields: book_id, instrument, side, size' }), { status: 400, headers: corsHeaders });
+        // Validate input with comprehensive schema validation
+        const validationResult = validatePlaceOrderInput(body);
+        if (!validationResult.success) {
+          console.log(`[TRADING] Input validation failed: ${validationResult.errors?.join(', ')}`);
+          return validationErrorResponse(validationResult.errors || [], corsHeaders);
         }
+        
+        const { book_id, instrument, side, size, price, order_type = 'market', strategy_id, venue_id } = validationResult.data!;
 
         // Check global kill switch and settings
         const { data: settings } = await supabase.from('global_settings').select('global_kill_switch, paper_trading_mode, reduce_only_mode').single();

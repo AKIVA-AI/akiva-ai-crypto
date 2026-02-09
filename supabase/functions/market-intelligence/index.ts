@@ -1,6 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getSecureCorsHeaders, RATE_LIMITS, rateLimitMiddleware, validateAuth } from "../_shared/security.ts";
+import {
+  validateMarketIntelligenceInput,
+  validationErrorResponse,
+} from "../_shared/validation.ts";
 
 interface IntelligenceRequest {
   action: 'fetch_news' | 'fetch_sentiment' | 'fetch_derivatives' | 'analyze_signals' | 'get_intelligence_summary' | 'health_check';
@@ -31,7 +35,20 @@ serve(async (req) => {
       );
     }
 
-    const { action, instruments = ['BTC-USDT', 'ETH-USDT', 'SOL-USDT'], timeframe = '24h' } = await req.json() as IntelligenceRequest;
+    // Parse and validate input
+    const rawBody = await req.json().catch(() => ({}));
+    const validationResult = validateMarketIntelligenceInput(rawBody);
+    
+    if (!validationResult.success) {
+      console.log(`[market-intelligence] Validation failed: ${validationResult.errors?.join(', ')}`);
+      return validationErrorResponse(validationResult.errors || [], corsHeaders);
+    }
+    
+    const { 
+      action, 
+      instruments = ['BTC-USDT', 'ETH-USDT', 'SOL-USDT'], 
+      timeframe = '24h' 
+    } = { ...rawBody, ...validationResult.data } as IntelligenceRequest;
 
     console.log(`[market-intelligence] Action: ${action}, instruments: ${instruments.join(', ')}`);
 

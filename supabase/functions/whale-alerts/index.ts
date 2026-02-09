@@ -1,6 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getSecureCorsHeaders, RATE_LIMITS, rateLimitMiddleware, validateAuth } from "../_shared/security.ts";
+import { 
+  validateWhaleAlertInput, 
+  validationErrorResponse,
+  sanitizeLabel,
+} from "../_shared/validation.ts";
 
 interface WhaleAlertRequest {
   action: 'track_wallet' | 'untrack_wallet' | 'get_transactions' | 'get_wallets' | 'simulate_whale_activity' | 'fetch_real_alerts' | 'generate_signals' | 'health_check';
@@ -71,6 +76,15 @@ serve(async (req) => {
       );
     }
 
+    // Parse and validate input
+    const rawBody = await req.json().catch(() => ({}));
+    const validationResult = validateWhaleAlertInput(rawBody);
+    
+    if (!validationResult.success) {
+      console.log(`[whale-alerts] Validation failed: ${validationResult.errors?.join(', ')}`);
+      return validationErrorResponse(validationResult.errors || [], corsHeaders);
+    }
+
     const {
       action,
       wallet_address,
@@ -81,7 +95,7 @@ serve(async (req) => {
       instruments = ['BTC-USDT', 'ETH-USDT', 'SOL-USDT'],
       limit = 50,
       min_usd = 500000,
-    } = await req.json() as WhaleAlertRequest;
+    } = { ...rawBody, ...validationResult.data } as WhaleAlertRequest;
 
     console.log(`[whale-alerts] Action: ${action}, API configured: ${!!whaleAlertApiKey}`);
 
