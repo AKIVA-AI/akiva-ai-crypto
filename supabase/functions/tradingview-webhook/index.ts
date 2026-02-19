@@ -248,6 +248,28 @@ serve(async (req) => {
       );
     }
 
+    // Replay protection: reject alerts older than 5 minutes
+    if (rawAlert.time) {
+      const alertTime = new Date(rawAlert.time).getTime();
+      if (!isNaN(alertTime)) {
+        const age = Date.now() - alertTime;
+        if (age > 300000) { // 5 minutes
+          console.warn('[tradingview-webhook] Rejected stale alert, age:', age, 'ms');
+          return new Response(
+            JSON.stringify({ success: false, error: 'Alert too old' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+          );
+        }
+        if (age < -60000) { // 1 minute in the future (clock skew tolerance)
+          console.warn('[tradingview-webhook] Rejected future-dated alert');
+          return new Response(
+            JSON.stringify({ success: false, error: 'Invalid alert timestamp' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+          );
+        }
+      }
+    }
+
     // Apply rate limiting per webhook secret
     const rateLimitKey = providedSecret ? `secret:${providedSecret.slice(0, 8)}` : 'anonymous';
     if (isRateLimited(rateLimitKey)) {
