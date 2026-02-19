@@ -485,7 +485,237 @@ async function simulateFill(order: TradeOrder): Promise<{
   };
 }
 
-serve(async (req) => {
+/**
+ * Route order to the appropriate exchange for live execution.
+ * Returns null if execution fails (caller should fail-closed).
+ */
+async function executeOnVenue(order: TradeOrder): Promise<{
+  filledPrice: number;
+  filledSize: number;
+  fee: number;
+  latencyMs: number;
+  slippage: number;
+} | null> {
+  const venue = order.venue.toLowerCase();
+  
+  switch (venue) {
+    case 'binance':
+    case 'binance_us':
+      return executeBinanceOrder(order);
+    
+    case 'coinbase': {
+      return executeCoinbaseOrder(order);
+    }
+    
+    case 'kraken': {
+      return executeKrakenOrder(order);
+    }
+    
+    default:
+      console.error(`[LiveTrading] Unknown venue: ${venue}`);
+      return null;
+  }
+}
+
+/**
+ * Execute order on Coinbase Advanced Trade API
+ */
+async function executeCoinbaseOrder(order: TradeOrder): Promise<{
+  filledPrice: number;
+  filledSize: number;
+  fee: number;
+  latencyMs: number;
+  slippage: number;
+} | null> {
+  const apiKey = Deno.env.get('COINBASE_API_KEY');
+  const apiSecret = Deno.env.get('COINBASE_API_SECRET');
+  
+  if (!apiKey || !apiSecret) {
+    console.error('[LiveTrading] No Coinbase credentials configured');
+    return null;
+  }
+  
+  const startTime = Date.now();
+  
+  try {
+    const symbol = order.instrument.replace('/', '-'); // BTC/USD -> BTC-USD
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const clientOrderId = crypto.randomUUID();
+    
+    const body: Record<string, any> = {
+      client_order_id: clientOrderId,
+      product_id: symbol,
+      side: order.side.toUpperCase(),
+    };
+    
+    if (order.orderType === 'market') {
+      if (order.side === 'buy') {
+        // Market buy uses quote_size (USD amount)
+        const price = await getBinancePrice(order.instrument) || order.price || 0;
+        body.order_configuration = {
+          market_market_ioc: { quote_size: (order.size * price).toFixed(2) },
+        };
+      } else {
+        body.order_configuration = {
+          market_market_ioc: { base_size: order.size.toString() },
+        };
+      }
+    } else {
+      body.order_configuration = {
+        limit_limit_gtc: {
+          base_size: order.size.toString(),
+          limit_price: order.price!.toString(),
+        },
+      };
+    }
+    
+    const bodyStr = JSON.stringify(body);
+    const method = 'POST';
+    const requestPath = '/api/v3/brokerage/orders';
+    const message = timestamp + method + requestPath + bodyStr;
+    
+    const key = await crypto.subtle.importKey(
+      'raw', new TextEncoder().encode(apiSecret),
+      { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+    );
+    const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(message));
+    const signatureHex = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+    
+    const response = await fetch('https://api.coinbase.com/api/v3/brokerage/orders', {
+      method: 'POST',
+      headers: {
+        'CB-ACCESS-KEY': apiKey,
+        'CB-ACCESS-SIGN': signatureHex,
+        'CB-ACCESS-TIMESTAMP': timestamp,
+        'Content-Type': 'application/json',
+      },
+      body: bodyStr,
+    });
+    
+    const latencyMs = Date.now() - startTime;
+    
+    if (!response.ok) {
+      const error = await response.text();
+      console.error('[LiveTrading] Coinbase order failed:', error);
+      return null;
+    }
+    
+    const result = await response.json();
+    console.log('[LiveTrading] Coinbase order placed:', result.success_response?.order_id || 'pending');
+    
+    const filledPrice = parseFloat(result.success_response?.average_filled_price || order.price?.toString() || '0');
+    const filledSize = parseFloat(result.success_response?.filled_size || order.size.toString());
+    const originalPrice = await getBinancePrice(order.instrument) || filledPrice;
+    const slippage = originalPrice > 0 ? Math.abs(filledPrice - originalPrice) / originalPrice * 10000 : 0;
+    
+    return {
+      filledPrice,
+      filledSize,
+      fee: filledPrice * filledSize * 0.006, // Coinbase ~0.6% taker fee
+      latencyMs,
+      slippage,
+    };
+  } catch (error) {
+    console.error('[LiveTrading] Coinbase execution error:', error);
+    return null;
+  }
+}
+
+/**
+ * Execute order on Kraken
+ */
+async function executeKrakenOrder(order: TradeOrder): Promise<{
+  filledPrice: number;
+  filledSize: number;
+  fee: number;
+  latencyMs: number;
+  slippage: number;
+} | null> {
+  const apiKey = Deno.env.get('KRAKEN_API_KEY');
+  const apiSecret = Deno.env.get('KRAKEN_API_SECRET');
+  
+  if (!apiKey || !apiSecret) {
+    console.error('[LiveTrading] No Kraken credentials configured');
+    return null;
+  }
+  
+  const startTime = Date.now();
+  
+  try {
+    const symbol = order.instrument.replace('/', '').replace('BTC', 'XBT'); // BTC/USD -> XBTUSD
+    const nonce = Date.now().toString();
+    
+    const params: Record<string, string> = {
+      nonce,
+      pair: symbol,
+      type: order.side,
+      ordertype: order.orderType,
+      volume: order.size.toString(),
+    };
+    
+    if (order.orderType === 'limit' && order.price) {
+      params.price = order.price.toString();
+    }
+    
+    const postData = new URLSearchParams(params).toString();
+    const path = '/0/private/AddOrder';
+    
+    // Kraken signature: HMAC-SHA512(path + SHA256(nonce + postData), base64decode(secret))
+    const sha256Hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(nonce + postData));
+    const pathBytes = new TextEncoder().encode(path);
+    const message = new Uint8Array(pathBytes.length + sha256Hash.byteLength);
+    message.set(pathBytes, 0);
+    message.set(new Uint8Array(sha256Hash), pathBytes.length);
+    
+    const secretBytes = Uint8Array.from(atob(apiSecret), c => c.charCodeAt(0));
+    const key = await crypto.subtle.importKey('raw', secretBytes, { name: 'HMAC', hash: 'SHA-512' }, false, ['sign']);
+    const signature = await crypto.subtle.sign('HMAC', key, message);
+    const signatureBase64 = btoa(String.fromCharCode(...new Uint8Array(signature)));
+    
+    const response = await fetch(`https://api.kraken.com${path}`, {
+      method: 'POST',
+      headers: {
+        'API-Key': apiKey,
+        'API-Sign': signatureBase64,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: postData,
+    });
+    
+    const latencyMs = Date.now() - startTime;
+    
+    if (!response.ok) {
+      const error = await response.text();
+      console.error('[LiveTrading] Kraken order failed:', error);
+      return null;
+    }
+    
+    const result = await response.json();
+    
+    if (result.error && result.error.length > 0) {
+      console.error('[LiveTrading] Kraken API errors:', result.error);
+      return null;
+    }
+    
+    console.log('[LiveTrading] Kraken order placed:', result.result?.txid);
+    
+    const filledPrice = await getBinancePrice(order.instrument) || order.price || 0;
+    const filledSize = order.size;
+    
+    return {
+      filledPrice,
+      filledSize,
+      fee: filledPrice * filledSize * 0.0026, // Kraken ~0.26% taker fee
+      latencyMs,
+      slippage: 0,
+    };
+  } catch (error) {
+    console.error('[LiveTrading] Kraken execution error:', error);
+    return null;
+  }
+}
+
+
   const corsHeaders = getSecureCorsHeaders(req.headers.get('Origin'));
 
   if (req.method === 'OPTIONS') {
@@ -610,8 +840,58 @@ serve(async (req) => {
 
         if (orderError) throw orderError;
 
-        // Simulate or execute fill
-        const fill = await simulateFill(order);
+        // Route to real exchange or simulate based on paper mode
+        let fill: {
+          filledPrice: number;
+          filledSize: number;
+          fee: number;
+          latencyMs: number;
+          slippage: number;
+          mode?: string;
+        };
+        
+        let executionMode: 'paper' | 'live' = 'paper';
+
+        if (!settings?.paper_trading_mode) {
+          // LIVE MODE: Try real exchange execution
+          console.log(`[LiveTrading] LIVE mode - routing to ${order.venue}`);
+          
+          const venueExecution = await executeOnVenue(order);
+          
+          if (venueExecution) {
+            fill = venueExecution;
+            executionMode = 'live';
+            console.log(`[LiveTrading] Live fill: ${fill.filledSize}@${fill.filledPrice} via ${order.venue}`);
+          } else {
+            // Exchange execution failed - REJECT in live mode (fail-closed)
+            console.error(`[LiveTrading] Live execution failed on ${order.venue} - order rejected`);
+            
+            await supabase.from('audit_events').insert({
+              action: 'live_execution_failed',
+              resource_type: 'order',
+              severity: 'critical',
+              user_id: user.id,
+              before_state: order,
+              after_state: { venue: order.venue, reason: 'Exchange execution failed' },
+            });
+            
+            // Update order status to rejected
+            await supabase.from('orders').update({ status: 'cancelled' }).eq('id', newOrder.id);
+            
+            return new Response(JSON.stringify({
+              success: false,
+              error: `Live execution failed on ${order.venue}. Order rejected (fail-closed). Check exchange credentials and venue status.`,
+              rejected: true,
+            }), {
+              status: 502,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          }
+        } else {
+          // PAPER MODE: Simulate fill with real market prices
+          fill = await simulateFill(order);
+          executionMode = 'paper';
+        }
         
         // Update order with fill
         const orderStatus = fill.filledSize >= order.size ? 'filled' : 'open';
@@ -694,7 +974,7 @@ serve(async (req) => {
             latencyMs: Math.round(fill.latencyMs),
             slippage: fill.slippage,
           },
-          mode: settings?.paper_trading_mode ? 'paper' : 'live',
+          mode: executionMode,
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });

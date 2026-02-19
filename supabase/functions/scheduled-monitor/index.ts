@@ -476,7 +476,98 @@ serve(async (req) => {
       });
     }
 
-    // Task 6: Process Pending Trade Intents
+    // Task 6: Market Data Ingestion (populate market_snapshots for price resolution)
+    if (task === 'all' || task === 'market_data') {
+      const taskStart = Date.now();
+      const snapshots: Array<{ instrument: string; venue_id: string; bid: number; ask: number; last_price: number; volume_24h: number | null }> = [];
+
+      // Fetch from Coinbase
+      for (const symbol of ['BTC/USD', 'ETH/USD', 'SOL/USD']) {
+        try {
+          const cbSymbol = symbol.replace('/', '-');
+          const resp = await fetch(`https://api.exchange.coinbase.com/products/${cbSymbol}/ticker`);
+          if (resp.ok) {
+            const d = await resp.json();
+            snapshots.push({
+              instrument: symbol,
+              venue_id: 'a1000000-0000-0000-0000-000000000001',
+              bid: parseFloat(d.bid || '0'),
+              ask: parseFloat(d.ask || '0'),
+              last_price: parseFloat(d.price || '0'),
+              volume_24h: parseFloat(d.volume || '0'),
+            });
+          } else { await resp.text(); }
+        } catch (e) { console.warn(`[Monitor] CB ${symbol}:`, e); }
+      }
+
+      // Fetch from Kraken (batch)
+      try {
+        const resp = await fetch('https://api.kraken.com/0/public/Ticker?pair=XXBTZUSD,XETHZUSD,SOLUSD');
+        if (resp.ok) {
+          const d = await resp.json();
+          if (d.result) {
+            const krakenMap: Record<string, string> = { 'XXBTZUSD': 'BTC/USD', 'XETHZUSD': 'ETH/USD', 'SOLUSD': 'SOL/USD' };
+            for (const [key, val] of Object.entries(d.result)) {
+              const sym = krakenMap[key];
+              if (sym && val) {
+                const t = val as any;
+                snapshots.push({
+                  instrument: sym,
+                  venue_id: 'a1000000-0000-0000-0000-000000000002',
+                  bid: parseFloat(t.b?.[0] || '0'),
+                  ask: parseFloat(t.a?.[0] || '0'),
+                  last_price: parseFloat(t.c?.[0] || '0'),
+                  volume_24h: parseFloat(t.v?.[1] || '0'),
+                });
+              }
+            }
+          }
+        } else { await resp.text(); }
+      } catch (e) { console.warn('[Monitor] Kraken batch:', e); }
+
+      // Fetch from Binance.US
+      for (const [symbol, bnSymbol] of [['BTC/USD','BTCUSD'],['ETH/USD','ETHUSD'],['SOL/USD','SOLUSD']] as const) {
+        try {
+          const resp = await fetch(`https://api.binance.us/api/v3/ticker/bookTicker?symbol=${bnSymbol}`);
+          if (resp.ok) {
+            const d = await resp.json();
+            const bid = parseFloat(d.bidPrice || '0');
+            const ask = parseFloat(d.askPrice || '0');
+            snapshots.push({
+              instrument: symbol,
+              venue_id: 'a1000000-0000-0000-0000-000000000003',
+              bid, ask, last_price: (bid + ask) / 2, volume_24h: null,
+            });
+          } else { await resp.text(); }
+        } catch (e) { console.warn(`[Monitor] BN ${symbol}:`, e); }
+      }
+
+      // Insert all snapshots
+      if (snapshots.length > 0) {
+        const { error: snapErr } = await supabase.from('market_snapshots').insert(
+          snapshots.map(s => ({ ...s, recorded_at: new Date().toISOString() }))
+        );
+        if (snapErr) console.error('[Monitor] Snapshot insert error:', snapErr.message);
+      }
+
+      // Update system_health for market_data
+      await supabase.from('system_health').upsert({
+        component: 'market_data',
+        status: snapshots.length > 0 ? 'healthy' : 'degraded',
+        last_check_at: new Date().toISOString(),
+        details: { snapshots_ingested: snapshots.length, sources: ['coinbase','kraken','binance_us'] },
+        error_message: snapshots.length === 0 ? 'No market data fetched' : null,
+      }, { onConflict: 'component' });
+
+      results.push({
+        task: 'market_data',
+        success: snapshots.length > 0,
+        details: { snapshots_ingested: snapshots.length },
+        duration_ms: Date.now() - taskStart,
+      });
+    }
+
+    // Task 7: Process Pending Trade Intents
     if (task === 'all' || task === 'trade_intents') {
       const taskStart = Date.now();
       
