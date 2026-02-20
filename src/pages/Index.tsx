@@ -87,52 +87,48 @@ export default function Index() {
         {/* P&L Chart */}
         <PnLChart />
 
-        {/* Main content grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left column - positions and agents */}
-          <div className="lg:col-span-2 space-y-6">
-            <PositionsTable />
-            <PositionHeatMap />
-            <AgentStatusGrid />
-          </div>
+        {/* Positions & Heat Map */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <PositionsTable />
+          <PositionHeatMap />
+        </div>
 
-          {/* Right column - consolidated into fewer sections */}
-          <div className="space-y-6">
-            {/* Risk + Positions/Orders in one panel */}
-            <div className="glass-panel rounded-xl p-4">
-              <h3 className="font-semibold mb-4">Risk Utilization</h3>
-              <RiskGauge value={metrics?.riskUtilization || 0} label="of max exposure" />
-              <div className="mt-4 grid grid-cols-2 gap-3 text-center">
-                <div className="p-3 rounded-lg bg-muted/50">
-                  <p className="text-2xl font-mono font-bold text-foreground">
-                    {metrics?.openPositions || 0}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Open Positions</p>
-                </div>
-                <div className="p-3 rounded-lg bg-muted/50">
-                  <p className="text-2xl font-mono font-bold text-foreground">
-                    {metrics?.pendingOrders || 0}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Pending Orders</p>
-                </div>
+        {/* Risk, Why No Trade, Opportunities, Portfolio */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Risk Utilization */}
+          <div className="glass-panel rounded-xl p-4">
+            <h3 className="font-semibold mb-4">Risk Utilization</h3>
+            <RiskGauge value={metrics?.riskUtilization || 0} label="of max exposure" />
+            <div className="mt-4 grid grid-cols-2 gap-3 text-center">
+              <div className="p-3 rounded-lg bg-muted/50">
+                <p className="text-2xl font-mono font-bold text-foreground">
+                  {metrics?.openPositions || 0}
+                </p>
+                <p className="text-xs text-muted-foreground">Open Positions</p>
+              </div>
+              <div className="p-3 rounded-lg bg-muted/50">
+                <p className="text-2xl font-mono font-bold text-foreground">
+                  {metrics?.pendingOrders || 0}
+                </p>
+                <p className="text-xs text-muted-foreground">Pending Orders</p>
               </div>
             </div>
-
-            {/* Why Didn't We Trade */}
-            <WhyNoTradeWidget />
-
-            {/* Opportunity Scanner */}
-            <OpportunityScannerPanel compact />
-
-            {/* Unified Portfolio */}
-            <UnifiedPortfolioPanel />
-
-            {/* Real-time P&L Tracker */}
-            <RealtimePnLTracker />
-
-            <RecentEvents />
           </div>
+
+          <WhyNoTradeWidget />
+
+          <OpportunityScannerPanel compact />
         </div>
+
+        {/* Portfolio, P&L Tracker, Events */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <UnifiedPortfolioPanel />
+          <RealtimePnLTracker />
+          <RecentEvents />
+        </div>
+
+        {/* Agent Status */}
+        <AgentStatusGrid />
       </div>
     </MainLayout>
   );
