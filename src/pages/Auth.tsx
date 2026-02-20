@@ -48,20 +48,18 @@ export default function Auth() {
     <div className="min-h-screen bg-background flex">
       {/* Left side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary/20 via-background to-background p-12 flex-col justify-between">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center glow-primary">
-            <span className="text-primary-foreground font-bold">CO</span>
-          </div>
-          <span className="text-xl font-bold">CryptoOps</span>
+        <div className="flex items-center gap-1">
+          <span className="text-xl font-semibold tracking-tight">enterprise crypto</span>
+          <span className="text-primary font-bold text-2xl">.</span>
         </div>
         
         <div className="space-y-8">
           <h1 className="text-4xl font-bold leading-tight">
             Institutional-Grade
-            <span className="text-gradient block">Crypto Operations</span>
+            <span className="text-gradient block">Crypto Trading Infrastructure</span>
           </h1>
           <p className="text-muted-foreground text-lg max-w-md">
-            Control center for hedge funds, prop shops, and crypto-native trading operations.
+            The open-source control center for hedge funds, prop shops, and crypto-native trading desks.
           </p>
           
           <div className="grid grid-cols-2 gap-4">
@@ -83,13 +81,13 @@ export default function Auth() {
             <div className="glass-panel rounded-lg p-4 space-y-2">
               <Wallet className="h-6 w-6 text-primary" />
               <p className="font-medium">Treasury Ops</p>
-              <p className="text-sm text-muted-foreground">Multi-sig treasury management and approvals</p>
+              <p className="text-sm text-muted-foreground">Multi-venue treasury management and approvals</p>
             </div>
           </div>
         </div>
         
         <p className="text-sm text-muted-foreground">
-          © 2025 CryptoOps. All rights reserved.
+          © 2026 enterprise crypto. Open-source under MIT license.
         </p>
       </div>
 
@@ -97,11 +95,9 @@ export default function Auth() {
       <div className="flex-1 flex items-center justify-center p-8">
         <Card className="w-full max-w-md glass-panel border-border/50">
           <CardHeader className="space-y-1 text-center">
-            <div className="lg:hidden flex items-center justify-center gap-2 mb-4">
-              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-sm">CO</span>
-              </div>
-              <span className="font-semibold">CryptoOps</span>
+            <div className="lg:hidden flex items-center justify-center gap-1 mb-4">
+              <span className="font-semibold tracking-tight">enterprise crypto</span>
+              <span className="text-primary font-bold text-lg">.</span>
             </div>
             <CardTitle className="text-2xl">Welcome</CardTitle>
             <CardDescription>Sign in to access your control center</CardDescription>
