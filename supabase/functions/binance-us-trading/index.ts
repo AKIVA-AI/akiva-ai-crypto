@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getSecureCorsHeaders } from "../_shared/security.ts";
+import { getSecureCorsHeaders, rateLimitMiddleware, RATE_LIMITS } from "../_shared/security.ts";
 
 const BINANCE_US_BASE_URL = 'https://api.binance.us';
 
@@ -116,6 +116,11 @@ serve(async (req) => {
     const { action, params = {} } = await req.json();
     console.log(`[Binance.US] Action: ${action}`, params);
 
+    // Rate limit all requests by IP for read operations
+    const clientIp = req.headers.get('x-forwarded-for') || 'unknown';
+    const readRateLimitResponse = rateLimitMiddleware(clientIp, RATE_LIMITS.read, corsHeaders);
+    if (readRateLimitResponse) return readRateLimitResponse;
+
     // SECURITY: Authenticate user for write operations
     const writeActions = ['place_order', 'cancel_order'];
     if (writeActions.includes(action)) {
@@ -136,6 +141,10 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
+      
+      // Rate limit trading operations (30/min per user)
+      const rateLimitResponse = rateLimitMiddleware(user.id, RATE_LIMITS.trading, corsHeaders);
+      if (rateLimitResponse) return rateLimitResponse;
       
       // Verify user has trading permissions
       const { data: roleData } = await supabase

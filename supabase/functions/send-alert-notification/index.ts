@@ -81,14 +81,47 @@ serve(async (req) => {
             };
             break;
 
-          case 'telegram':
-            // Telegram format (requires bot token in URL)
+          case 'telegram': {
+            // Telegram format - use bot API with stored chat ID
             const emoji = severity === 'critical' ? '🚨' : severity === 'warning' ? '⚠️' : 'ℹ️';
+            const telegramBotToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
+            const chatIdMatch = channel.webhook_url.match(/telegram:\/\/(.+)/);
+            const telegramChatId = chatIdMatch ? chatIdMatch[1] : Deno.env.get('TELEGRAM_CHAT_ID');
+            
+            if (telegramBotToken && telegramChatId) {
+              // Send via Telegram Bot API directly
+              const telegramText = `${emoji} *${title}*\n\n${message}\n\n*Severity:* ${severity.toUpperCase()}\n*Source:* ${source}`;
+              const telegramResp = await fetch(`https://api.telegram.org/bot${telegramBotToken}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: telegramChatId,
+                  text: telegramText,
+                  parse_mode: 'Markdown',
+                  disable_web_page_preview: true,
+                }),
+              });
+              success = telegramResp.ok;
+              if (!success) {
+                errorMessage = `Telegram API error: ${await telegramResp.text()}`;
+              }
+              // Skip the generic webhook send below
+              results.push({ channel: channel.name, success, error: errorMessage || null });
+              await supabase.from('notification_logs').insert({
+                channel_id: channel.id,
+                alert_id: alertId || null,
+                status: success ? 'sent' : 'failed',
+                error_message: errorMessage || null,
+              });
+              continue;
+            }
+            
             webhookPayload = {
               text: `${emoji} *${title}*\n\n${message}\n\n*Severity:* ${severity.toUpperCase()}\n*Source:* ${source}`,
               parse_mode: 'Markdown',
             };
             break;
+          }
 
           case 'slack':
             // Slack webhook format
