@@ -5,9 +5,9 @@ Welcome! We're excited you want to contribute to the most trusted open-source cr
 ## Before You Start
 
 Please read these documents:
-- [CODE_OF_ETHICS.md](../CODE_OF_ETHICS.md) — Our ethical principles
+- [CODE_OF_CONDUCT.md](../CODE_OF_CONDUCT.md) — Community standards
 - [ARCHITECTURE.md](./ARCHITECTURE.md) — How the system works
-- [WHY_WE_DONT_ALWAYS_TRADE.md](./WHY_WE_DONT_ALWAYS_TRADE.md) — Our philosophy
+- [SECURITY.md](../SECURITY.md) — Security policy and reporting
 
 ## Core Principles for Contributors
 
@@ -86,8 +86,8 @@ Before coding, discuss your idea:
 ### 2. Fork and Branch
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/crypto-ops-dashboard.git
-cd crypto-ops-dashboard
+git clone https://github.com/YOUR_USERNAME/akiva-ai-crypto.git
+cd akiva-ai-crypto
 git checkout -b feature/your-feature-name
 ```
 
@@ -104,12 +104,13 @@ Follow these guidelines:
 
 ```bash
 # Frontend
-npm run lint
-npm run type-check
-npm run test
+bun run tsc --noEmit
+bun run eslint . --ext .ts,.tsx
+bun run vitest run
 
-# Backend
+# Backend (Python)
 cd backend
+pip install -r requirements.txt
 pytest
 ```
 

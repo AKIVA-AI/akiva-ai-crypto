@@ -7,6 +7,9 @@
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Technical architecture and data flow |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
 | [DESIGN_THEME.md](DESIGN_THEME.md) | UI design system |
+| [../CHANGELOG.md](../CHANGELOG.md) | Release changelog |
+| [../SECURITY.md](../SECURITY.md) | Security policy |
+| [../CODE_OF_CONDUCT.md](../CODE_OF_CONDUCT.md) | Community standards |
 
 ## Setup & Deployment
 

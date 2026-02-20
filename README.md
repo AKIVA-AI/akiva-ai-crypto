@@ -155,6 +155,8 @@ akiva-ai-crypto/
 │   │   ├── dashboard/            # Control center widgets
 │   │   ├── trading/              # Order entry, P&L tracking
 │   │   ├── intelligence/         # Market signals, scanners
+│   │   ├── risk/                 # Risk management panels
+│   │   ├── arbitrage/            # Cross-exchange arbitrage
 │   │   └── layout/               # Navigation, sidebars
 │   ├── hooks/                    # React hooks (metrics, realtime, shortcuts)
 │   ├── pages/                    # Route pages
@@ -172,10 +174,9 @@ akiva-ai-crypto/
 │   │   └── _shared/              # Security middleware, CORS, validation
 │   ├── migrations/               # Database schema migrations
 │   └── config.toml               # Function configuration
-├── backend/                      # Python FastAPI (optional, for FreqTrade)
+├── backend/                      # Python FastAPI (optional, for advanced strategies)
 ├── docs/                         # Architecture, guides, runbooks
 ├── .github/workflows/            # CI pipeline
-├── docker-compose.yml            # Local development stack
 └── .env.example                  # Environment template
 ```
 
@@ -204,13 +205,17 @@ All tables are protected by Row-Level Security policies.
 | `live-trading` | JWT + Role | Order placement with safety checks, retry logic |
 | `kill-switch` | JWT + Admin | Emergency trading halt |
 | `market-data` | Public | Price feeds and market snapshots |
-| `binance-us-trading` | Rate-limited | Binance.US API proxy |
-| `coinbase-trading` | Rate-limited | Coinbase Advanced Trade proxy |
-| `kraken-trading` | Rate-limited | Kraken API proxy |
+| `binance-us-trading` | Public | Binance.US API proxy |
+| `coinbase-trading` | Public | Coinbase Advanced Trade proxy |
+| `kraken-trading` | Public | Kraken API proxy |
 | `cross-exchange-arbitrage` | Public | Spread detection across venues |
 | `scheduled-monitor` | CRON | Automated health checks |
-| `send-alert-notification` | Internal | Telegram alert delivery |
+| `send-alert-notification` | Public | Telegram alert delivery |
 | `signal-scoring` | Public | Multi-factor signal analysis |
+| `funding-arbitrage` | Public | Funding rate arbitrage detection |
+| `macro-indicators` | Public | FRED economic data integration |
+| `whale-alerts` | Public | Large transaction monitoring |
+| `exchange-keys` | JWT | Encrypted API key management |
 
 ## Contributing
 
