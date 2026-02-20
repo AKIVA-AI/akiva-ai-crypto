@@ -1,4 +1,5 @@
-project_id = "amvakxshlojoshdfcqos"
+# Replace with your Supabase project ID
+project_id = "your-supabase-project-id"
 
 [functions.market-data]
 verify_jwt = false
