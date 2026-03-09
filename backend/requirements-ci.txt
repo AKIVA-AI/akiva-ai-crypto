@@ -40,7 +40,7 @@ pytest-cov==4.1.0
 structlog==24.1.0
 
 # Security and encryption
-cryptography==42.0.5
+cryptography==46.0.5
 
 # System monitoring
 psutil==5.9.8
