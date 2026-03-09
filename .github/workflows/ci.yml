@@ -24,11 +24,12 @@ jobs:
 
       - name: Lint
         run: bun run eslint . --ext .ts,.tsx --max-warnings=0
-        continue-on-error: true
 
-      - name: Run tests
-        run: bun run vitest run --reporter=verbose
-        continue-on-error: true
+      - name: Run tests with coverage
+        run: bun run vitest run --reporter=verbose --coverage
+
+      - name: Security audit
+        run: npm audit --audit-level=high || true
 
   backend:
     runs-on: ubuntu-latest
@@ -52,10 +53,23 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install bandit pip-audit ruff
 
-      - name: Run tests
+      - name: Lint (ruff)
         working-directory: backend
-        run: pytest
+        run: ruff check app/ --select E,W,F --ignore E501
+
+      - name: Security scan (bandit)
+        working-directory: backend
+        run: bandit -r app/ -ll -ii --exclude app/gpu/ -f json -o bandit-report.json || bandit -r app/ -ll -ii --exclude app/gpu/
+
+      - name: Dependency audit (pip-audit)
+        working-directory: backend
+        run: pip-audit --strict --desc 2>/dev/null || echo "::warning::pip-audit found vulnerabilities - review required"
+
+      - name: Run tests with coverage
+        working-directory: backend
+        run: pytest --cov=app --cov-report=term-missing --cov-fail-under=50 -x -q
 
       - name: Build Docker image
         working-directory: backend

@@ -16,8 +16,9 @@ from typing import Dict, Set, Optional, Any
 from datetime import datetime
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 from enum import Enum
+import structlog
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 router = APIRouter(prefix="/ws", tags=["websocket"])
 
@@ -102,6 +103,32 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
+async def _authenticate_websocket(websocket: WebSocket) -> Optional[str]:
+    """
+    Authenticate a WebSocket connection via token query parameter or first message.
+
+    Returns the authenticated user_id or None if authentication fails.
+    """
+    # Try token from query params
+    token = websocket.query_params.get("token")
+    if not token:
+        # Check Authorization header (some WS clients support it)
+        auth_header = websocket.headers.get("authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+
+    if not token:
+        return None
+
+    try:
+        from app.core.security import verify_token
+        user = await verify_token(token)
+        return user.get("id")
+    except Exception as e:
+        logger.warning("websocket_auth_failed", error=str(e))
+        return None
+
+
 @router.websocket("/stream/{stream_type}")
 async def websocket_stream(
     websocket: WebSocket,
@@ -110,7 +137,9 @@ async def websocket_stream(
 ):
     """
     Main WebSocket endpoint for real-time data streams.
-    
+
+    Authentication required via ?token=<jwt> query parameter or Authorization header.
+
     Stream types:
     - market: Real-time price updates
     - signals: Trading signals from strategies
@@ -119,6 +148,15 @@ async def websocket_stream(
     - agents: Agent status updates
     - all: All streams combined
     """
+    # Authenticate the WebSocket connection
+    authenticated_user_id = await _authenticate_websocket(websocket)
+    if authenticated_user_id is None:
+        await websocket.close(code=4001, reason="Authentication required")
+        logger.warning("websocket_rejected_unauthenticated", stream=stream_type)
+        return
+
+    # Use authenticated user_id, ignore client-provided user_id
+    user_id = authenticated_user_id
     await manager.connect(websocket, stream_type, user_id)
     
     try:

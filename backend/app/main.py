@@ -204,7 +204,7 @@ async def freqtrade_components_health():
 async def auth_middleware(request: Request, call_next):
     """Authentication middleware for protected routes."""
     # Skip auth for health checks, readiness probes, and docs
-    if request.url.path in ["/health", "/ready", "/metrics", "/docs", "/redoc", "/openapi.json"] or request.url.path.startswith("/health/"):
+    if request.url.path in ["/health", "/ready", "/metrics", "/metrics/prometheus", "/docs", "/redoc", "/openapi.json"] or request.url.path.startswith("/health/"):
         return await call_next(request)
 
     # Skip auth for OPTIONS requests

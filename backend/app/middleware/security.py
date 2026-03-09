@@ -86,8 +86,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Content-Security-Policy"] = "default-src 'self'; frame-ancestors 'none'"
         
         # HSTS for production (HTTPS enforcement)
-        # Uncomment when deployed with HTTPS:
-        # response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        from app.config import settings as _settings
+        if _settings.is_production:
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         
         return response
 

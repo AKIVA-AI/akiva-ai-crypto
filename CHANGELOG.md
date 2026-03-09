@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] — 2026-03-09
+
+### Sprint 0: Security and Observability Hardening
+
+#### Security (Dim 8: 7 -> 8)
+- Added Dependabot configuration for automated dependency scanning (pip, npm, GitHub Actions)
+- Added SAST scanning (bandit) and dependency audit (pip-audit) to CI pipeline
+- Fixed WebSocket authentication vulnerability: all WS connections now require JWT token
+- Enabled HSTS header in production environments
+- Added npm audit to frontend CI pipeline
+- Subprocess usage in strategy_screener.py reviewed and confirmed safe (input validation + create_subprocess_exec)
+
+#### Testing (Dim 7: 6 -> 7)
+- Removed `continue-on-error: true` from CI lint and test steps (failures now block merges)
+- Added pytest coverage threshold enforcement (--cov-fail-under=50)
+- Added vitest coverage thresholds
+- Added risk engine edge case tests: kill switch fail-safe, circuit breaker cascades, boundary conditions
+- Added WebSocket authentication tests
+- Added health/metrics endpoint tests
+- Added security middleware tests
+
+#### Observability (Dim 9: 6 -> 7)
+- Added Prometheus metrics export endpoint (/metrics/prometheus) with trading-specific metrics
+- Added trade execution latency histogram tracking (p50/p95/p99)
+- Added agent heartbeat staleness detection (90-second threshold)
+- Enhanced health endpoint with dependency status (database, Redis)
+- Added order count and PnL tracking metrics
+- Enhanced /metrics endpoint with trade, latency, and agent metrics
+
+#### CI/CD
+- Upgraded CI to include ruff linting, bandit SAST, pip-audit, coverage enforcement
+- Added Dependabot for pip, npm, and GitHub Actions dependencies
+
+---
+
 ## [1.0.0] — 2026-02-20
 
 ### 🎉 Initial Open-Source Release
