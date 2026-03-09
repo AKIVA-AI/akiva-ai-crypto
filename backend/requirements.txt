@@ -13,7 +13,7 @@ redis==5.0.1
 hiredis==2.3.2
 
 # HTTP client - websockets>=11,<13 for supabase realtime compatibility
-httpx>=0.24.0,<0.26.0
+httpx>=0.24.0,<0.29.0
 aiohttp>=3.10.0,<3.11.0
 websockets>=11.0,<13.0
 
