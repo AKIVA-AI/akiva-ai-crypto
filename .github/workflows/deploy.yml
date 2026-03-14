@@ -39,7 +39,7 @@ jobs:
       backend-image: ${{ steps.backend-meta.outputs.tags }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref }}
 
