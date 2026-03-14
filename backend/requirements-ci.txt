@@ -29,7 +29,7 @@ numpy>=2.0,<3.0
 pydantic==2.6.1
 
 # Scheduling
-apscheduler==3.10.4
+apscheduler==3.11.2
 
 # Testing
 pytest>=7.0.0,<8.0.0
