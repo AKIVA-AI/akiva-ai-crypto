@@ -24,7 +24,7 @@ websockets==12.0
 ccxt>=4.5.4
 
 # Data processing
-pandas>=2.2.0,<3.0
+pandas>=2.2.0,<4.0
 numpy>=2.0,<3.0
 pydantic==2.6.1
 
