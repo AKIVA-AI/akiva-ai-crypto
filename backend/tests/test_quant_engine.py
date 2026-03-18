@@ -381,7 +381,15 @@ class TestFreqAIEngineInitFailure:
 # ConfigurationValidator tests (from enhanced_config)
 # ---------------------------------------------------------------------------
 
+_has_freqtrade_exceptions = False
+try:
+    import freqtrade.exceptions  # noqa: F401
+    _has_freqtrade_exceptions = True
+except (ImportError, ModuleNotFoundError):
+    pass
 
+
+@pytest.mark.skipif(not _has_freqtrade_exceptions, reason="freqtrade not installed")
 class TestConfigurationValidator:
     @pytest.fixture
     def validator(self):
@@ -439,6 +447,7 @@ class TestConfigurationValidator:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skipif(not _has_freqtrade_exceptions, reason="freqtrade not installed")
 class TestEnhancedConfigManager:
     @pytest.fixture
     def tmp_config_dir(self, tmp_path):
