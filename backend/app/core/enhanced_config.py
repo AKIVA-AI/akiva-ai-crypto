@@ -32,7 +32,10 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 import base64
 
 # FreqTrade configuration imports
-from freqtrade.configuration.config_validation import validate_config_schema
+try:
+    from freqtrade.configuration.config_validation import validate_config_schema
+except (ImportError, ModuleNotFoundError):
+    validate_config_schema = None  # FreqTrade schema validation not available
 from freqtrade.exceptions import ConfigurationError
 
 # Local imports
@@ -672,6 +675,8 @@ class EnhancedConfigManager:
         Returns:
             List of validation errors (empty if valid)
         """
+        if validate_config_schema is None:
+            return ["FreqTrade schema validation not available"]
         try:
             # Use FreqTrade's schema validation
             validate_config_schema(config)
