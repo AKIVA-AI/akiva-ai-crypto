@@ -1,7 +1,7 @@
 # Enterprise Crypto — Algorithmic Trading Platform
 
 **Archetype:** 7 — Algorithmic Trading Platform
-**Composite Score:** 71/100 (v2.11, 2026-03-17)
+**Composite Score:** 72/100 (v2.11, 2026-03-17, post-Sprint 3)
 **Standards:** Akiva Build Standard v2.11 / LLM Gateway Standard v1.1 — see `akiva-enterprise-products/CLAUDE.md` for full standards reference.
 
 ## Key Paths
