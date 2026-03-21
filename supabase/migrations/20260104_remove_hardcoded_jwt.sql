@@ -84,7 +84,7 @@ GRANT EXECUTE ON FUNCTION get_vault_secret(TEXT) TO service_role;
 --   '*/5 * * * *',
 --   $$
 --   SELECT net.http_post(
---     url := 'https://amvakxshlojoshdfcqos.supabase.co/functions/v1/scheduled-monitor',
+--     url := 'https://YOUR_PROJECT_REF.supabase.co/functions/v1/scheduled-monitor',
 --     headers := jsonb_build_object(
 --       'Content-Type', 'application/json',
 --       'Authorization', 'Bearer ' || get_vault_secret('supabase_anon_key')

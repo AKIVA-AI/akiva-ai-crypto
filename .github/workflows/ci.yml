@@ -92,4 +92,4 @@ jobs:
       - name: Build Docker image
         if: matrix.python-version == '3.12'
         working-directory: backend
-        run: docker build -t akiva-ai-crypto-backend .
+        run: docker build -t enterprise-crypto-backend .

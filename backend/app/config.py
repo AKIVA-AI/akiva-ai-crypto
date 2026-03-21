@@ -108,14 +108,10 @@ class Settings:
         self.ALLOWED_ORIGINS = self._parse_list(os.getenv("ALLOWED_ORIGINS")) or [
             "http://localhost:3000",
             "http://localhost:5173",
-            "https://amvakxshlojoshdfcqos.lovableproject.com",
-            "https://amvakxshlojoshdfcqos.lovable.app",
         ]
         self.ALLOWED_HOSTS = self._parse_list(os.getenv("ALLOWED_HOSTS")) or [
             "localhost",
             "127.0.0.1",
-            "amvakxshlojoshdfcqos.lovableproject.com",
-            "amvakxshlojoshdfcqos.lovable.app",
         ]
 
         # ========== Venue Configurations ==========

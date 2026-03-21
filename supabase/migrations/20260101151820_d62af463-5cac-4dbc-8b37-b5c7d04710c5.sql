@@ -7,7 +7,7 @@ SELECT cron.schedule(
   '*/5 * * * *',
   $$
   SELECT net.http_post(
-    url := 'https://amvakxshlojoshdfcqos.supabase.co/functions/v1/scheduled-monitor',
+    url := 'https://YOUR_PROJECT_REF.supabase.co/functions/v1/scheduled-monitor',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFtdmFreHNobG9qb3NoZGZjcW9zIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2Njg0NDg0NywiZXhwIjoyMDgyNDIwODQ3fQ.YOUR_SERVICE_ROLE_KEY'

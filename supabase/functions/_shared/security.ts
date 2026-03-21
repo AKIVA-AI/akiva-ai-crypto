@@ -8,12 +8,10 @@
  * - Role-based access control
  */
 
-// Production domains - add your custom domains here
+// Production domains - configure via ALLOWED_ORIGINS env var or add here
+const ENV_ORIGINS = Deno.env.get('ALLOWED_ORIGINS')?.split(',').map(s => s.trim()) ?? [];
 const ALLOWED_ORIGINS = [
-  'https://amvakxshlojoshdfcqos.lovableproject.com',
-  'https://amvakxshlojoshdfcqos.lovable.app',
-  'https://heart-bound-transit.lovable.app',
-  'https://preview--heart-bound-transit.lovable.app',
+  ...ENV_ORIGINS,
   // Add custom production domains here
 ];
 

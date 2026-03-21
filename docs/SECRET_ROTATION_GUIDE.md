@@ -30,13 +30,13 @@ For each secret above:
 
 ```bash
 # Via Supabase CLI
-supabase secrets set TELEGRAM_BOT_TOKEN=new-token-here --project-ref amvakxshlojoshdfcqos
+supabase secrets set TELEGRAM_BOT_TOKEN=new-token-here --project-ref YOUR_PROJECT_REF
 
 # Or via Dashboard:
 # Project Settings → Edge Functions → Secrets
 ```
 
-Dashboard link: [Edge Function Secrets](https://supabase.com/dashboard/project/amvakxshlojoshdfcqos/settings/functions)
+Dashboard link: [Edge Function Secrets](https://supabase.com/dashboard/project/YOUR_PROJECT_REF/settings/functions)
 
 ### 3. Scrub Git History (If Needed)
 

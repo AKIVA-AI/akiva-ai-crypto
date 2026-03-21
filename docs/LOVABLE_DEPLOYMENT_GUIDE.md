@@ -13,7 +13,7 @@ Now you just need to deploy the **Supabase edge function**.
 ### **Method 1: Supabase Dashboard (Easiest)**
 
 1. **Go to your Supabase Dashboard**
-   - URL: https://supabase.com/dashboard/project/amvakxshlojoshdfcqos
+   - URL: https://supabase.com/dashboard/project/YOUR_PROJECT_REF
 
 2. **Navigate to Edge Functions**
    - Click **"Edge Functions"** in the left sidebar
@@ -46,7 +46,7 @@ npm install -g supabase
 supabase login
 
 # 3. Link to your project
-supabase link --project-ref amvakxshlojoshdfcqos
+supabase link --project-ref YOUR_PROJECT_REF
 
 # 4. Deploy the function
 supabase functions deploy market-data-stream
@@ -58,7 +58,7 @@ supabase functions deploy market-data-stream
 
 ### **Step 1: Open Your Published App**
 - Go to your **published Lovable app** URL (not the preview)
-- Example: `https://amvakxshlojoshdfcqos.lovable.app`
+- Example: `https://YOUR_PROJECT_REF.lovable.app`
 
 ### **Step 2: Open Browser Console**
 - Press **F12** to open DevTools
@@ -98,7 +98,7 @@ supabase functions deploy market-data-stream
 ### **Test the endpoint directly:**
 Open this URL in your browser (replace with your project URL):
 ```
-https://amvakxshlojoshdfcqos.supabase.co/functions/v1/market-data-stream?symbols=BTCUSDT,ETHUSDT
+https://YOUR_PROJECT_REF.supabase.co/functions/v1/market-data-stream?symbols=BTCUSDT,ETHUSDT
 ```
 
 You should see a stream of price data (it will keep loading - that's correct for SSE).

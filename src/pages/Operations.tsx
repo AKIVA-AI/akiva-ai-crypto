@@ -438,7 +438,7 @@ export default function Operations() {
                 </div>
               ))}
               <Button variant="outline" size="sm" className="w-full gap-2" asChild>
-                <a href="https://supabase.com/dashboard/project/amvakxshlojoshdfcqos/functions" target="_blank" rel="noopener noreferrer">
+                <a href={`https://supabase.com/dashboard/project/${import.meta.env.VITE_SUPABASE_PROJECT_ID || ''}/functions`} target="_blank" rel="noopener noreferrer">
                   <ExternalLink className="h-3 w-3" />
                   View in Supabase Dashboard
                 </a>
