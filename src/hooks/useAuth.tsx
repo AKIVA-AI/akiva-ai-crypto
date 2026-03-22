@@ -1,16 +1,29 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+
+/** AAL from Supabase MFA: 'aal1' = password only, 'aal2' = MFA verified */
+type AalLevel = 'aal1' | 'aal2';
+
+interface AalState {
+  currentLevel: AalLevel | null;
+  nextLevel: AalLevel | null;
+}
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  /** Current AAL state */
+  aal: AalState | null;
+  /** True if user has enrolled MFA but session is still aal1 */
+  mfaRequired: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, fullName: string) => Promise<void>;
   signOut: () => Promise<void>;
+  /** Refresh AAL status (call after MFA challenge/verify) */
+  refreshAal: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,14 +32,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [aal, setAal] = useState<AalState | null>(null);
+  const [mfaRequired, setMfaRequired] = useState(false);
+
+  const checkAal = async () => {
+    try {
+      const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (error || !data) return;
+      setAal({
+        currentLevel: data.currentLevel as AalLevel | null,
+        nextLevel: data.nextLevel as AalLevel | null,
+      });
+      // MFA is required when user has enrolled factors (nextLevel > currentLevel)
+      setMfaRequired(
+        data.currentLevel === 'aal1' && data.nextLevel === 'aal2'
+      );
+    } catch {
+      // Ignore MFA check errors for users without MFA
+    }
+  };
 
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+        if (session?.user) {
+          await checkAal();
+        } else {
+          setAal(null);
+          setMfaRequired(false);
+        }
       }
     );
 
@@ -35,6 +73,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      if (session?.user) {
+        checkAal();
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -50,6 +91,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       toast.error(error.message);
       throw error;
     }
+
+    // Check if MFA is required after login
+    await checkAal();
 
     toast.success('Signed in successfully');
   };
@@ -70,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const redirectUrl = `${window.location.origin}/`;
-    
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -103,8 +147,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     toast.success('Signed out successfully');
   };
 
+  const refreshAal = async () => {
+    await checkAal();
+  };
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, aal, mfaRequired, signIn, signUp, signOut, refreshAal }}>
       {children}
     </AuthContext.Provider>
   );

@@ -5,6 +5,7 @@ import { AICopilotSidebar } from '@/components/chat/AICopilotSidebar';
 import { useAICopilot } from '@/contexts/AICopilotContext';
 import { ComplianceBanner, ComplianceDisclaimer } from '@/components/compliance/ComplianceBanner';
 import { RiskAlertBanner } from '@/components/risk/RiskAlertBanner';
+import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 import { cn } from '@/lib/utils';
 
 interface MainLayoutProps {
@@ -14,6 +15,9 @@ interface MainLayoutProps {
 
 export function MainLayout({ children, showComplianceBanner = false }: MainLayoutProps) {
   const { isOpen, toggle } = useAICopilot();
+
+  // 15-minute inactivity timeout — Archetype 7 financial compliance
+  useSessionTimeout();
 
   return (
     <div className="min-h-screen bg-background flex w-full">

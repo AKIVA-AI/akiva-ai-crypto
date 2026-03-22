@@ -30,6 +30,7 @@ import Trade from "./pages/Trade";
 import Operations from "./pages/Operations";
 import Screener from "./pages/Screener";
 import Auth from "./pages/Auth";
+import UpdatePassword from "./pages/UpdatePassword";
 import NotFound from "./pages/NotFound";
 import MultiExchangeDemo from "./pages/MultiExchangeDemo";
 
@@ -49,6 +50,7 @@ const App = () => (
                 <Sonner />
                 <Routes>
                   <Route path="/auth" element={<Auth />} />
+                  <Route path="/update-password" element={<UpdatePassword />} />
                   <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
                   <Route path="/agents" element={<ProtectedRoute><Agents /></ProtectedRoute>} />
                   <Route path="/strategies" element={<ProtectedRoute><Strategies /></ProtectedRoute>} />

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,12 +10,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { NotificationChannelManager } from '@/components/settings/NotificationChannelManager';
 import { UserRoleManager } from '@/components/settings/UserRoleManager';
+import { MfaSettings } from '@/components/settings/MfaSettings';
+import { ThemeToggle } from '@/components/settings/ThemeToggle';
+import { AvatarUpload } from '@/components/settings/AvatarUpload';
+import { AccountDeletion } from '@/components/settings/AccountDeletion';
 import { ExchangeAPIManager } from '@/components/intelligence/ExchangeAPIManager';
 import {
-  Settings as SettingsIcon, 
-  Server, 
-  Shield, 
-  Zap, 
+  Settings as SettingsIcon,
+  Server,
+  Shield,
   AlertTriangle,
   CheckCircle2,
   XCircle,
@@ -23,32 +26,63 @@ import {
   Save,
   RefreshCw,
   Database,
-  Key,
-  Globe
+  User,
 } from 'lucide-react';
 import { useGlobalSettings } from '@/hooks/useControlPlane';
 import { useRoleAccess, AdminOnly } from '@/components/auth/RoleGate';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 
 export default function Settings() {
   const { data: settings, isLoading } = useGlobalSettings();
   const { isAdmin, isCIO } = useRoleAccess();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
-  
+
   const [backendUrl, setBackendUrl] = useState(settings?.api_base_url || '');
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'connected' | 'failed'>('unknown');
   const [backendVersion, setBackendVersion] = useState<string | null>(null);
 
+  // Profile state
+  const [profileName, setProfileName] = useState('');
+  const [profileCompany, setProfileCompany] = useState('');
+  const [profileTimezone, setProfileTimezone] = useState('UTC');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  // Load profile data
+  const { data: profile } = useQuery({
+    queryKey: ['profile', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+
+  // Sync profile data to form state
+  useEffect(() => {
+    if (profile) {
+      setProfileName(profile.full_name ?? '');
+      setProfileCompany((profile as Record<string, unknown>).company as string ?? '');
+      setProfileTimezone((profile as Record<string, unknown>).timezone as string ?? 'UTC');
+    }
+  }, [profile]);
+
   // Update settings mutation
   const updateSettings = useMutation({
     mutationFn: async (updates: Record<string, unknown>) => {
-      // Get the first settings row ID or create one if not exists
       let settingsId = settings?.id;
-      
+
       if (!settingsId) {
         const { data, error } = await supabase
           .from('global_settings')
@@ -58,12 +92,12 @@ export default function Settings() {
         if (error) throw error;
         settingsId = data.id;
       }
-      
+
       const { error } = await supabase
         .from('global_settings')
         .update(updates)
         .eq('id', settingsId);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -83,6 +117,28 @@ export default function Settings() {
     await updateSettings.mutateAsync({ api_base_url: backendUrl });
   };
 
+  const handleSaveProfile = async () => {
+    if (!user?.id) return;
+    setIsSavingProfile(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: profileName.trim() || null,
+        })
+        .eq('id', user.id);
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ['profile', user.id] });
+      toast.success('Profile updated');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to update profile';
+      toast.error(msg);
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
   const testBackendConnection = async () => {
     if (!backendUrl) {
       toast.error('Please enter a backend URL first');
@@ -94,7 +150,6 @@ export default function Settings() {
     setBackendVersion(null);
 
     try {
-      // Test health endpoint
       const healthResponse = await fetch(`${backendUrl}/health`, {
         method: 'GET',
         signal: AbortSignal.timeout(10000),
@@ -104,13 +159,12 @@ export default function Settings() {
         throw new Error(`Health check failed: ${healthResponse.status}`);
       }
 
-      // Try to get version
       try {
         const versionResponse = await fetch(`${backendUrl}/version`, {
           method: 'GET',
           signal: AbortSignal.timeout(5000),
         });
-        
+
         if (versionResponse.ok) {
           const versionData = await versionResponse.json();
           setBackendVersion(versionData.version || versionData.v || JSON.stringify(versionData));
@@ -150,7 +204,7 @@ export default function Settings() {
             <SettingsIcon className="h-7 w-7 text-primary" />
             System Settings
           </h1>
-          <p className="text-muted-foreground">Configure global system settings and integrations</p>
+          <p className="text-muted-foreground">Configure global system settings, profile, and integrations</p>
         </div>
 
         {!canEdit && (
@@ -158,10 +212,89 @@ export default function Settings() {
             <Shield className="h-4 w-4" />
             <AlertTitle>Read-Only Access</AlertTitle>
             <AlertDescription>
-              You don't have permission to modify these settings. Contact an administrator.
+              You don&apos;t have permission to modify system settings. Contact an administrator.
             </AlertDescription>
           </Alert>
         )}
+
+        {/* Profile Editor */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="h-5 w-5 text-primary" />
+              Profile
+            </CardTitle>
+            <CardDescription>
+              Your personal information and avatar
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <AvatarUpload
+              currentUrl={profile?.avatar_url}
+              onUploaded={() => queryClient.invalidateQueries({ queryKey: ['profile', user?.id] })}
+            />
+
+            <Separator />
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="profile-name">Full Name</Label>
+                <Input
+                  id="profile-name"
+                  value={profileName}
+                  onChange={(e) => setProfileName(e.target.value)}
+                  placeholder="Your name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="profile-email">Email</Label>
+                <Input
+                  id="profile-email"
+                  value={user?.email ?? ''}
+                  disabled
+                  className="bg-muted/50"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="profile-company">Company</Label>
+                <Input
+                  id="profile-company"
+                  value={profileCompany}
+                  onChange={(e) => setProfileCompany(e.target.value)}
+                  placeholder="Company name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="profile-timezone">Timezone</Label>
+                <Input
+                  id="profile-timezone"
+                  value={profileTimezone}
+                  onChange={(e) => setProfileTimezone(e.target.value)}
+                  placeholder="UTC"
+                />
+              </div>
+            </div>
+            <Button onClick={handleSaveProfile} disabled={isSavingProfile}>
+              {isSavingProfile ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Profile
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Appearance */}
+        <ThemeToggle />
+
+        {/* MFA Settings */}
+        <MfaSettings />
 
         {/* Trading Controls */}
         <Card>
@@ -315,7 +448,7 @@ export default function Settings() {
                     <RefreshCw className="h-4 w-4" />
                   )}
                 </Button>
-                <Button 
+                <Button
                   onClick={handleSaveBackendUrl}
                   disabled={!canEdit || updateSettings.isPending}
                 >
@@ -361,7 +494,7 @@ export default function Settings() {
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>Security Notice</AlertTitle>
               <AlertDescription>
-                This control plane never stores API keys or credentials. All privileged operations 
+                This control plane never stores API keys or credentials. All privileged operations
                 are performed via authenticated Edge Functions with full audit logging.
               </AlertDescription>
             </Alert>
@@ -411,6 +544,9 @@ export default function Settings() {
             </CardContent>
           </Card>
         </AdminOnly>
+
+        {/* Account Deletion — always last */}
+        <AccountDeletion />
       </div>
     </MainLayout>
   );

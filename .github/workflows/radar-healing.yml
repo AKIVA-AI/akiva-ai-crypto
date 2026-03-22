@@ -1,0 +1,88 @@
+name: RADAR Healing
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
+
+jobs:
+  radar-healing:
+    name: RADAR Self-Healing Analysis
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Collect failure context
+        id: context
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RUN_ID="${{ github.event.workflow_run.id }}"
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+
+          echo "## RADAR Healing Report" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Triggered by:** CI run [#$RUN_ID](${{ github.event.workflow_run.html_url }})" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Branch:** ${{ github.event.workflow_run.head_branch }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Commit:** \`${{ github.event.workflow_run.head_sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Download failed logs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RUN_ID="${{ github.event.workflow_run.id }}"
+
+          echo "### Failed Job Logs" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          gh run view "$RUN_ID" --log-failed 2>&1 | tail -150 >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Classify failure
+        run: |
+          echo "### Failure Classification" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          # Check for common failure patterns
+          LOGS=$(gh run view "${{ github.event.workflow_run.id }}" --log-failed 2>&1 || true)
+
+          if echo "$LOGS" | grep -qi "type.*error\|TS[0-9]\+:"; then
+            echo "- **Category:** TypeScript type error" >> "$GITHUB_STEP_SUMMARY"
+            echo "- **Healing:** Run \`npm run typecheck\` locally and fix reported errors" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if echo "$LOGS" | grep -qi "eslint\|lint.*error\|no-unused"; then
+            echo "- **Category:** Lint failure" >> "$GITHUB_STEP_SUMMARY"
+            echo "- **Healing:** Run \`npm run lint -- --fix\` locally" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if echo "$LOGS" | grep -qi "FAIL.*test\|AssertionError\|expect("; then
+            echo "- **Category:** Test failure" >> "$GITHUB_STEP_SUMMARY"
+            echo "- **Healing:** Run \`npm test\` locally and fix failing tests" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if echo "$LOGS" | grep -qi "npm audit\|vulnerability\|pip-audit\|bandit"; then
+            echo "- **Category:** Security vulnerability" >> "$GITHUB_STEP_SUMMARY"
+            echo "- **Healing:** Run \`npm audit fix\` or update pinned dependencies" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if echo "$LOGS" | grep -qi "ENOMEM\|out of memory\|oom\|disk space"; then
+            echo "- **Category:** Infrastructure (OOM/disk)" >> "$GITHUB_STEP_SUMMARY"
+            echo "- **Healing:** Re-run workflow; if persistent, reduce parallel jobs" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if echo "$LOGS" | grep -qi "npm ci\|install.*fail\|resolution\|peer dep"; then
+            echo "- **Category:** Dependency resolution" >> "$GITHUB_STEP_SUMMARY"
+            echo "- **Healing:** Check package.json overrides and lockfile integrity" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "---" >> "$GITHUB_STEP_SUMMARY"
+          echo "*RADAR Healing automatically analyzes CI failures and suggests fixes.*" >> "$GITHUB_STEP_SUMMARY"
+        env:
+          GH_TOKEN: ${{ github.token }}
