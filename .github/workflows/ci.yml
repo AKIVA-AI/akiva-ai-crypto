@@ -93,3 +93,28 @@ jobs:
         if: matrix.python-version == '3.12'
         working-directory: backend
         run: docker build -t enterprise-crypto-backend .
+
+  ci-diagnosis:
+    name: RADAR CI Diagnosis
+    runs-on: ubuntu-latest
+    needs: [frontend, backend]
+    if: >-
+      always() &&
+      (needs.frontend.result == 'failure' ||
+       needs.backend.result == 'failure')
+
+    steps:
+    - name: Diagnose CI failures
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        echo "## RADAR CI Diagnosis" >> "$GITHUB_STEP_SUMMARY"
+        echo "" >> "$GITHUB_STEP_SUMMARY"
+        echo "**Failed jobs:**" >> "$GITHUB_STEP_SUMMARY"
+        if [ "${{ needs.frontend.result }}" = "failure" ]; then echo "- **frontend**: FAILED" >> "$GITHUB_STEP_SUMMARY"; fi
+        if [ "${{ needs.backend.result }}" = "failure" ]; then echo "- **backend**: FAILED" >> "$GITHUB_STEP_SUMMARY"; fi
+        echo "" >> "$GITHUB_STEP_SUMMARY"
+        echo "### Failed Step Logs" >> "$GITHUB_STEP_SUMMARY"
+        echo '```' >> "$GITHUB_STEP_SUMMARY"
+        gh run view ${{ github.run_id }} --log-failed 2>&1 | tail -200 >> "$GITHUB_STEP_SUMMARY"
+        echo '```' >> "$GITHUB_STEP_SUMMARY"
