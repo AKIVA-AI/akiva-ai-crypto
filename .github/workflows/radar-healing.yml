@@ -9,7 +9,7 @@ on:
 jobs:
   heal:
     if: ${{ github.event.workflow_run.conclusion == 'failure' }}
-    uses: AKIVA-AI/akiva-enterprise-products/.github/workflows/shared-radar-healing.yml@main
+    uses: AKIVA-AI/radar-ci/.github/workflows/shared-radar-healing.yml@main
     with:
       python_version: '3.11'
     secrets:
