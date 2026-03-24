@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Run RADAR hosted healing
-        uses: AKIVA-AI/radar-ci/actions/hosted-heal@v0.2.6
+        uses: AKIVA-AI/radar-ci/actions/hosted-heal@v0.2.7
         with:
           python_version: "3.11"
           source_run_id: ${{ github.event.workflow_run.id }}
