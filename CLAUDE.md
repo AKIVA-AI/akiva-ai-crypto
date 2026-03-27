@@ -2,7 +2,7 @@
 
 **Archetype:** 7 — Algorithmic Trading Platform
 **Composite Score:** 72/100 (v2.11, 2026-03-17, post-Sprint 4)
-**Standards:** Akiva Build Standard v2.11 / LLM Gateway Standard v1.1 — see `akiva-enterprise-products/CLAUDE.md` for full standards reference.
+**Standards:** Akiva Build Standard v2.13 / LLM Gateway Standard v1.2 — see `akiva-enterprise-products/CLAUDE.md` for full standards reference.
 
 ## Key Paths
 
