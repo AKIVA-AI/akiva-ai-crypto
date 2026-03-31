@@ -54,13 +54,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Set up auth state listener
+    // IMPORTANT: Do NOT await Supabase calls inside this callback — causes deadlock
+    // (supabase/auth-js#762). Dispatch async work via setTimeout(0).
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
         if (session?.user) {
-          await checkAal();
+          setTimeout(() => { checkAal(); }, 0);
         } else {
           setAal(null);
           setMfaRequired(false);
