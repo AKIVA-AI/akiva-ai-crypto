@@ -27,6 +27,26 @@ from .capital_allocation_agent import CapitalAllocationAgent
 
 logger = logging.getLogger(__name__)
 
+# ── Control-plane adapters (optional — fail-closed guard) ──────────────────
+try:
+    from app.control_plane.authority_adapter import AuthorityAdapter
+    from app.control_plane.risk_policy import build_risk_engine
+    from app.control_plane.evidence_adapter import EvidenceAdapter
+    from app.control_plane import _HAS_CONTROL_PLANE
+
+    _authority_adapter = AuthorityAdapter()
+    _evidence_adapter = EvidenceAdapter()
+    _risk_engine = build_risk_engine()
+    logger.info("control_plane adapters loaded — authority + risk + evidence active")
+except ImportError:
+    _HAS_CONTROL_PLANE = False
+    _authority_adapter = None  # type: ignore[assignment]
+    _evidence_adapter = None  # type: ignore[assignment]
+    _risk_engine = None  # type: ignore[assignment]
+    logger.warning(
+        "control_plane packages not available — running without authority/risk adapters"
+    )
+
 
 class AgentOrchestrator:
     """
@@ -55,10 +75,54 @@ class AgentOrchestrator:
         self._http_client: Optional[httpx.AsyncClient] = None
 
     def register_agent(self, agent: BaseAgent):
-        """Register an agent with the orchestrator"""
+        """Register an agent with the orchestrator.
+
+        When control-plane adapters are available the agent's AuthorityBoundary
+        is resolved at registration time and logged for audit purposes.
+        """
         self._agents[agent.agent_id] = agent
         self._restart_counts[agent.agent_id] = 0
-        logger.info(f"Registered agent: {agent.agent_id} ({agent.agent_type})")
+
+        if _HAS_CONTROL_PLANE and _authority_adapter is not None:
+            try:
+                boundary = _authority_adapter.get_boundary(agent.agent_id)
+                logger.info(
+                    "Registered agent: %s (%s) — scope=%s approval=%s",
+                    agent.agent_id,
+                    agent.agent_type,
+                    boundary.scope.value,
+                    boundary.approval.value,
+                )
+            except Exception as exc:
+                logger.warning(
+                    "AuthorityAdapter resolution failed for %s: %s",
+                    agent.agent_id, exc,
+                )
+                logger.info(f"Registered agent: {agent.agent_id} ({agent.agent_type})")
+        else:
+            logger.info(f"Registered agent: {agent.agent_id} ({agent.agent_type})")
+
+    def get_control_plane_status(self) -> Dict:
+        """Return control-plane availability and per-agent authority summary."""
+        if not _HAS_CONTROL_PLANE or _authority_adapter is None:
+            return {"available": False, "agents": {}}
+
+        agents_summary = {}
+        for agent_id in self._agents:
+            try:
+                boundary = _authority_adapter.get_boundary(agent_id)
+                meta = _authority_adapter.get_agent_metadata(agent_id)
+                agents_summary[agent_id] = {
+                    "scope": boundary.scope.value,
+                    "approval": boundary.approval.value,
+                    "is_denied": boundary.is_denied(),
+                    "needs_approval": boundary.needs_approval(),
+                    "position_limit_usd": meta.get("position_limit_usd"),
+                }
+            except Exception as exc:
+                agents_summary[agent_id] = {"error": str(exc)}
+
+        return {"available": True, "agents": agents_summary}
 
     def create_default_agents(self):
         """Create the default set of trading agents with proper hierarchy"""
