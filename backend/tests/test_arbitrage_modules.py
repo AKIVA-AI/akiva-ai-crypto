@@ -3,7 +3,6 @@ from unittest.mock import AsyncMock
 
 import numpy as np
 import pytest
-
 from app.arbitrage.cross_exchange import (
     CrossExchangeArbitrage,
     CrossExchangeOpportunity,
@@ -150,11 +149,55 @@ async def test_cross_exchange_scan_requires_multiple_venues():
 def test_statistical_arbitrage_calculates_stats_and_exit_signal():
     engine = StatisticalArbitrage()
     prices_a = np.array(
-        [100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 130],
+        [
+            100,
+            101,
+            102,
+            103,
+            104,
+            105,
+            106,
+            107,
+            108,
+            109,
+            110,
+            111,
+            112,
+            113,
+            114,
+            115,
+            116,
+            117,
+            118,
+            119,
+            130,
+        ],
         dtype=float,
     )
     prices_b = np.array(
-        [50, 50.5, 51, 51.5, 52, 52.5, 53, 53.5, 54, 54.5, 55, 55.5, 56, 56.5, 57, 57.5, 58, 58.5, 59, 59.5, 60.2],
+        [
+            50,
+            50.5,
+            51,
+            51.5,
+            52,
+            52.5,
+            53,
+            53.5,
+            54,
+            54.5,
+            55,
+            55.5,
+            56,
+            56.5,
+            57,
+            57.5,
+            58,
+            58.5,
+            59,
+            59.5,
+            60.2,
+        ],
         dtype=float,
     )
 
@@ -186,7 +229,9 @@ def test_statistical_arbitrage_calculates_stats_and_exit_signal():
 
 
 def test_triangular_arbitrage_paths_profit_and_scan():
-    engine = TriangularArbitrage(min_profit_bps=5, max_position_size_usd=5000, fee_bps=0)
+    engine = TriangularArbitrage(
+        min_profit_bps=5, max_position_size_usd=5000, fee_bps=0
+    )
     rates = {
         "ETH/USDT": 2.0,
         "BTC/ETH": 2.0,

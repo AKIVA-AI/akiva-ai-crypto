@@ -3,8 +3,10 @@ Tests for WebSocket authentication.
 
 Sprint 0 - Dim 8 (Security) hardening: WebSocket auth validation.
 """
+
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
 from app.api.websocket import _authenticate_websocket
 
 
@@ -29,7 +31,11 @@ class TestWebSocketAuthentication:
         """WebSocket with valid query token should authenticate."""
         import asyncio
 
-        mock_verify.return_value = {"id": "user-123", "email": "test@test.com", "role": "trader"}
+        mock_verify.return_value = {
+            "id": "user-123",
+            "email": "test@test.com",
+            "role": "trader",
+        }
         ws = MagicMock()
         ws.query_params = {"token": "valid-jwt-token"}
         ws.headers = {}
@@ -45,7 +51,11 @@ class TestWebSocketAuthentication:
         """WebSocket with valid Authorization header should authenticate."""
         import asyncio
 
-        mock_verify.return_value = {"id": "user-456", "email": "test@test.com", "role": "admin"}
+        mock_verify.return_value = {
+            "id": "user-456",
+            "email": "test@test.com",
+            "role": "admin",
+        }
         ws = MagicMock()
         ws.query_params = {}
         ws.headers = {"authorization": "Bearer valid-jwt-header"}
@@ -76,7 +86,11 @@ class TestWebSocketAuthentication:
         """Query param token takes precedence over header."""
         import asyncio
 
-        mock_verify.return_value = {"id": "user-789", "email": "t@t.com", "role": "viewer"}
+        mock_verify.return_value = {
+            "id": "user-789",
+            "email": "t@t.com",
+            "role": "viewer",
+        }
         ws = MagicMock()
         ws.query_params = {"token": "query-token"}
         ws.headers = {"authorization": "Bearer header-token"}

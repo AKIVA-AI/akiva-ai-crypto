@@ -5,14 +5,14 @@ Orchestrates all arbitrage strategies and provides a unified interface
 for opportunity detection, execution, and monitoring.
 """
 
-import logging
-from typing import Optional, Dict, Any, List, Union
-from dataclasses import dataclass
 import asyncio
+import logging
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Union
 
-from .funding_rate import FundingRateArbitrage, FundingRateOpportunity
 from .cross_exchange import CrossExchangeArbitrage, CrossExchangeOpportunity
-from .statistical import StatisticalArbitrage, PairsTradeOpportunity
+from .funding_rate import FundingRateArbitrage, FundingRateOpportunity
+from .statistical import PairsTradeOpportunity, StatisticalArbitrage
 from .triangular import TriangularArbitrage, TriangularOpportunity
 
 logger = logging.getLogger(__name__)

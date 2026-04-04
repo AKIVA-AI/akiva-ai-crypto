@@ -1,19 +1,26 @@
 """
 Tests for Risk Engine rules and intent validation.
 """
-import asyncio
-import pytest
-from unittest.mock import patch, AsyncMock
-from uuid import uuid4
-from datetime import datetime, UTC
 
-from app.models.domain import (
-    TradeIntent, OrderSide, Book, BookType,
-    Position, VenueHealth, VenueStatus, RiskDecision
-)
-from app.services.risk_engine import RiskEngine
+import asyncio
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, patch
+from uuid import uuid4
+
+import pytest
 from app.agents.risk_agent import RiskAgent
 from app.config import settings
+from app.models.domain import (
+    Book,
+    BookType,
+    OrderSide,
+    Position,
+    RiskDecision,
+    TradeIntent,
+    VenueHealth,
+    VenueStatus,
+)
+from app.services.risk_engine import RiskEngine
 
 
 class TestRiskEngine:
@@ -27,10 +34,12 @@ class TestRiskEngine:
     @pytest.fixture
     def mock_kill_switch_off(self):
         """Mock kill switch to return False (off)."""
-        with patch.object(RiskEngine, '_check_global_kill_switch', new_callable=AsyncMock) as mock:
+        with patch.object(
+            RiskEngine, "_check_global_kill_switch", new_callable=AsyncMock
+        ) as mock:
             mock.return_value = False
             yield mock
-    
+
     @pytest.fixture
     def sample_book(self):
         return Book(
@@ -41,9 +50,9 @@ class TestRiskEngine:
             current_exposure=200000,
             max_drawdown_limit=10,
             risk_tier=1,
-            status="active"
+            status="active",
         )
-    
+
     @pytest.fixture
     def sample_intent(self, sample_book):
         return TradeIntent(
@@ -55,9 +64,9 @@ class TestRiskEngine:
             target_exposure_usd=50000,
             max_loss_usd=2500,
             confidence=0.8,
-            liquidity_requirement="normal"
+            liquidity_requirement="normal",
         )
-    
+
     @pytest.fixture
     def healthy_venue(self):
         return VenueHealth(
@@ -67,46 +76,70 @@ class TestRiskEngine:
             latency_ms=50,
             error_rate=0.1,
             last_heartbeat=datetime.now(UTC),
-            is_enabled=True
+            is_enabled=True,
         )
 
     # === Position Size Limit Tests ===
 
-    @patch.object(RiskEngine, '_check_global_kill_switch', new_callable=AsyncMock, return_value=False)
-    def test_position_size_within_limit(self, mock_ks, risk_engine, sample_intent, sample_book, healthy_venue):
+    @patch.object(
+        RiskEngine,
+        "_check_global_kill_switch",
+        new_callable=AsyncMock,
+        return_value=False,
+    )
+    def test_position_size_within_limit(
+        self, mock_ks, risk_engine, sample_intent, sample_book, healthy_venue
+    ):
         """Position size under limit should pass."""
         sample_intent.target_exposure_usd = 50000  # Under 100k limit
 
         # Mock the async method
         import asyncio
+
         result = asyncio.get_event_loop().run_until_complete(
             risk_engine.check_intent(sample_intent, sample_book, healthy_venue, [])
         )
 
         assert "position_size" in result.checks_passed
 
-    @patch.object(RiskEngine, '_check_global_kill_switch', new_callable=AsyncMock, return_value=False)
-    def test_position_size_exceeds_limit(self, mock_ks, risk_engine, sample_intent, sample_book, healthy_venue):
+    @patch.object(
+        RiskEngine,
+        "_check_global_kill_switch",
+        new_callable=AsyncMock,
+        return_value=False,
+    )
+    def test_position_size_exceeds_limit(
+        self, mock_ks, risk_engine, sample_intent, sample_book, healthy_venue
+    ):
         """Position size over limit should fail."""
         sample_intent.target_exposure_usd = 150000  # Over 100k limit
 
         import asyncio
+
         result = asyncio.get_event_loop().run_until_complete(
             risk_engine.check_intent(sample_intent, sample_book, healthy_venue, [])
         )
 
         assert result.decision == RiskDecision.REJECT
         assert "position_size" in result.checks_failed
-    
+
     # === Book Utilization Tests ===
 
-    @patch.object(RiskEngine, '_check_global_kill_switch', new_callable=AsyncMock, return_value=False)
-    def test_book_utilization_high_rejects(self, mock_ks, risk_engine, sample_intent, sample_book, healthy_venue):
+    @patch.object(
+        RiskEngine,
+        "_check_global_kill_switch",
+        new_callable=AsyncMock,
+        return_value=False,
+    )
+    def test_book_utilization_high_rejects(
+        self, mock_ks, risk_engine, sample_intent, sample_book, healthy_venue
+    ):
         """High book utilization (>90%) should reject."""
         sample_book.current_exposure = 850000  # 85% utilized
         sample_intent.target_exposure_usd = 100000  # Would push to 95%
 
         import asyncio
+
         result = asyncio.get_event_loop().run_until_complete(
             risk_engine.check_intent(sample_intent, sample_book, healthy_venue, [])
         )
@@ -115,24 +148,40 @@ class TestRiskEngine:
 
     # === Max Trade Loss Tests ===
 
-    @patch.object(RiskEngine, '_check_global_kill_switch', new_callable=AsyncMock, return_value=False)
-    def test_max_trade_loss_within_limit(self, mock_ks, risk_engine, sample_intent, sample_book, healthy_venue):
+    @patch.object(
+        RiskEngine,
+        "_check_global_kill_switch",
+        new_callable=AsyncMock,
+        return_value=False,
+    )
+    def test_max_trade_loss_within_limit(
+        self, mock_ks, risk_engine, sample_intent, sample_book, healthy_venue
+    ):
         """Max loss under 2% of book should pass."""
         sample_intent.max_loss_usd = 15000  # 1.5% of 1M book
 
         import asyncio
+
         result = asyncio.get_event_loop().run_until_complete(
             risk_engine.check_intent(sample_intent, sample_book, healthy_venue, [])
         )
 
         assert "max_trade_loss" in result.checks_passed
 
-    @patch.object(RiskEngine, '_check_global_kill_switch', new_callable=AsyncMock, return_value=False)
-    def test_max_trade_loss_exceeds_limit(self, mock_ks, risk_engine, sample_intent, sample_book, healthy_venue):
+    @patch.object(
+        RiskEngine,
+        "_check_global_kill_switch",
+        new_callable=AsyncMock,
+        return_value=False,
+    )
+    def test_max_trade_loss_exceeds_limit(
+        self, mock_ks, risk_engine, sample_intent, sample_book, healthy_venue
+    ):
         """Max loss over 2% of book should fail."""
         sample_intent.max_loss_usd = 30000  # 3% of 1M book
 
         import asyncio
+
         result = asyncio.get_event_loop().run_until_complete(
             risk_engine.check_intent(sample_intent, sample_book, healthy_venue, [])
         )
@@ -141,7 +190,12 @@ class TestRiskEngine:
 
     # === Venue Health Tests ===
 
-    @patch.object(RiskEngine, '_check_global_kill_switch', new_callable=AsyncMock, return_value=False)
+    @patch.object(
+        RiskEngine,
+        "_check_global_kill_switch",
+        new_callable=AsyncMock,
+        return_value=False,
+    )
     def test_venue_down_rejects(self, mock_ks, risk_engine, sample_intent, sample_book):
         """Venue DOWN status should reject."""
         down_venue = VenueHealth(
@@ -151,18 +205,26 @@ class TestRiskEngine:
             latency_ms=0,
             error_rate=100,
             last_heartbeat=datetime.now(UTC),
-            is_enabled=False
+            is_enabled=False,
         )
 
         import asyncio
+
         result = asyncio.get_event_loop().run_until_complete(
             risk_engine.check_intent(sample_intent, sample_book, down_venue, [])
         )
 
         assert "venue_health" in result.checks_failed
 
-    @patch.object(RiskEngine, '_check_global_kill_switch', new_callable=AsyncMock, return_value=False)
-    def test_venue_degraded_high_liquidity_rejects(self, mock_ks, risk_engine, sample_intent, sample_book):
+    @patch.object(
+        RiskEngine,
+        "_check_global_kill_switch",
+        new_callable=AsyncMock,
+        return_value=False,
+    )
+    def test_venue_degraded_high_liquidity_rejects(
+        self, mock_ks, risk_engine, sample_intent, sample_book
+    ):
         """Degraded venue with high liquidity requirement should reject."""
         degraded_venue = VenueHealth(
             venue_id=uuid4(),
@@ -171,19 +233,27 @@ class TestRiskEngine:
             latency_ms=500,
             error_rate=5,
             last_heartbeat=datetime.now(UTC),
-            is_enabled=True
+            is_enabled=True,
         )
         sample_intent.liquidity_requirement = "high"
 
         import asyncio
+
         result = asyncio.get_event_loop().run_until_complete(
             risk_engine.check_intent(sample_intent, sample_book, degraded_venue, [])
         )
 
         assert "venue_health" in result.checks_failed
 
-    @patch.object(RiskEngine, '_check_global_kill_switch', new_callable=AsyncMock, return_value=False)
-    def test_venue_degraded_normal_liquidity_passes(self, mock_ks, risk_engine, sample_intent, sample_book):
+    @patch.object(
+        RiskEngine,
+        "_check_global_kill_switch",
+        new_callable=AsyncMock,
+        return_value=False,
+    )
+    def test_venue_degraded_normal_liquidity_passes(
+        self, mock_ks, risk_engine, sample_intent, sample_book
+    ):
         """Degraded venue with normal liquidity should pass."""
         degraded_venue = VenueHealth(
             venue_id=uuid4(),
@@ -192,40 +262,41 @@ class TestRiskEngine:
             latency_ms=300,
             error_rate=3,
             last_heartbeat=datetime.now(UTC),
-            is_enabled=True
+            is_enabled=True,
         )
         sample_intent.liquidity_requirement = "normal"
 
         import asyncio
+
         result = asyncio.get_event_loop().run_until_complete(
             risk_engine.check_intent(sample_intent, sample_book, degraded_venue, [])
         )
 
         assert "venue_health" in result.checks_passed
-    
+
     # === Circuit Breaker Tests ===
-    
+
     def test_circuit_breaker_activation(self, risk_engine):
         """Circuit breaker should block new intents."""
         import asyncio
-        
+
         asyncio.get_event_loop().run_until_complete(
             risk_engine.activate_circuit_breaker("test_breaker", "Test reason")
         )
-        
+
         assert risk_engine._circuit_breakers["test_breaker"] == True
-        
+
         # Clean up
         asyncio.get_event_loop().run_until_complete(
             risk_engine.deactivate_circuit_breaker("test_breaker")
         )
-        
+
         assert risk_engine._circuit_breakers["test_breaker"] == False
 
 
 class TestTradeIntentValidation:
     """Test suite for TradeIntent schema validation."""
-    
+
     def test_valid_intent_creation(self):
         """Valid intent should be created without errors."""
         intent = TradeIntent(
@@ -235,13 +306,13 @@ class TestTradeIntentValidation:
             direction=OrderSide.SELL,
             target_exposure_usd=25000,
             max_loss_usd=1250,
-            confidence=0.75
+            confidence=0.75,
         )
-        
+
         assert intent.instrument == "ETH-USD"
         assert intent.direction == OrderSide.SELL
         assert intent.confidence == 0.75
-    
+
     def test_confidence_bounds(self):
         """Confidence must be between 0 and 1."""
         with pytest.raises(ValueError):
@@ -252,9 +323,9 @@ class TestTradeIntentValidation:
                 direction=OrderSide.BUY,
                 target_exposure_usd=10000,
                 max_loss_usd=500,
-                confidence=1.5  # Invalid
+                confidence=1.5,  # Invalid
             )
-    
+
     def test_default_liquidity_requirement(self):
         """Default liquidity requirement should be 'normal'."""
         intent = TradeIntent(
@@ -264,19 +335,19 @@ class TestTradeIntentValidation:
             direction=OrderSide.BUY,
             target_exposure_usd=10000,
             max_loss_usd=500,
-            confidence=0.5
+            confidence=0.5,
         )
-        
+
         assert intent.liquidity_requirement == "normal"
 
 
 class TestConcentrationLimits:
     """Test suite for asset concentration limits."""
-    
+
     @pytest.fixture
     def risk_engine(self):
         return RiskEngine()
-    
+
     @pytest.fixture
     def book_with_positions(self):
         book = Book(
@@ -287,9 +358,9 @@ class TestConcentrationLimits:
             current_exposure=300000,
             max_drawdown_limit=10,
             risk_tier=1,
-            status="active"
+            status="active",
         )
-        
+
         # Existing BTC positions worth 200k
         positions = [
             Position(
@@ -300,14 +371,21 @@ class TestConcentrationLimits:
                 size=4.0,
                 entry_price=50000,
                 mark_price=50000,
-                is_open=True
+                is_open=True,
             )
         ]
-        
+
         return book, positions
-    
-    @patch.object(RiskEngine, '_check_global_kill_switch', new_callable=AsyncMock, return_value=False)
-    def test_concentration_limit_exceeded(self, mock_ks, risk_engine, book_with_positions):
+
+    @patch.object(
+        RiskEngine,
+        "_check_global_kill_switch",
+        new_callable=AsyncMock,
+        return_value=False,
+    )
+    def test_concentration_limit_exceeded(
+        self, mock_ks, risk_engine, book_with_positions
+    ):
         """Adding more BTC when already at 20% should fail at 25% limit."""
         book, positions = book_with_positions
 
@@ -320,7 +398,7 @@ class TestConcentrationLimits:
             direction=OrderSide.BUY,
             target_exposure_usd=100000,
             max_loss_usd=5000,
-            confidence=0.7
+            confidence=0.7,
         )
 
         healthy_venue = VenueHealth(
@@ -330,10 +408,11 @@ class TestConcentrationLimits:
             latency_ms=50,
             error_rate=0.1,
             last_heartbeat=datetime.now(UTC),
-            is_enabled=True
+            is_enabled=True,
         )
 
         import asyncio
+
         result = asyncio.get_event_loop().run_until_complete(
             risk_engine.check_intent(intent, book, healthy_venue, positions)
         )
@@ -353,7 +432,7 @@ class TestKillSwitch:
             "instrument": "BTC-USD",
             "direction": "buy",
             "confidence": 90.0,
-            "target_exposure_usd": 1000
+            "target_exposure_usd": 1000,
         }
 
         result = asyncio.get_event_loop().run_until_complete(
@@ -372,11 +451,11 @@ class TestKillSwitch:
             "instrument": "BTC-USD",
             "direction": "buy",
             "confidence": 80.0,
-            "target_exposure_usd": 1000
+            "target_exposure_usd": 1000,
         }
 
-        with patch.object(agent, 'publish', new_callable=AsyncMock):
-            with patch.object(agent, 'send_alert', new_callable=AsyncMock):
+        with patch.object(agent, "publish", new_callable=AsyncMock):
+            with patch.object(agent, "send_alert", new_callable=AsyncMock):
                 result = asyncio.get_event_loop().run_until_complete(
                     agent._evaluate_risk(signal)
                 )
@@ -403,10 +482,10 @@ class TestDailyLossLimit:
             "instrument": "ETH-USD",
             "direction": "buy",
             "confidence": 70.0,
-            "target_exposure_usd": 5000
+            "target_exposure_usd": 5000,
         }
 
-        with patch.object(agent, '_trigger_kill_switch', new_callable=AsyncMock):
+        with patch.object(agent, "_trigger_kill_switch", new_callable=AsyncMock):
             result = asyncio.get_event_loop().run_until_complete(
                 agent._evaluate_risk(signal)
             )
@@ -421,10 +500,10 @@ class TestDailyLossLimit:
             "instrument": "ETH-USD",
             "direction": "buy",
             "confidence": 70.0,
-            "target_exposure_usd": 5000
+            "target_exposure_usd": 5000,
         }
 
-        with patch.object(agent, '_trigger_kill_switch', new_callable=AsyncMock):
+        with patch.object(agent, "_trigger_kill_switch", new_callable=AsyncMock):
             result = asyncio.get_event_loop().run_until_complete(
                 agent._evaluate_risk(signal)
             )
@@ -443,7 +522,7 @@ class TestPositionSizing:
             "instrument": "BTC-USD",
             "direction": "buy",
             "confidence": 80.0,
-            "target_exposure_usd": 50000  # Over $25k single trade limit
+            "target_exposure_usd": 50000,  # Over $25k single trade limit
         }
 
         result = asyncio.get_event_loop().run_until_complete(
@@ -462,7 +541,7 @@ class TestPositionSizing:
             "instrument": "BTC-USD",
             "direction": "buy",
             "confidence": 80.0,
-            "target_exposure_usd": 5000
+            "target_exposure_usd": 5000,
         }
 
         result = asyncio.get_event_loop().run_until_complete(
@@ -481,7 +560,7 @@ class TestPositionSizing:
             "instrument": "BTC-USD",
             "direction": "buy",
             "confidence": 80.0,
-            "target_exposure_usd": 20000
+            "target_exposure_usd": 20000,
         }
 
         result = asyncio.get_event_loop().run_until_complete(
@@ -498,16 +577,9 @@ class TestFillProcessing:
         """Buy fill should create a new position."""
         agent = RiskAgent()
 
-        fill = {
-            "instrument": "BTC-USD",
-            "side": "buy",
-            "size_usd": 10000,
-            "pnl": 0
-        }
+        fill = {"instrument": "BTC-USD", "side": "buy", "size_usd": 10000, "pnl": 0}
 
-        asyncio.get_event_loop().run_until_complete(
-            agent._process_fill(fill)
-        )
+        asyncio.get_event_loop().run_until_complete(agent._process_fill(fill))
 
         assert "BTC-USD" in agent._positions
         assert agent._positions["BTC-USD"]["size_usd"] == 10000
@@ -519,16 +591,9 @@ class TestFillProcessing:
         agent._positions["BTC-USD"] = {"size_usd": 10000, "side": "buy"}
         agent._total_exposure = 10000
 
-        fill = {
-            "instrument": "BTC-USD",
-            "side": "sell",
-            "size_usd": 10000,
-            "pnl": 500
-        }
+        fill = {"instrument": "BTC-USD", "side": "sell", "size_usd": 10000, "pnl": 500}
 
-        asyncio.get_event_loop().run_until_complete(
-            agent._process_fill(fill)
-        )
+        asyncio.get_event_loop().run_until_complete(agent._process_fill(fill))
 
         # Position should be closed (removed)
         assert "BTC-USD" not in agent._positions
@@ -546,9 +611,7 @@ class TestFillProcessing:
         ]
 
         for fill in fills:
-            asyncio.get_event_loop().run_until_complete(
-                agent._process_fill(fill)
-            )
+            asyncio.get_event_loop().run_until_complete(agent._process_fill(fill))
 
         assert agent._daily_pnl == 150  # 200 - 100 + 50
 
@@ -565,7 +628,7 @@ class TestPausedState:
             "instrument": "BTC-USD",
             "direction": "buy",
             "confidence": 95.0,
-            "target_exposure_usd": 1000
+            "target_exposure_usd": 1000,
         }
 
         result = asyncio.get_event_loop().run_until_complete(

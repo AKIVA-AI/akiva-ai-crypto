@@ -13,8 +13,8 @@ from app.core.strategy_registry import StrategyDefinition, strategy_registry
 from app.models.domain import Book, OrderSide, TradeIntent
 from app.models.opportunity import Opportunity, OpportunityType, SignalStack
 from app.services.arbitrage_engine import ArbitrageEngine
-from app.services.market_data import market_data_service
 from app.services.enhanced_signal_engine import enhanced_signal_engine
+from app.services.market_data import market_data_service
 
 logger = structlog.get_logger()
 

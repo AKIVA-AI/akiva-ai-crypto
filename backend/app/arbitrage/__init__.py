@@ -14,11 +14,11 @@ Key Features:
 - Performance tracking
 """
 
-from .funding_rate import FundingRateArbitrage, FundingRateOpportunity
 from .cross_exchange import CrossExchangeArbitrage, CrossExchangeOpportunity
-from .statistical import StatisticalArbitrage, PairsTradeOpportunity
-from .triangular import TriangularArbitrage, TriangularOpportunity
 from .engine import ArbitrageEngine, get_arbitrage_engine
+from .funding_rate import FundingRateArbitrage, FundingRateOpportunity
+from .statistical import PairsTradeOpportunity, StatisticalArbitrage
+from .triangular import TriangularArbitrage, TriangularOpportunity
 
 __all__ = [
     # Funding Rate

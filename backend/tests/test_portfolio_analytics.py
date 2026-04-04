@@ -1,9 +1,10 @@
 """Tests for services/portfolio_analytics.py"""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from app.services.portfolio_analytics import (
-    PerformanceMetrics,
     ExposureBreakdown,
+    PerformanceMetrics,
     PortfolioAnalytics,
 )
 

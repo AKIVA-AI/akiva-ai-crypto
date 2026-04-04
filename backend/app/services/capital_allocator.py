@@ -14,11 +14,11 @@ from uuid import uuid4
 import structlog
 
 from app.config import settings
-from app.database import get_supabase, audit_log
-from app.models.domain import TradeIntent, Book
+from app.database import audit_log, get_supabase
+from app.models.domain import Book, TradeIntent
 from app.services.market_data import market_data_service
 from app.services.reconciliation import recon_service
-from app.services.regime_detection_service import regime_detection_service, RegimeState
+from app.services.regime_detection_service import RegimeState, regime_detection_service
 from app.services.strategy_metrics_service import strategy_metrics_service
 
 logger = structlog.get_logger()

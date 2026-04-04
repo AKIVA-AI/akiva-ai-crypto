@@ -12,8 +12,8 @@ and can be exported as JSON for SEC / CPO-PQR filing preparation.
 """
 
 import logging
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, UTC, timedelta
+from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime, timedelta
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
@@ -36,9 +36,7 @@ class ComplianceReport:
 
     report_id: str = field(default_factory=lambda: str(uuid4()))
     report_type: str = "periodic"  # periodic, on-demand, incident
-    generated_at: str = field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
+    generated_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     period_start: str = ""
     period_end: str = ""
     sections: List[ComplianceReportSection] = field(default_factory=list)
@@ -85,18 +83,10 @@ class ComplianceReportGenerator:
             period_end=end.isoformat(),
         )
 
-        report.sections.append(
-            await self._build_trade_activity_section(start, end)
-        )
-        report.sections.append(
-            await self._build_risk_breach_section(start, end)
-        )
-        report.sections.append(
-            await self._build_audit_summary_section(start, end)
-        )
-        report.sections.append(
-            await self._build_security_events_section(start, end)
-        )
+        report.sections.append(await self._build_trade_activity_section(start, end))
+        report.sections.append(await self._build_risk_breach_section(start, end))
+        report.sections.append(await self._build_audit_summary_section(start, end))
+        report.sections.append(await self._build_security_events_section(start, end))
 
         total_findings = sum(s.finding_count for s in report.sections)
         critical_findings = sum(
@@ -206,8 +196,10 @@ class ComplianceReportGenerator:
             + data["position_limit_breaches"]
             + data["daily_loss_breaches"]
         )
-        severity = "critical" if data["kill_switch_activations"] > 0 else (
-            "warning" if total_breaches > 0 else "info"
+        severity = (
+            "critical"
+            if data["kill_switch_activations"] > 0
+            else ("warning" if total_breaches > 0 else "info")
         )
         return ComplianceReportSection(
             title="Risk Limit Breach Summary",
@@ -281,7 +273,9 @@ class ComplianceReportGenerator:
                     if "permission_denied" in action or "unauthorized" in action:
                         data["permission_denials"] += 1
             except Exception as e:
-                logger.warning("compliance_security_query_failed", extra={"error": str(e)})
+                logger.warning(
+                    "compliance_security_query_failed", extra={"error": str(e)}
+                )
 
         finding_count = data["auth_failures"] + data["permission_denials"]
         severity = "warning" if finding_count > 5 else "info"
@@ -297,11 +291,13 @@ class ComplianceReportGenerator:
         if not self._supabase:
             return
         try:
-            self._supabase.table("audit_events").insert({
-                "category": "compliance",
-                "severity": "info",
-                "action": "compliance_report_generated",
-                "details": report.to_dict(),
-            }).execute()
+            self._supabase.table("audit_events").insert(
+                {
+                    "category": "compliance",
+                    "severity": "info",
+                    "action": "compliance_report_generated",
+                    "details": report.to_dict(),
+                }
+            ).execute()
         except Exception as e:
             logger.error("compliance_report_persist_failed", extra={"error": str(e)})

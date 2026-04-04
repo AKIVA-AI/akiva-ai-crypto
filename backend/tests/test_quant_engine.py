@@ -10,9 +10,9 @@ needed.
 import json
 import os
 import tempfile
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from pathlib import Path
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import numpy as np
 import pandas as pd
@@ -35,18 +35,24 @@ class TestFreqAIEnhancedEngine:
     @pytest.fixture
     def engine(self, mock_market_data_service):
         """Create engine with fully mocked FreqAI components."""
-        with patch(
-            "app.services.enhanced_quantitative_engine.FreqaiDataKitchen"
-        ) as mock_kitchen_cls, patch(
-            "app.services.enhanced_quantitative_engine.XGBoostRegressor"
-        ) as mock_xgb, patch(
-            "app.services.enhanced_quantitative_engine.LightGBMRegressor"
-        ) as mock_lgbm, patch(
-            "app.services.enhanced_quantitative_engine.TensorFlowRegressor",
-            None,
-        ), patch(
-            "app.services.enhanced_quantitative_engine.PyTorchRegressor",
-            None,
+        with (
+            patch(
+                "app.services.enhanced_quantitative_engine.FreqaiDataKitchen"
+            ) as mock_kitchen_cls,
+            patch(
+                "app.services.enhanced_quantitative_engine.XGBoostRegressor"
+            ) as mock_xgb,
+            patch(
+                "app.services.enhanced_quantitative_engine.LightGBMRegressor"
+            ) as mock_lgbm,
+            patch(
+                "app.services.enhanced_quantitative_engine.TensorFlowRegressor",
+                None,
+            ),
+            patch(
+                "app.services.enhanced_quantitative_engine.PyTorchRegressor",
+                None,
+            ),
         ):
             mock_kitchen_cls.return_value = MagicMock()
             mock_xgb_inst = MagicMock()
@@ -100,7 +106,9 @@ class TestFreqAIEnhancedEngine:
         assert "date" in result.columns
         assert "&-target" in result.columns
         # Target is close shifted by -24
-        assert result["&-target"].iloc[-1] != result["&-target"].iloc[-1]  # NaN check at end
+        assert (
+            result["&-target"].iloc[-1] != result["&-target"].iloc[-1]
+        )  # NaN check at end
 
     def test_convert_format_preserves_ohlc(self, engine):
         df = pd.DataFrame(
@@ -264,7 +272,9 @@ class TestFreqAIEnhancedEngine:
 
     def test_get_model_performance_metrics_dd_error(self, engine):
         dd_mock = MagicMock()
-        type(dd_mock).historic_predictions = PropertyMock(side_effect=RuntimeError("fail"))
+        type(dd_mock).historic_predictions = PropertyMock(
+            side_effect=RuntimeError("fail")
+        )
         engine.active_model.dd = dd_mock
         engine.data_kitchen.feature_list = []
         # Should not raise — error is caught
@@ -358,16 +368,14 @@ class TestFreqAIEnhancedEngine:
 class TestFreqAIEngineInitFailure:
     def test_init_no_models_raises(self):
         """If all model classes are None, initialization should raise."""
-        with patch(
-            "app.services.enhanced_quantitative_engine.FreqaiDataKitchen"
-        ), patch(
-            "app.services.enhanced_quantitative_engine.XGBoostRegressor", None
-        ), patch(
-            "app.services.enhanced_quantitative_engine.LightGBMRegressor", None
-        ), patch(
-            "app.services.enhanced_quantitative_engine.TensorFlowRegressor", None
-        ), patch(
-            "app.services.enhanced_quantitative_engine.PyTorchRegressor", None
+        with (
+            patch("app.services.enhanced_quantitative_engine.FreqaiDataKitchen"),
+            patch("app.services.enhanced_quantitative_engine.XGBoostRegressor", None),
+            patch("app.services.enhanced_quantitative_engine.LightGBMRegressor", None),
+            patch(
+                "app.services.enhanced_quantitative_engine.TensorFlowRegressor", None
+            ),
+            patch("app.services.enhanced_quantitative_engine.PyTorchRegressor", None),
         ):
             from app.services.enhanced_quantitative_engine import (
                 FreqAIEnhancedEngine,
@@ -384,6 +392,7 @@ class TestFreqAIEngineInitFailure:
 _has_freqtrade_exceptions = False
 try:
     import freqtrade.exceptions  # noqa: F401
+
     _has_freqtrade_exceptions = True
 except (ImportError, ModuleNotFoundError):
     pass
@@ -421,9 +430,7 @@ class TestConfigurationValidator:
         from freqtrade.exceptions import ConfigurationError
 
         with pytest.raises(ConfigurationError, match="Exchange name"):
-            validator.validate_config(
-                {"exchange": {}, "stake_currency": "USDT"}
-            )
+            validator.validate_config({"exchange": {}, "stake_currency": "USDT"})
 
     def test_empty_stake_currency(self, validator):
         from freqtrade.exceptions import ConfigurationError
@@ -529,7 +536,21 @@ class TestEnhancedConfigManager:
             manager._validate_trading_config({"timeframe": "2m"})
 
     def test_validate_trading_config_all_valid_timeframes(self, manager):
-        for tf in ["1m", "5m", "15m", "30m", "1h", "2h", "4h", "6h", "8h", "12h", "1d", "3d", "1w"]:
+        for tf in [
+            "1m",
+            "5m",
+            "15m",
+            "30m",
+            "1h",
+            "2h",
+            "4h",
+            "6h",
+            "8h",
+            "12h",
+            "1d",
+            "3d",
+            "1w",
+        ]:
             cfg = {"timeframe": tf}
             result = manager._validate_trading_config(cfg)
             assert result["timeframe"] == tf
@@ -556,9 +577,7 @@ class TestEnhancedConfigManager:
         from freqtrade.exceptions import ConfigurationError
 
         with pytest.raises(ConfigurationError, match="Unsupported exchange"):
-            manager._validate_exchange_config(
-                {"exchange": {"name": "unknownexchange"}}
-            )
+            manager._validate_exchange_config({"exchange": {"name": "unknownexchange"}})
 
     def test_validate_exchange_config_all_supported(self, manager):
         for exch in ["binance", "coinbase", "kraken", "bybit", "kucoin", "gate"]:
@@ -628,7 +647,9 @@ class TestEnhancedConfigManager:
     def test_validate_risk_config_invalid_roi_type(self, manager):
         from freqtrade.exceptions import ConfigurationError
 
-        with pytest.raises(ConfigurationError, match="minimal_roi must be a dictionary"):
+        with pytest.raises(
+            ConfigurationError, match="minimal_roi must be a dictionary"
+        ):
             manager._validate_risk_config({"minimal_roi": [1, 2, 3]})
 
     def test_validate_risk_config_negative_roi_key(self, manager):
@@ -724,7 +745,9 @@ class TestEnhancedConfigManager:
 
     def test_decrypt_corrupted_value(self, manager):
         """Corrupted encrypted value should return original."""
-        original = {"exchange": {"key": "encrypted:INVALIDBASE64!!!", "name": "binance"}}
+        original = {
+            "exchange": {"key": "encrypted:INVALIDBASE64!!!", "name": "binance"}
+        }
         decrypted = manager._decrypt_sensitive_data(original)
         # Decryption fails → returns original value
         assert decrypted["exchange"]["key"].startswith("encrypted:")
@@ -756,8 +779,9 @@ class TestEnhancedConfigManager:
         from cryptography.fernet import Fernet
 
         key = Fernet.generate_key()
-        with patch("app.core.enhanced_config.settings") as mock_settings, patch.dict(
-            os.environ, {"CONFIG_ENCRYPTION_KEY": key.decode()}
+        with (
+            patch("app.core.enhanced_config.settings") as mock_settings,
+            patch.dict(os.environ, {"CONFIG_ENCRYPTION_KEY": key.decode()}),
         ):
             mock_settings.CONFIG_DIR = str(tmp_config_dir)
             from app.core.enhanced_config import EnhancedConfigManager
@@ -767,8 +791,9 @@ class TestEnhancedConfigManager:
             assert mgr._encryption_key is not None
 
     def test_get_encryption_key_from_env_password(self, tmp_config_dir):
-        with patch("app.core.enhanced_config.settings") as mock_settings, patch.dict(
-            os.environ, {"CONFIG_ENCRYPTION_KEY": "not-base64-password"}
+        with (
+            patch("app.core.enhanced_config.settings") as mock_settings,
+            patch.dict(os.environ, {"CONFIG_ENCRYPTION_KEY": "not-base64-password"}),
         ):
             mock_settings.CONFIG_DIR = str(tmp_config_dir)
             from app.core.enhanced_config import EnhancedConfigManager

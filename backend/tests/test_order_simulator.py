@@ -12,7 +12,9 @@ def test_market_order_fills():
         quantity=1.0,
     )
 
-    simulator.process_order(order.id, market_price=100.0, timestamp=datetime.now(timezone.utc))
+    simulator.process_order(
+        order.id, market_price=100.0, timestamp=datetime.now(timezone.utc)
+    )
     updated = simulator.get_order(order.id)
 
     assert updated is not None

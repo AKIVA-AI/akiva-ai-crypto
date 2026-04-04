@@ -2,13 +2,14 @@
 Reconciliation Service - Balance and position verification.
 """
 
-import structlog
+from datetime import datetime
 from typing import Any, Dict, List
 from uuid import UUID
-from datetime import datetime
+
+import structlog
 
 from app.config import settings
-from app.database import get_supabase, audit_log, create_alert
+from app.database import audit_log, create_alert, get_supabase
 from app.services.risk_engine import risk_engine
 
 logger = structlog.get_logger()

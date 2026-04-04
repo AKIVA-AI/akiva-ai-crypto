@@ -11,6 +11,7 @@ Implements multiple position sizing algorithms:
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
+
 import structlog
 
 logger = structlog.get_logger()

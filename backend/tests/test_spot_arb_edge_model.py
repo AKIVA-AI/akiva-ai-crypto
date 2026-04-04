@@ -1,4 +1,4 @@
-from app.services.spot_arb_edge_model import SpotArbEdgeModel, SpotArbEdgeConfig
+from app.services.spot_arb_edge_model import SpotArbEdgeConfig, SpotArbEdgeModel
 
 
 def test_spot_arb_edge_model_math():

@@ -3,7 +3,6 @@ from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
-
 from app.models.domain import Book, BookType, OrderSide, TradeIntent
 from app.services.risk_engine import RiskEngine
 
@@ -43,7 +42,9 @@ def sample_book():
 
 
 @pytest.mark.asyncio
-async def test_get_daily_pnl_sums_realized_and_unrealized(monkeypatch, risk_engine, sample_book):
+async def test_get_daily_pnl_sums_realized_and_unrealized(
+    monkeypatch, risk_engine, sample_book
+):
     positions_result = SimpleNamespace(
         data=[
             {"unrealized_pnl": 100, "realized_pnl": -25},
@@ -61,7 +62,9 @@ async def test_get_daily_pnl_sums_realized_and_unrealized(monkeypatch, risk_engi
 
 
 @pytest.mark.asyncio
-async def test_get_daily_pnl_returns_zero_on_supabase_error(monkeypatch, risk_engine, sample_book):
+async def test_get_daily_pnl_returns_zero_on_supabase_error(
+    monkeypatch, risk_engine, sample_book
+):
     monkeypatch.setattr(
         "app.services.risk_engine.get_supabase",
         lambda: (_ for _ in ()).throw(RuntimeError("db unavailable")),
@@ -91,7 +94,10 @@ async def test_spot_arb_limits_rejects_notional_and_open_intent_caps(
     supabase.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.side_effect = execute_results
     monkeypatch.setattr("app.services.risk_engine.get_supabase", lambda: supabase)
 
-    assert await risk_engine._check_spot_arb_limits(sample_intent) == "Max open arb intents reached"
+    assert (
+        await risk_engine._check_spot_arb_limits(sample_intent)
+        == "Max open arb intents reached"
+    )
 
 
 @pytest.mark.asyncio
@@ -121,7 +127,10 @@ async def test_spot_arb_limits_rejects_total_notional_and_db_errors(
         "app.services.risk_engine.get_supabase",
         lambda: (_ for _ in ()).throw(RuntimeError("db unavailable")),
     )
-    assert await risk_engine._check_spot_arb_limits(sample_intent) == "Spot arb limit check failed"
+    assert (
+        await risk_engine._check_spot_arb_limits(sample_intent)
+        == "Spot arb limit check failed"
+    )
 
 
 @pytest.mark.asyncio

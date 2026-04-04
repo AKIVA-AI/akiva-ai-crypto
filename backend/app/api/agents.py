@@ -3,10 +3,11 @@ API routes for the multi-agent trading system.
 Provides endpoints for controlling and monitoring agents.
 """
 
+import logging
+from typing import Optional
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Optional
-import logging
 
 from ..agents.agent_orchestrator import (
     orchestrator,

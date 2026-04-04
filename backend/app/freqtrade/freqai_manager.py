@@ -9,10 +9,11 @@ Manages FreqAI machine learning models:
 """
 
 import logging
-from typing import Optional, Dict, Any, List, TYPE_CHECKING
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
 import numpy as np
 
 if TYPE_CHECKING:
@@ -154,7 +155,7 @@ class FreqAIManager:
                 )
 
             elif "CatBoost" in model_type:
-                from catboost import CatBoostRegressor, CatBoostClassifier
+                from catboost import CatBoostClassifier, CatBoostRegressor
 
                 params = {
                     "iterations": 1000,
@@ -352,8 +353,8 @@ class FreqAIManager:
         - Pattern: Higher highs/lows, support/resistance distance
         """
         try:
-            import pandas as pd
             import numpy as np
+            import pandas as pd
 
             features = df.copy()
             close = features["close"]

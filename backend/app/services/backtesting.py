@@ -4,14 +4,15 @@ Strategy Backtesting Module
 Provides historical data replay and performance metrics for strategy evaluation.
 """
 
-import structlog
-from typing import Dict, List, Optional, Tuple
-from datetime import datetime, timedelta
-from uuid import UUID, uuid4
-from dataclasses import dataclass, field
 import random
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Tuple
+from uuid import UUID, uuid4
 
-from app.models.domain import TradeIntent, OrderSide, Book, BookType
+import structlog
+
+from app.models.domain import Book, BookType, OrderSide, TradeIntent
 
 logger = structlog.get_logger()
 

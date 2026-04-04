@@ -12,9 +12,9 @@ STATUS:
 
 from app.adapters.base import VenueAdapter
 from app.adapters.coinbase_adapter import CoinbaseAdapter
-from app.adapters.mexc_adapter import MEXCAdapter
-from app.adapters.kraken_adapter import KrakenAdapter
 from app.adapters.dex_adapter import DEXAdapter
+from app.adapters.kraken_adapter import KrakenAdapter
+from app.adapters.mexc_adapter import MEXCAdapter
 
 __all__ = [
     "VenueAdapter",

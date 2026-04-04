@@ -13,26 +13,26 @@ import asyncio
 import logging
 import os
 import signal
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Dict, Optional
 
 import httpx
 
-from .base_agent import BaseAgent, AgentChannel, AgentMessage
-from .signal_agent import SignalAgent
-from .risk_agent import RiskAgent
+from .base_agent import AgentChannel, AgentMessage, BaseAgent
+from .capital_allocation_agent import CapitalAllocationAgent
 from .execution_agent import ExecutionAgent
 from .meta_decision_agent import MetaDecisionAgent
-from .capital_allocation_agent import CapitalAllocationAgent
+from .risk_agent import RiskAgent
+from .signal_agent import SignalAgent
 
 logger = logging.getLogger(__name__)
 
 # ── Control-plane adapters (optional — fail-closed guard) ──────────────────
 try:
-    from app.control_plane.authority_adapter import AuthorityAdapter
-    from app.control_plane.risk_policy import build_risk_engine
-    from app.control_plane.evidence_adapter import EvidenceAdapter
     from app.control_plane import _HAS_CONTROL_PLANE
+    from app.control_plane.authority_adapter import AuthorityAdapter
+    from app.control_plane.evidence_adapter import EvidenceAdapter
+    from app.control_plane.risk_policy import build_risk_engine
 
     _authority_adapter = AuthorityAdapter()
     _evidence_adapter = EvidenceAdapter()
@@ -96,7 +96,8 @@ class AgentOrchestrator:
             except Exception as exc:
                 logger.warning(
                     "AuthorityAdapter resolution failed for %s: %s",
-                    agent.agent_id, exc,
+                    agent.agent_id,
+                    exc,
                 )
                 logger.info(f"Registered agent: {agent.agent_id} ({agent.agent_type})")
         else:

@@ -4,9 +4,10 @@ Core domain models for the trading engine.
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional, List
-from pydantic import BaseModel, Field
+from typing import List, Optional
 from uuid import UUID
+
+from pydantic import BaseModel, Field
 
 
 class BookType(str, Enum):

@@ -6,18 +6,17 @@ by test_position_sizer.py.
 """
 
 import pytest
-
 from app.services.position_sizer import (
-    PositionSizer,
     PositionSize,
+    PositionSizer,
     SizingMethod,
     calculate_position_size,
 )
 
-
 # ---------------------------------------------------------------------------
 # PositionSize dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestPositionSizeDataclass:
     def test_all_fields(self):
@@ -51,6 +50,7 @@ class TestPositionSizeDataclass:
 # SizingMethod enum
 # ---------------------------------------------------------------------------
 
+
 class TestSizingMethodEnum:
     def test_all_values(self):
         assert SizingMethod.FIXED_FRACTIONAL == "fixed_fractional"
@@ -65,6 +65,7 @@ class TestSizingMethodEnum:
 # ---------------------------------------------------------------------------
 # FixedFractional edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestFixedFractionalEdgeCases:
     def test_tiny_balance(self):
@@ -127,6 +128,7 @@ class TestFixedFractionalEdgeCases:
 # ---------------------------------------------------------------------------
 # Kelly Criterion edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestKellyCriterionEdgeCases:
     def test_zero_avg_loss(self):
@@ -232,6 +234,7 @@ class TestKellyCriterionEdgeCases:
 # Volatility-based edge cases
 # ---------------------------------------------------------------------------
 
+
 class TestVolatilityEdgeCases:
     def test_volatility_without_atr(self):
         """Use volatility when atr is None."""
@@ -294,6 +297,7 @@ class TestVolatilityEdgeCases:
 # Equal weight edge cases
 # ---------------------------------------------------------------------------
 
+
 class TestEqualWeightEdgeCases:
     def test_equal_weight_default_position_percent(self):
         sizer = PositionSizer(capital=100_000)  # default 25%
@@ -326,6 +330,7 @@ class TestEqualWeightEdgeCases:
 # PositionSizer.update_capital
 # ---------------------------------------------------------------------------
 
+
 class TestUpdateCapital:
     def test_update_capital_changes_sizing(self):
         sizer = PositionSizer(capital=100_000)
@@ -351,6 +356,7 @@ class TestUpdateCapital:
 # ---------------------------------------------------------------------------
 # calculate_position_size convenience function
 # ---------------------------------------------------------------------------
+
 
 class TestCalculatePositionSizeFn:
     def test_default_method(self):

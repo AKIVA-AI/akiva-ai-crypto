@@ -18,9 +18,17 @@ class TestComplianceManagerInit:
 
     def test_default_rule_types(self):
         cm = ComplianceManager()
-        assert cm._rules["max_position_size"].rule_type == ComplianceRuleType.POSITION_LIMIT
-        assert cm._rules["concentration_limit"].rule_type == ComplianceRuleType.CONCENTRATION
-        assert cm._rules["trading_hours"].rule_type == ComplianceRuleType.TIME_RESTRICTION
+        assert (
+            cm._rules["max_position_size"].rule_type
+            == ComplianceRuleType.POSITION_LIMIT
+        )
+        assert (
+            cm._rules["concentration_limit"].rule_type
+            == ComplianceRuleType.CONCENTRATION
+        )
+        assert (
+            cm._rules["trading_hours"].rule_type == ComplianceRuleType.TIME_RESTRICTION
+        )
 
     def test_trading_hours_disabled_by_default(self):
         cm = ComplianceManager()
@@ -52,9 +60,7 @@ class TestCheckTradePositionLimits:
     def test_blocks_when_position_limit_exceeded(self):
         cm = ComplianceManager()
         cm.set_position_limit("ETH", 100_000)
-        ok, violations = cm.check_trade(
-            "ETH", "buy", 100, 2_000, current_position=0
-        )
+        ok, violations = cm.check_trade("ETH", "buy", 100, 2_000, current_position=0)
         # 100 * 2000 = $200k > $100k limit
         assert ok is False
         assert any("Position limit" in v for v in violations)
@@ -62,9 +68,7 @@ class TestCheckTradePositionLimits:
     def test_allows_within_position_limit(self):
         cm = ComplianceManager()
         cm.set_position_limit("ETH", 100_000)
-        ok, violations = cm.check_trade(
-            "ETH", "buy", 10, 2_000, current_position=0
-        )
+        ok, violations = cm.check_trade("ETH", "buy", 10, 2_000, current_position=0)
         # 10 * 2000 = $20k < $100k limit
         assert ok is True
 
@@ -72,9 +76,7 @@ class TestCheckTradePositionLimits:
         cm = ComplianceManager()
         cm.set_position_limit("BTC", 100_000)
         # Current position is 3 BTC; selling 1 leaves 2 BTC
-        ok, violations = cm.check_trade(
-            "BTC", "sell", 1, 40_000, current_position=3
-        )
+        ok, violations = cm.check_trade("BTC", "sell", 1, 40_000, current_position=3)
         # new_position = 3 - 1 = 2; abs(2 * 40000) = 80k < 100k
         assert ok is True
 
@@ -121,9 +123,7 @@ class TestCheckTradeConcentration:
 
     def test_no_check_when_portfolio_value_zero(self):
         cm = ComplianceManager()
-        ok, violations = cm.check_trade(
-            "BTC", "buy", 1, 50_000, portfolio_value=0
-        )
+        ok, violations = cm.check_trade("BTC", "buy", 1, 50_000, portfolio_value=0)
         assert ok is True
         assert len(violations) == 0
 
@@ -154,9 +154,7 @@ class TestSetPositionLimit:
     def test_enforcement(self):
         cm = ComplianceManager()
         cm.set_position_limit("BTC", 500_000)
-        ok, violations = cm.check_trade(
-            "BTC", "buy", 20, 30_000, current_position=0
-        )
+        ok, violations = cm.check_trade("BTC", "buy", 20, 30_000, current_position=0)
         # 20 * 30000 = $600k > $500k
         assert ok is False
 
@@ -211,9 +209,7 @@ class TestMultipleViolations:
         cm = ComplianceManager()
         cm.restrict_asset("ETH")
         cm.set_position_limit("ETH", 1_000)
-        ok, violations = cm.check_trade(
-            "ETH", "buy", 100, 50, current_position=0
-        )
+        ok, violations = cm.check_trade("ETH", "buy", 100, 50, current_position=0)
         # 100 * 50 = $5000 > $1000 limit AND asset is restricted
         assert ok is False
         assert len(violations) == 2

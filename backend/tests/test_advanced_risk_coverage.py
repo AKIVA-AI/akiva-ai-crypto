@@ -6,31 +6,35 @@ Comprehensive tests for advanced risk management modules:
 """
 
 import math
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import uuid4
+
 import numpy as np
 import pytest
-from unittest.mock import patch, AsyncMock, MagicMock
-from uuid import uuid4
-from datetime import datetime, UTC
-
 from app.services.advanced_risk_engine import (
     AdvancedRiskEngine,
-    VaRResult,
     PortfolioOptimizationResult,
     StressTestResult,
+    VaRResult,
+)
+from app.services.advanced_risk_engine import (
     RiskAttribution as AdvRiskAttribution,
 )
 from app.services.portfolio_analytics import (
-    PortfolioAnalytics,
-    PerformanceMetrics,
     ExposureBreakdown,
+    PerformanceMetrics,
+    PortfolioAnalytics,
+)
+from app.services.portfolio_analytics import (
     RiskAttribution as PAAttribution,
 )
 from app.services.reconciliation import ReconciliationService
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def engine():
@@ -86,9 +90,7 @@ class TestHistoricalVaR:
 
     def test_var_at_known_confidence_levels(self, engine, known_returns):
         """VaR at 95/99/99.9 confidence with known return distribution."""
-        result = engine._calculate_historical_var(
-            known_returns, [0.95, 0.99, 0.999]
-        )
+        result = engine._calculate_historical_var(known_returns, [0.95, 0.99, 0.999])
 
         assert isinstance(result, VaRResult)
         assert result.method == "historical"
@@ -98,25 +100,21 @@ class TestHistoricalVaR:
 
     def test_var_ordering_by_confidence(self, engine, known_returns):
         """Higher confidence => larger VaR (more extreme tail)."""
-        result = engine._calculate_historical_var(
-            known_returns, [0.95, 0.99, 0.999]
-        )
+        result = engine._calculate_historical_var(known_returns, [0.95, 0.99, 0.999])
 
         assert result.var_99 >= result.var_95, "99% VaR should >= 95% VaR"
         assert result.var_999 >= result.var_99, "99.9% VaR should >= 99% VaR"
 
     def test_expected_shortfall_exceeds_var(self, engine, known_returns):
         """Expected Shortfall (CVaR) should be >= VaR at same confidence."""
-        result = engine._calculate_historical_var(
-            known_returns, [0.95, 0.99, 0.999]
-        )
+        result = engine._calculate_historical_var(known_returns, [0.95, 0.99, 0.999])
 
-        assert (
-            result.expected_shortfall_95 >= result.var_95
-        ), "ES should be >= VaR at 95%"
-        assert (
-            result.expected_shortfall_99 >= result.var_99
-        ), "ES should be >= VaR at 99%"
+        assert result.expected_shortfall_95 >= result.var_95, (
+            "ES should be >= VaR at 95%"
+        )
+        assert result.expected_shortfall_99 >= result.var_99, (
+            "ES should be >= VaR at 99%"
+        )
 
     def test_es_is_average_of_tail_losses(self, engine, simple_returns):
         """ES should be the average of losses beyond VaR threshold."""
@@ -130,9 +128,7 @@ class TestHistoricalVaR:
 
     def test_var_values_are_positive(self, engine, known_returns):
         """VaR values represent losses and should always be positive."""
-        result = engine._calculate_historical_var(
-            known_returns, [0.95, 0.99, 0.999]
-        )
+        result = engine._calculate_historical_var(known_returns, [0.95, 0.99, 0.999])
 
         assert result.var_95 > 0
         assert result.var_99 > 0
@@ -140,9 +136,7 @@ class TestHistoricalVaR:
 
     def test_calculation_date_set(self, engine, known_returns):
         """Calculation date should be set to approximately now."""
-        result = engine._calculate_historical_var(
-            known_returns, [0.95, 0.99, 0.999]
-        )
+        result = engine._calculate_historical_var(known_returns, [0.95, 0.99, 0.999])
 
         assert isinstance(result.calculation_date, datetime)
 
@@ -256,10 +250,12 @@ class TestPortfolioOptimization:
     def two_asset_setup(self):
         """Two uncorrelated assets with different expected returns."""
         expected_returns = np.array([0.10, 0.05])  # 10% and 5%
-        cov_matrix = np.array([
-            [0.04, 0.005],   # 20% vol, low correlation
-            [0.005, 0.01],   # 10% vol
-        ])
+        cov_matrix = np.array(
+            [
+                [0.04, 0.005],  # 20% vol, low correlation
+                [0.005, 0.01],  # 10% vol
+            ]
+        )
         constraints = {"min_weight": 0.0, "max_weight": 1.0, "total_weight": 1.0}
         return expected_returns, cov_matrix, constraints
 
@@ -267,17 +263,17 @@ class TestPortfolioOptimization:
     def three_asset_setup(self):
         """Three-asset setup for diversification testing."""
         expected_returns = np.array([0.08, 0.06, 0.04])
-        cov_matrix = np.array([
-            [0.04, 0.01, 0.005],
-            [0.01, 0.02, 0.003],
-            [0.005, 0.003, 0.01],
-        ])
+        cov_matrix = np.array(
+            [
+                [0.04, 0.01, 0.005],
+                [0.01, 0.02, 0.003],
+                [0.005, 0.003, 0.01],
+            ]
+        )
         constraints = {"min_weight": 0.0, "max_weight": 0.6, "total_weight": 1.0}
         return expected_returns, cov_matrix, constraints
 
-    def test_minimize_volatility_weights_sum_to_one(
-        self, engine, two_asset_setup
-    ):
+    def test_minimize_volatility_weights_sum_to_one(self, engine, two_asset_setup):
         """Optimized weights must sum to 1.0."""
         returns, cov, constraints = two_asset_setup
 
@@ -287,9 +283,7 @@ class TestPortfolioOptimization:
 
         assert abs(np.sum(weights) - 1.0) < 1e-6, f"Weights sum to {np.sum(weights)}"
 
-    def test_minimize_volatility_weights_within_bounds(
-        self, engine, two_asset_setup
-    ):
+    def test_minimize_volatility_weights_within_bounds(self, engine, two_asset_setup):
         """All weights should be within [min_weight, max_weight]."""
         returns, cov, constraints = two_asset_setup
 
@@ -301,9 +295,7 @@ class TestPortfolioOptimization:
             assert w >= constraints["min_weight"] - 1e-6
             assert w <= constraints["max_weight"] + 1e-6
 
-    def test_maximize_return_weights_sum_to_one(
-        self, engine, two_asset_setup
-    ):
+    def test_maximize_return_weights_sum_to_one(self, engine, two_asset_setup):
         """Maximize return weights must sum to 1.0."""
         returns, cov, constraints = two_asset_setup
 
@@ -313,9 +305,7 @@ class TestPortfolioOptimization:
 
         assert abs(np.sum(weights) - 1.0) < 1e-6
 
-    def test_maximize_sharpe_weights_sum_to_one(
-        self, engine, three_asset_setup
-    ):
+    def test_maximize_sharpe_weights_sum_to_one(self, engine, three_asset_setup):
         """Max Sharpe ratio weights must sum to 1.0."""
         returns, cov, constraints = three_asset_setup
 
@@ -323,9 +313,7 @@ class TestPortfolioOptimization:
 
         assert abs(np.sum(weights) - 1.0) < 1e-6
 
-    def test_maximize_sharpe_weights_within_bounds(
-        self, engine, three_asset_setup
-    ):
+    def test_maximize_sharpe_weights_within_bounds(self, engine, three_asset_setup):
         """Max Sharpe weights should respect upper/lower bounds."""
         returns, cov, constraints = three_asset_setup
 
@@ -565,8 +553,18 @@ class TestSharpeRatio:
     def test_sharpe_negative_when_underperforms_rf(self, analytics):
         """If annualized return < risk-free rate, Sharpe is negative."""
         # Daily returns with low mean and some variance so std != 0
-        returns = [0.0001, 0.0002, -0.0001, 0.0003, 0.0001,
-                   0.0002, -0.0002, 0.0001, 0.0003, -0.0001]
+        returns = [
+            0.0001,
+            0.0002,
+            -0.0001,
+            0.0003,
+            0.0001,
+            0.0002,
+            -0.0002,
+            0.0001,
+            0.0003,
+            -0.0001,
+        ]
         result = analytics._calculate_sharpe(returns)
 
         # mean ~0.00009, annualized ~0.023 < rf=0.05 => negative Sharpe
@@ -874,10 +872,19 @@ class TestReconcileVenue:
         """No mismatches => status = ok."""
         recon_service.register_adapter("binance", mock_adapter)
 
-        with patch.object(
-            recon_service, "_reconcile_balances", new_callable=AsyncMock, return_value=[]
-        ), patch.object(
-            recon_service, "_reconcile_positions", new_callable=AsyncMock, return_value=[]
+        with (
+            patch.object(
+                recon_service,
+                "_reconcile_balances",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
+            patch.object(
+                recon_service,
+                "_reconcile_positions",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
         ):
             result = await recon_service.reconcile_venue("binance")
 
@@ -895,21 +902,25 @@ class TestReconcileVenue:
         balance_mm = [{"type": "size_mismatch", "diff_pct": 5.0}]
         position_mm = []
 
-        with patch.object(
-            recon_service,
-            "_reconcile_balances",
-            new_callable=AsyncMock,
-            return_value=balance_mm,
-        ), patch.object(
-            recon_service,
-            "_reconcile_positions",
-            new_callable=AsyncMock,
-            return_value=position_mm,
-        ), patch.object(
-            recon_service,
-            "_handle_mismatches",
-            new_callable=AsyncMock,
-            return_value=["alert_created", "audit_logged"],
+        with (
+            patch.object(
+                recon_service,
+                "_reconcile_balances",
+                new_callable=AsyncMock,
+                return_value=balance_mm,
+            ),
+            patch.object(
+                recon_service,
+                "_reconcile_positions",
+                new_callable=AsyncMock,
+                return_value=position_mm,
+            ),
+            patch.object(
+                recon_service,
+                "_handle_mismatches",
+                new_callable=AsyncMock,
+                return_value=["alert_created", "audit_logged"],
+            ),
         ):
             result = await recon_service.reconcile_venue("binance")
 
@@ -985,15 +996,18 @@ class TestHandleMismatches:
 
         affected = [uuid4()]
 
-        with patch.object(
-            recon_service,
-            "_resolve_affected_books",
-            new_callable=AsyncMock,
-            return_value=affected,
-        ), patch.object(
-            recon_service,
-            "_set_books_reduce_only",
-            new_callable=AsyncMock,
+        with (
+            patch.object(
+                recon_service,
+                "_resolve_affected_books",
+                new_callable=AsyncMock,
+                return_value=affected,
+            ),
+            patch.object(
+                recon_service,
+                "_set_books_reduce_only",
+                new_callable=AsyncMock,
+            ),
         ):
             actions = await recon_service._handle_mismatches(
                 "binance",

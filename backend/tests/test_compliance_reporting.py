@@ -3,7 +3,6 @@ Tests for automated compliance report generation (D19 Enterprise Security).
 """
 
 import pytest
-
 from app.enterprise.compliance_reporting import (
     ComplianceReport,
     ComplianceReportGenerator,
@@ -27,7 +26,9 @@ class TestComplianceReportSection:
 
 class TestComplianceReport:
     def test_report_creation(self):
-        r = ComplianceReport(report_type="periodic", period_start="2026-01-01", period_end="2026-01-31")
+        r = ComplianceReport(
+            report_type="periodic", period_start="2026-01-01", period_end="2026-01-31"
+        )
         assert r.report_type == "periodic"
         assert r.status == "generated"
         assert r.report_id  # auto-generated

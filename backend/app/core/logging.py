@@ -3,10 +3,11 @@ Structured logging configuration for the application.
 """
 
 import logging
-import structlog
-import sys
 import os
+import sys
 from datetime import datetime
+
+import structlog
 
 
 def setup_logging():

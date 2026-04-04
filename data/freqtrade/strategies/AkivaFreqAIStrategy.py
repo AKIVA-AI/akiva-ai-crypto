@@ -4,7 +4,7 @@ Akiva FreqAI Strategy - ML-Powered Production Strategy
 Based on FreqTrade's official FreqaiExampleStrategy.
 Uses machine learning for signal generation.
 
-IMPORTANT: 
+IMPORTANT:
 - Requires FreqAI to be properly configured
 - Requires model training before live trading
 - Run extensive backtests before production!
@@ -17,11 +17,9 @@ from functools import reduce
 
 import numpy as np
 import talib.abstract as ta
+from freqtrade.strategy import DecimalParameter, IntParameter, IStrategy
 from pandas import DataFrame
 from technical import qtpylib
-
-from freqtrade.strategy import IStrategy, DecimalParameter, IntParameter
-
 
 logger = logging.getLogger(__name__)
 
@@ -29,10 +27,10 @@ logger = logging.getLogger(__name__)
 class AkivaFreqAIStrategy(IStrategy):
     """
     Production FreqAI strategy for Akiva AI Crypto platform.
-    
+
     Uses machine learning models to predict price movements.
     The model predicts the smoothed close price change over a future window.
-    
+
     WARNING: ML strategies require:
     1. Proper model training with sufficient data
     2. Regular retraining to adapt to market changes
@@ -89,7 +87,7 @@ class AkivaFreqAIStrategy(IStrategy):
         dataframe["%-rsi-period"] = ta.RSI(dataframe, timeperiod=period)
         dataframe["%-mfi-period"] = ta.MFI(dataframe, timeperiod=period)
         dataframe["%-adx-period"] = ta.ADX(dataframe, timeperiod=period)
-        
+
         # Moving averages
         dataframe["%-sma-period"] = ta.SMA(dataframe, timeperiod=period)
         dataframe["%-ema-period"] = ta.EMA(dataframe, timeperiod=period)
@@ -141,19 +139,18 @@ class AkivaFreqAIStrategy(IStrategy):
         dataframe["%-hour_of_day"] = dataframe["date"].dt.hour
         return dataframe
 
-    def set_freqai_targets(self, dataframe: DataFrame, metadata: dict, **kwargs) -> DataFrame:
+    def set_freqai_targets(
+        self, dataframe: DataFrame, metadata: dict, **kwargs
+    ) -> DataFrame:
         """
         Define prediction targets for the ML model.
-        
+
         Target: Smoothed close price change over future window.
         """
         label_period = self.freqai_info["feature_parameters"]["label_period_candles"]
-        
+
         dataframe["&-s_close"] = (
-            dataframe["close"]
-            .shift(-label_period)
-            .rolling(label_period)
-            .mean()
+            dataframe["close"].shift(-label_period).rolling(label_period).mean()
             / dataframe["close"]
             - 1
         )
@@ -222,4 +219,3 @@ class AkivaFreqAIStrategy(IStrategy):
             ] = 1
 
         return dataframe
-

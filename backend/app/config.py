@@ -5,9 +5,10 @@ This is the single source of truth for all application settings.
 
 import os
 from pathlib import Path
-from typing import Optional, List
-from pydantic import BaseModel
+from typing import List, Optional
+
 from dotenv import load_dotenv
+from pydantic import BaseModel
 
 load_dotenv()
 

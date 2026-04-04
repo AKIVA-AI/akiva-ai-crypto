@@ -8,12 +8,13 @@ IRREVERSIBLE actions require risk engine approval.
 """
 
 import asyncio
-import structlog
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from typing import Dict, List, Optional
 from uuid import uuid4
 
-from .base_agent import BaseAgent, AgentChannel, AgentMessage
+import structlog
+
+from .base_agent import AgentChannel, AgentMessage, BaseAgent
 
 logger = structlog.get_logger()
 
@@ -107,7 +108,9 @@ class ExecutionAgent(BaseAgent):
                 "strategy": signal.get("strategy"),
             },
             expected_effect={
-                "order_type": "limit" if self._execution_config["prefer_maker"] else "market",
+                "order_type": "limit"
+                if self._execution_config["prefer_maker"]
+                else "market",
                 "size_usd": adjusted_size,
                 "target_price": signal.get("entry_price"),
                 "expected_position_change": f"{signal.get('direction')} {adjusted_size} USD",
@@ -148,10 +151,13 @@ class ExecutionAgent(BaseAgent):
             },
             expected_effect={
                 "expected_fill_price": order["limit_price"],
-                "expected_slippage_tolerance": self._execution_config["default_slippage_tolerance"],
+                "expected_slippage_tolerance": self._execution_config[
+                    "default_slippage_tolerance"
+                ],
                 "expected_fee_usd": order["size_usd"] * 0.001,
                 "expected_position_delta_usd": order["size_usd"],
-                "max_pnl_impact_usd": order["size_usd"] * signal.get("stop_loss_pct", 0.02),
+                "max_pnl_impact_usd": order["size_usd"]
+                * signal.get("stop_loss_pct", 0.02),
             },
             rollback_path=rollback,
             correlation_id=message.correlation_id,
@@ -175,7 +181,10 @@ class ExecutionAgent(BaseAgent):
                     action="irreversible_gate_passed",
                     tool_class="T4",
                     precondition={"order_id": order["id"], "risk_approved": True},
-                    expected_effect={"gate": "risk_engine_pre_approval", "status": "passed"},
+                    expected_effect={
+                        "gate": "risk_engine_pre_approval",
+                        "status": "passed",
+                    },
                     rollback_path="IRREVERSIBLE",
                     correlation_id=message.correlation_id,
                 )

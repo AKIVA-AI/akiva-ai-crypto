@@ -56,7 +56,9 @@ class CoinbaseFutures(Exchange):
         (TradingMode.FUTURES, MarginMode.CROSS),  # Coinbase only supports cross margin
     ]
 
-    def __init__(self, config: dict, *, exchange_config: dict | None = None, **kwargs) -> None:
+    def __init__(
+        self, config: dict, *, exchange_config: dict | None = None, **kwargs
+    ) -> None:
         # Accept and pass through any additional kwargs (like 'validate')
         super().__init__(config, exchange_config=exchange_config, **kwargs)
         logger.info("Enterprise Crypto: Coinbase Futures exchange initialized")
@@ -80,16 +82,20 @@ class CoinbaseFutures(Exchange):
             reduceOnly=reduceOnly,
             time_in_force=time_in_force,
         )
-        
+
         # Coinbase applies leverage per-order
         if self.trading_mode == TradingMode.FUTURES and leverage > 1:
-            params['leverage'] = leverage
+            params["leverage"] = leverage
             logger.debug(f"Coinbase order with {leverage}x leverage")
-        
+
         return params
 
     def set_margin_mode(
-        self, pair: str, margin_mode: MarginMode, accept_fail: bool = False, params: dict = {}
+        self,
+        pair: str,
+        margin_mode: MarginMode,
+        accept_fail: bool = False,
+        params: dict = {},
     ) -> None:
         """
         Coinbase only supports CROSS margin mode.
@@ -105,9 +111,11 @@ class CoinbaseFutures(Exchange):
     @staticmethod
     def _get_stake_currency_from_market(market: dict) -> str:
         """Get stake currency - USDC for Coinbase perpetuals."""
-        return market.get('settle', market.get('quote', 'USDC'))
+        return market.get("settle", market.get("quote", "USDC"))
 
-    def _lev_prep(self, pair: str, leverage: float, side: str, accept_fail: bool = False) -> None:
+    def _lev_prep(
+        self, pair: str, leverage: float, side: str, accept_fail: bool = False
+    ) -> None:
         """
         Prepare leverage for a trade.
         Coinbase doesn't require pre-setting leverage - it's per order.
@@ -115,18 +123,20 @@ class CoinbaseFutures(Exchange):
         # Validate leverage is within Coinbase limits (max 10x)
         max_leverage = 10
         if leverage > max_leverage:
-            logger.warning(f"Leverage {leverage}x exceeds Coinbase max {max_leverage}x. Capping.")
+            logger.warning(
+                f"Leverage {leverage}x exceeds Coinbase max {max_leverage}x. Capping."
+            )
             leverage = max_leverage
-        
+
         logger.debug(f"Coinbase leverage prep: {leverage}x for {pair} ({side})")
         # No API call needed - leverage applied at order time
 
     def validate_config(self, config: dict) -> None:
         """Validate Coinbase-specific configuration."""
         super().validate_config(config)
-        
+
         # Warn about Coinbase-specific limitations
-        if config.get('margin_mode') == 'isolated':
+        if config.get("margin_mode") == "isolated":
             logger.warning(
                 "Coinbase does not support isolated margin. Using cross margin instead."
             )
@@ -135,5 +145,6 @@ class CoinbaseFutures(Exchange):
         """Additional initialization for Coinbase futures."""
         super().additional_exchange_init()
         logger.info("Enterprise Crypto: Coinbase Advanced Futures ready for trading")
-        logger.info(f"Trading mode: {self.trading_mode}, Margin mode: {self.margin_mode}")
-
+        logger.info(
+            f"Trading mode: {self.trading_mode}, Margin mode: {self.margin_mode}"
+        )

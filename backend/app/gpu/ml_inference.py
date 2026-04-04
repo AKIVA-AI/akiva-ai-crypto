@@ -9,11 +9,12 @@ Provides GPU-accelerated ML inference for:
 """
 
 import logging
-from typing import Optional, Dict, Any
-from enum import Enum
 from dataclasses import dataclass
-import numpy as np
+from enum import Enum
 from pathlib import Path
+from typing import Any, Dict, Optional
+
+import numpy as np
 
 from .cuda_engine import GPUEngine, get_gpu_engine
 

@@ -10,12 +10,12 @@ Manages FreqTrade-compatible strategies:
 IMPORTANT: Strategies MUST inherit from freqtrade.strategy.IStrategy
 """
 
+import importlib.util
 import logging
-from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-import importlib.util
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 

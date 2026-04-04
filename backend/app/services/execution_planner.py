@@ -5,14 +5,14 @@ Execution Planner - builds and executes multi-leg plans with safety guards.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import Any, Callable, Dict, List, Optional, Tuple
 from uuid import uuid4
-from typing import Any, Dict, List, Optional, Tuple, Callable
 
 import structlog
 
 from app.database import audit_log, create_alert
 from app.models.domain import Order, OrderSide, OrderStatus, TradeIntent
-from app.models.opportunity import ExecutionLeg, ExecutionPlan, ExecutionMode
+from app.models.opportunity import ExecutionLeg, ExecutionMode, ExecutionPlan
 
 logger = structlog.get_logger()
 

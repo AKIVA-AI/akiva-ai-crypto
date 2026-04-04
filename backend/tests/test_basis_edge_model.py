@@ -1,4 +1,4 @@
-from app.services.basis_edge_model import BasisEdgeModel, BasisEdgeConfig
+from app.services.basis_edge_model import BasisEdgeConfig, BasisEdgeModel
 
 
 def test_basis_edge_model_expected_return():

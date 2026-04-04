@@ -11,13 +11,14 @@ Provides:
 import re
 import time
 from typing import Callable, Optional
+
+import structlog
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
 from slowapi import Limiter
-from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-import structlog
+from slowapi.util import get_remote_address
+from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = structlog.get_logger()
 

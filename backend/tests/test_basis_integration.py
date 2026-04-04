@@ -1,10 +1,17 @@
-import pytest
-from uuid import uuid4
 from datetime import datetime, timezone
+from uuid import uuid4
 
+import pytest
 from app.config import settings
 from app.models.basis import BasisQuote
-from app.models.domain import Book, BookType, RiskCheckResult, RiskDecision, Order, OrderStatus
+from app.models.domain import (
+    Book,
+    BookType,
+    Order,
+    OrderStatus,
+    RiskCheckResult,
+    RiskDecision,
+)
 from app.services.basis_opportunity_scanner import basis_opportunity_scanner
 from app.services.market_data import market_data_service
 from app.services.oms_execution import oms_service
@@ -36,7 +43,9 @@ async def test_basis_scanner_to_oms_unwind(monkeypatch):
     async def fake_funding(*args, **kwargs):
         return 8.0
 
-    monkeypatch.setattr(basis_opportunity_scanner.quote_service, "build_quotes", fake_build_quotes)
+    monkeypatch.setattr(
+        basis_opportunity_scanner.quote_service, "build_quotes", fake_build_quotes
+    )
     monkeypatch.setattr(basis_opportunity_scanner, "_get_funding_bps", fake_funding)
 
     book = Book(
@@ -51,10 +60,11 @@ async def test_basis_scanner_to_oms_unwind(monkeypatch):
     )
 
     intents = await basis_opportunity_scanner.generate_intents([book])
-    
+
     # If no intents are generated, create a mock intent for testing unwind logic
     if not intents:
-        from app.models.domain import TradeIntent, OrderSide
+        from app.models.domain import OrderSide, TradeIntent
+
         mock_intent = TradeIntent(
             id=uuid4(),
             book_id=book.id,
@@ -70,10 +80,10 @@ async def test_basis_scanner_to_oms_unwind(monkeypatch):
                 "spot_price": 100.0,
                 "deriv_price": 105.0,
                 "basis_bps": 400.0,
-            }
+            },
         )
         intents = [mock_intent]
-    
+
     assert intents
 
     async def allow_kill_switch():
@@ -120,12 +130,18 @@ async def test_basis_scanner_to_oms_unwind(monkeypatch):
     async def fake_venue_health(*args, **kwargs):
         return None
 
-    monkeypatch.setattr("app.services.oms_execution.check_kill_switch_for_trading", allow_kill_switch)
-    monkeypatch.setattr("app.services.oms_execution.portfolio_engine.get_book", fake_get_book)
-    monkeypatch.setattr("app.services.oms_execution.risk_engine.check_intent", fake_check_intent)
+    monkeypatch.setattr(
+        "app.services.oms_execution.check_kill_switch_for_trading", allow_kill_switch
+    )
+    monkeypatch.setattr(
+        "app.services.oms_execution.portfolio_engine.get_book", fake_get_book
+    )
+    monkeypatch.setattr(
+        "app.services.oms_execution.risk_engine.check_intent", fake_check_intent
+    )
     monkeypatch.setattr(oms_service, "_resolve_venue_id", lambda venue: str(uuid4()))
     monkeypatch.setattr(oms_service, "_get_venue_health", fake_venue_health)
-    
+
     async def noop_async(*args, **kwargs):
         return None
 

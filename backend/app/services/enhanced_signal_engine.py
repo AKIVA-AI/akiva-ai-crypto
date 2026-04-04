@@ -5,18 +5,19 @@ Replaces mock/random signals with real technical analysis and market data.
 Integrates multiple signal sources for robust trading decisions.
 """
 
-import numpy as np
-import pandas as pd
-from typing import Dict, List, Optional
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from uuid import UUID, uuid4
 from enum import Enum
+from typing import Dict, List, Optional
+from uuid import UUID, uuid4
+
+import numpy as np
+import pandas as pd
 import structlog
 
-from app.services.technical_analysis import ta_engine
-from app.models.domain import TradeIntent, OrderSide, Book
 from app.database import get_supabase
+from app.models.domain import Book, OrderSide, TradeIntent
+from app.services.technical_analysis import ta_engine
 
 logger = structlog.get_logger()
 

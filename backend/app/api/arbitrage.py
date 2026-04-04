@@ -2,8 +2,9 @@
 API routes for arbitrage operations.
 """
 
+from typing import List, Optional
+
 from fastapi import APIRouter, HTTPException
-from typing import Optional, List
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/arbitrage", tags=["arbitrage"])

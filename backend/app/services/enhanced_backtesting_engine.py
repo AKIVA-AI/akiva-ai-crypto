@@ -20,25 +20,26 @@ Integration Benefits:
 - Comprehensive risk metrics and drawdown analysis
 """
 
-import logging
-import pandas as pd
-import numpy as np
-from typing import Dict, List, Any
-from datetime import datetime, UTC, timedelta
 import asyncio
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 import json
+import logging
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from datetime import UTC, datetime, timedelta
+from typing import Any, Dict, List
+
+import numpy as np
+import pandas as pd
+from freqtrade.enums import RunMode
 
 # FreqTrade backtesting imports
 from freqtrade.optimize.backtesting import Backtesting
 from freqtrade.optimize.optimize_reports import generate_backtest_stats
-from freqtrade.enums import RunMode
 
 # Local imports
 from app.core.config import settings
-from app.services.market_data_service import MarketDataService
 from app.database import get_db_session
 from app.models import BacktestResult
+from app.services.market_data_service import MarketDataService
 
 logger = logging.getLogger(__name__)
 

@@ -3,18 +3,19 @@ DEX Aggregator Adapter - For 0x/1inch style execution via 0x API or 1inch.
 Supports quote fetching, swap execution, and gas estimation.
 """
 
-import structlog
-import aiohttp
-from typing import Dict, List, Optional
-from datetime import datetime
-from uuid import uuid4
-from dataclasses import dataclass
-import random
 import hashlib
+import random
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Dict, List, Optional
+from uuid import uuid4
+
+import aiohttp
+import structlog
 
 from app.adapters.base import VenueAdapter
-from app.models.domain import Order, OrderStatus, VenueHealth, VenueStatus
 from app.config import settings
+from app.models.domain import Order, OrderStatus, VenueHealth, VenueStatus
 
 logger = structlog.get_logger()
 

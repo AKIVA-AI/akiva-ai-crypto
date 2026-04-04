@@ -6,11 +6,10 @@ Covers paper-mode simulation for all adapter implementations.
 from uuid import uuid4
 
 import pytest
-
-from app.adapters.kraken_adapter import KrakenAdapter
 from app.adapters.coinbase_adapter import CoinbaseAdapter
-from app.adapters.mexc_adapter import MEXCAdapter
 from app.adapters.dex_adapter import DEXAdapter
+from app.adapters.kraken_adapter import KrakenAdapter
+from app.adapters.mexc_adapter import MEXCAdapter
 from app.models.domain import Order, OrderSide, OrderStatus, VenueStatus
 
 

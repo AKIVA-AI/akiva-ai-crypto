@@ -1,15 +1,15 @@
-import pytest
 from uuid import uuid4
 
+import pytest
 from app.models.domain import Order, OrderSide, OrderStatus, TradeIntent
-from app.models.opportunity import ExecutionLeg, ExecutionPlan, ExecutionMode
+from app.models.opportunity import ExecutionLeg, ExecutionMode, ExecutionPlan
 from app.services.execution_planner import ExecutionPlanner
 
 
 @pytest.mark.asyncio
 async def test_spot_arb_unwind_on_failure(monkeypatch):
     """Test spot arbitrage unwind logic when one leg fails."""
-    
+
     class Adapter:
         def __init__(self, fail=False):
             self.fail = fail
@@ -33,7 +33,7 @@ async def test_spot_arb_unwind_on_failure(monkeypatch):
 
     # Create execution planner
     planner = ExecutionPlanner()
-    
+
     # Create spot arb intent (matching working test pattern)
     intent = TradeIntent(
         id=uuid4(),
@@ -50,8 +50,12 @@ async def test_spot_arb_unwind_on_failure(monkeypatch):
     plan = ExecutionPlan(
         mode=ExecutionMode.LEGGED,
         legs=[
-            ExecutionLeg(venue="venue_a", instrument="BTC-USD", side=OrderSide.BUY, size=1.0),
-            ExecutionLeg(venue="venue_b", instrument="BTC-USD", side=OrderSide.SELL, size=1.0),
+            ExecutionLeg(
+                venue="venue_a", instrument="BTC-USD", side=OrderSide.BUY, size=1.0
+            ),
+            ExecutionLeg(
+                venue="venue_b", instrument="BTC-USD", side=OrderSide.SELL, size=1.0
+            ),
         ],
         max_time_between_legs_ms=10_000,
         unwind_on_fail=True,

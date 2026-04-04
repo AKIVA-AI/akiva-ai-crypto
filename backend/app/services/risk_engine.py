@@ -4,22 +4,23 @@ Risk Engine - Pre-trade checks and circuit breakers.
 APPROVED / MODIFY / REJECT decisions with full audit trail.
 """
 
-import structlog
 from datetime import datetime
 from typing import Dict, List, Optional
 from uuid import UUID
 
+import structlog
+
+from app.config import settings
+from app.database import audit_log, create_alert, get_supabase
 from app.models.domain import (
-    TradeIntent,
+    Book,
+    Position,
     RiskCheckResult,
     RiskDecision,
-    Book,
+    TradeIntent,
     VenueHealth,
     VenueStatus,
-    Position,
 )
-from app.config import settings
-from app.database import get_supabase, create_alert, audit_log
 
 logger = structlog.get_logger()
 
@@ -310,7 +311,9 @@ class RiskEngine:
         self, breaker_type: str, reason: str, book_id: Optional[UUID] = None
     ):
         """Activate a circuit breaker."""
-        prev_state = "closed" if not self._circuit_breakers.get(breaker_type) else "open"
+        prev_state = (
+            "closed" if not self._circuit_breakers.get(breaker_type) else "open"
+        )
         self._circuit_breakers[breaker_type] = True
         new_state = "open"
 

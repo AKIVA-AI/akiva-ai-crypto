@@ -6,7 +6,7 @@ Restricted to admin, cio, and auditor roles.
 """
 
 import os
-from datetime import datetime, UTC, timedelta
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import PlainTextResponse
@@ -24,7 +24,10 @@ ALLOWED_ROLES = {"admin", "cio", "auditor"}
 def _check_role(request: Request):
     user = getattr(request.state, "user", None)
     if not user or user.get("role") not in ALLOWED_ROLES:
-        raise HTTPException(status_code=403, detail="Compliance reports require admin, cio, or auditor role")
+        raise HTTPException(
+            status_code=403,
+            detail="Compliance reports require admin, cio, or auditor role",
+        )
 
 
 def _get_generator() -> ComplianceReportGenerator:

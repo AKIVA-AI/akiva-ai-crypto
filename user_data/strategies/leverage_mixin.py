@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 # Import TradingConfig if available
 try:
-    from .trading_config import TradingConfig, EXCHANGE_LIMITS
+    from .trading_config import EXCHANGE_LIMITS, TradingConfig
 except ImportError:
     TradingConfig = None
     EXCHANGE_LIMITS = {}
@@ -56,14 +56,14 @@ class LeverageMixin:
 
     def get_trading_config(self) -> Optional["TradingConfig"]:
         """Get or create TradingConfig instance."""
-        if self._trading_config is None and TradingConfig and hasattr(self, 'config'):
+        if self._trading_config is None and TradingConfig and hasattr(self, "config"):
             self._trading_config = TradingConfig(self.config)
         return self._trading_config
 
     def get_leverage_config(self) -> dict:
         """Get leverage config from FreqTrade config file."""
-        if hasattr(self, 'config') and self.config:
-            return self.config.get('leverage', {})
+        if hasattr(self, "config") and self.config:
+            return self.config.get("leverage", {})
         return {}
 
     def get_pair_leverage(self, pair: str, exchange_max: float = None) -> float:
@@ -79,10 +79,12 @@ class LeverageMixin:
 
         # Fallback to simple config
         lev_config = self.get_leverage_config()
-        pair_leverage = lev_config.get('pair_leverage', {})
+        pair_leverage = lev_config.get("pair_leverage", {})
 
-        user_wants = float(pair_leverage.get(pair, lev_config.get('default', self.leverage_default)))
-        our_max = float(lev_config.get('max', self.max_leverage))
+        user_wants = float(
+            pair_leverage.get(pair, lev_config.get("default", self.leverage_default))
+        )
+        our_max = float(lev_config.get("max", self.max_leverage))
 
         if exchange_max:
             return min(user_wants, our_max, exchange_max)
@@ -96,15 +98,23 @@ class LeverageMixin:
             return trading_config.can_short(pair)
 
         # Fallback - check config trading_mode
-        if hasattr(self, 'config') and self.config:
-            mode = self.config.get('trading_mode', 'spot')
-            return mode in ('futures', 'margin')
+        if hasattr(self, "config") and self.config:
+            mode = self.config.get("trading_mode", "spot")
+            return mode in ("futures", "margin")
 
         return False
 
-    def leverage(self, pair: str, current_time: datetime, current_rate: float,
-                 proposed_leverage: float, max_leverage: float, entry_tag: str | None,
-                 side: str, **kwargs) -> float:
+    def leverage(
+        self,
+        pair: str,
+        current_time: datetime,
+        current_rate: float,
+        proposed_leverage: float,
+        max_leverage: float,
+        entry_tag: str | None,
+        side: str,
+        **kwargs,
+    ) -> float:
         """
         Return leverage for a trade.
 
@@ -120,7 +130,9 @@ class LeverageMixin:
 
         return final_leverage
 
-    def validate_trade_params(self, pair: str, side: str, leverage: float) -> tuple[bool, str]:
+    def validate_trade_params(
+        self, pair: str, side: str, leverage: float
+    ) -> tuple[bool, str]:
         """Validate trade against all restrictions."""
         trading_config = self.get_trading_config()
 
@@ -130,8 +142,13 @@ class LeverageMixin:
         return True, "OK"
 
 
-def calculate_leverage(config: dict, pair: str, exchange_max: float,
-                       fallback_default: float = 1, fallback_max: float = 10) -> float:
+def calculate_leverage(
+    config: dict,
+    pair: str,
+    exchange_max: float,
+    fallback_default: float = 1,
+    fallback_max: float = 10,
+) -> float:
     """
     Standalone function to calculate safe leverage.
 
@@ -142,10 +159,9 @@ def calculate_leverage(config: dict, pair: str, exchange_max: float,
         return tc.get_leverage(pair, exchange_max)
 
     # Fallback
-    lev_config = config.get('leverage', {})
-    pair_leverage = lev_config.get('pair_leverage', {})
-    user_wants = pair_leverage.get(pair, lev_config.get('default', fallback_default))
-    our_max = lev_config.get('max', fallback_max)
+    lev_config = config.get("leverage", {})
+    pair_leverage = lev_config.get("pair_leverage", {})
+    user_wants = pair_leverage.get(pair, lev_config.get("default", fallback_default))
+    our_max = lev_config.get("max", fallback_max)
 
     return min(float(user_wants), float(exchange_max), float(our_max))
-

@@ -7,12 +7,13 @@ Provides endpoints for:
 - Deploying opportunities to trading
 """
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks
-from pydantic import BaseModel
-from typing import List, Optional
 from datetime import datetime
+from typing import List, Optional
 
-from app.services.strategy_screener import strategy_screener, ScreenerConfig, Exchange
+from fastapi import APIRouter, BackgroundTasks, HTTPException
+from pydantic import BaseModel
+
+from app.services.strategy_screener import Exchange, ScreenerConfig, strategy_screener
 
 router = APIRouter(prefix="/screener", tags=["screener"])
 

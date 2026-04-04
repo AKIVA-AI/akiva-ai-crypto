@@ -2,20 +2,21 @@
 Coinbase Advanced Trade Adapter - Supports both Paper and Live Trading
 """
 
-import structlog
-import hmac
 import hashlib
-import time
+import hmac
 import json
-from typing import Dict, List, Optional
-from datetime import datetime
-from uuid import uuid4
 import random
+import time
+from datetime import datetime
+from typing import Dict, List, Optional
+from uuid import uuid4
+
 import httpx
+import structlog
 
 from app.adapters.base import VenueAdapter
-from app.models.domain import Order, OrderStatus, OrderSide, VenueHealth, VenueStatus
 from app.config import settings
+from app.models.domain import Order, OrderSide, OrderStatus, VenueHealth, VenueStatus
 
 logger = structlog.get_logger()
 

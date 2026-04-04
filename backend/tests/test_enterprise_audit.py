@@ -5,7 +5,6 @@ Tests for enterprise audit logging system (D19).
 import json
 
 import pytest
-
 from app.enterprise.audit import (
     AuditCategory,
     AuditEvent,

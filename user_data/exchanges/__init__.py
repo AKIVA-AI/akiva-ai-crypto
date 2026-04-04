@@ -3,5 +3,4 @@
 
 from .coinbase_futures import CoinbaseFutures
 
-__all__ = ['CoinbaseFutures']
-
+__all__ = ["CoinbaseFutures"]

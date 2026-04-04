@@ -12,7 +12,9 @@ from app.services.position_sizer import (
 class TestFixedFractional:
     def test_basic_sizing(self):
         sizer = PositionSizer(capital=100_000, max_risk_percent=2.0)
-        result = sizer.calculate(SizingMethod.FIXED_FRACTIONAL, entry_price=50_000, stop_loss=48_000)
+        result = sizer.calculate(
+            SizingMethod.FIXED_FRACTIONAL, entry_price=50_000, stop_loss=48_000
+        )
         assert result.method == SizingMethod.FIXED_FRACTIONAL
         # Position capped at 25% of capital ($25k), so 0.5 units at $50k
         assert result.dollar_amount == 25_000.0
@@ -20,14 +22,20 @@ class TestFixedFractional:
         assert result.risk_amount == 1_000.0  # 0.5 units * $2000 risk/unit
 
     def test_position_cap(self):
-        sizer = PositionSizer(capital=100_000, max_risk_percent=5.0, max_position_percent=10.0)
-        result = sizer.calculate(SizingMethod.FIXED_FRACTIONAL, entry_price=100, stop_loss=99)
+        sizer = PositionSizer(
+            capital=100_000, max_risk_percent=5.0, max_position_percent=10.0
+        )
+        result = sizer.calculate(
+            SizingMethod.FIXED_FRACTIONAL, entry_price=100, stop_loss=99
+        )
         # 5% risk = $5000, at $1 risk/share = 5000 shares = $500k > 10% cap ($10k)
         assert result.dollar_amount <= 10_000.0
 
     def test_zero_stop_loss_defaults(self):
         sizer = PositionSizer(capital=100_000)
-        result = sizer.calculate(SizingMethod.FIXED_FRACTIONAL, entry_price=100, stop_loss=100)
+        result = sizer.calculate(
+            SizingMethod.FIXED_FRACTIONAL, entry_price=100, stop_loss=100
+        )
         assert result.units > 0  # Should use 2% default stop
 
 
@@ -101,7 +109,9 @@ class TestVolatilityBased:
 class TestEqualWeight:
     def test_equal_weight(self):
         sizer = PositionSizer(capital=100_000, max_position_percent=10.0)
-        result = sizer.calculate(SizingMethod.EQUAL_WEIGHT, entry_price=50_000, stop_loss=48_000)
+        result = sizer.calculate(
+            SizingMethod.EQUAL_WEIGHT, entry_price=50_000, stop_loss=48_000
+        )
         assert result.method == SizingMethod.EQUAL_WEIGHT
         assert result.dollar_amount == 10_000.0  # 10% of 100k
         assert result.units == 0.2  # 10k / 50k

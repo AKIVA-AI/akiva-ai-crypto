@@ -7,10 +7,10 @@ It runs FreqTrade-compatible strategies and publishes signals for risk approval.
 
 import asyncio
 import logging
-from typing import Dict, List, Optional, Any
-from datetime import datetime, UTC
+from datetime import UTC, datetime
+from typing import Any, Dict, List, Optional
 
-from .base_agent import BaseAgent, AgentChannel, AgentMessage
+from .base_agent import AgentChannel, AgentMessage, BaseAgent
 
 logger = logging.getLogger(__name__)
 
@@ -59,8 +59,8 @@ class FreqTradeSignalAgent(BaseAgent):
     async def on_start(self):
         """Initialize FreqTrade components on agent start."""
         try:
-            from app.freqtrade.strategy_manager import StrategyManager
             from app.freqtrade.data_provider import FreqTradeDataProvider
+            from app.freqtrade.strategy_manager import StrategyManager
 
             self._strategy_manager = StrategyManager()
             self._data_provider = FreqTradeDataProvider()

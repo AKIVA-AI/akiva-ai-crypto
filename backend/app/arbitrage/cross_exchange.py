@@ -20,11 +20,11 @@ How it works:
 3. Profit = spread - fees
 """
 
+import asyncio
 import logging
-from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, field
 from datetime import datetime
-import asyncio
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 

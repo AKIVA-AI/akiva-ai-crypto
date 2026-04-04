@@ -11,11 +11,12 @@ Provides WebSocket connections for:
 
 import asyncio
 import json
-from typing import Dict, Set, Optional, Any
 from datetime import datetime
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 from enum import Enum
+from typing import Any, Dict, Optional, Set
+
 import structlog
+from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
 logger = structlog.get_logger()
 

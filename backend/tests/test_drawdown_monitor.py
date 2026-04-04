@@ -2,7 +2,7 @@
 Tests for drawdown monitoring (D7/D12 risk management testing).
 """
 
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 
 from app.services.drawdown_monitor import DrawdownMonitor
 
@@ -26,14 +26,14 @@ class TestDrawdownTracking:
     def test_max_drawdown_tracking(self):
         mon = DrawdownMonitor(initial_capital=100_000)
         mon.update(_ts(0), 100_000)
-        mon.update(_ts(1), 90_000)   # 10% dd
-        mon.update(_ts(2), 95_000)   # 5% dd
+        mon.update(_ts(1), 90_000)  # 10% dd
+        mon.update(_ts(2), 95_000)  # 5% dd
         assert abs(mon.max_drawdown_pct - 10.0) < 0.01
 
     def test_drawdown_recovery(self):
         mon = DrawdownMonitor(initial_capital=100_000)
         mon.update(_ts(0), 100_000)
-        mon.update(_ts(1), 90_000)   # drawdown
+        mon.update(_ts(1), 90_000)  # drawdown
         mon.update(_ts(2), 100_000)  # recovery
         assert mon.get_current_drawdown() == 0.0
         assert len(mon.drawdown_periods) == 1

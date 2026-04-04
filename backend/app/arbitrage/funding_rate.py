@@ -19,12 +19,12 @@ How it works:
    - Collect funding every 8 hours
 """
 
+import asyncio
 import logging
-from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-import asyncio
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 

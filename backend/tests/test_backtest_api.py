@@ -1,16 +1,16 @@
 import pytest
+from app.api import backtest as backtest_api
+from app.api.backtest import _backtest_results
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
-
-from app.api import backtest as backtest_api
-from app.api.backtest import _backtest_results
 
 
 @pytest.fixture
 def client():
     """Create test client with backtest router only."""
     app = FastAPI()
+
     @app.middleware("http")
     async def auth_middleware(request: Request, call_next):
         if request.url.path.startswith("/api/v1"):

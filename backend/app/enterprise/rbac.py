@@ -9,9 +9,9 @@ Enterprise-grade access control with:
 """
 
 import logging
-from typing import Dict, Set, Optional
 from dataclasses import dataclass
 from enum import Enum
+from typing import Dict, Optional, Set
 
 logger = logging.getLogger(__name__)
 

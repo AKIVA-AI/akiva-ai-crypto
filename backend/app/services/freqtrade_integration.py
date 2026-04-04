@@ -19,16 +19,17 @@ Integration Benefits:
 - Easy testing and maintenance
 """
 
-import logging
 import asyncio
-from typing import Dict, List, Optional, Any, Callable
-from datetime import datetime, UTC
-from importlib import import_module
+import logging
 import signal
+from datetime import UTC, datetime
+from importlib import import_module
+from typing import Any, Callable, Dict, List, Optional
+
+from app.core.config import settings
 
 # Original services for fallback
 from app.services.market_data_service import MarketDataService
-from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 

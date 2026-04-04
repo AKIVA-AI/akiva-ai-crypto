@@ -20,14 +20,15 @@ Integration Benefits:
 
 import asyncio
 import logging
-from typing import Dict, List, Optional, Any, Callable
-from datetime import datetime, UTC
 from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime
+from typing import Any, Callable, Dict, List, Optional
+
+from freqtrade.enums import CandleType
 
 # FreqTrade WebSocket imports
 from freqtrade.exchange import Exchange
 from freqtrade.exchange.exchange_ws import ExchangeWS
-from freqtrade.enums import CandleType
 
 # Local imports
 from app.core.config import settings

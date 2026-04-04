@@ -8,7 +8,7 @@ import logging
 from datetime import datetime
 from typing import Dict
 
-from .base_agent import BaseAgent, AgentChannel, AgentMessage
+from .base_agent import AgentChannel, AgentMessage, BaseAgent
 
 logger = logging.getLogger(__name__)
 

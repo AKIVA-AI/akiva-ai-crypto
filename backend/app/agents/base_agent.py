@@ -6,20 +6,19 @@ PRODUCTION-READY: Writes heartbeats directly to Supabase for monitoring.
 """
 
 import asyncio
+import hashlib
 import json
 import logging
 import os
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, asdict
-from datetime import datetime, UTC
+from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 from uuid import uuid4
 
-import hashlib
-
-import redis.asyncio as redis
 import httpx
+import redis.asyncio as redis
 
 from app.core.agent_identity import (
     create_agent_identity,
@@ -498,13 +497,15 @@ class BaseAgent(ABC):
         self._message_handlers[channel.value] = handler
 
     # Channels that require valid signature for Zero Trust
-    SIGNED_CHANNELS = frozenset({
-        AgentChannel.EXECUTION.value,
-        AgentChannel.RISK_CHECK.value,
-        AgentChannel.RISK_APPROVED.value,
-        AgentChannel.RISK_REJECTED.value,
-        AgentChannel.CONTROL.value,
-    })
+    SIGNED_CHANNELS = frozenset(
+        {
+            AgentChannel.EXECUTION.value,
+            AgentChannel.RISK_CHECK.value,
+            AgentChannel.RISK_APPROVED.value,
+            AgentChannel.RISK_REJECTED.value,
+            AgentChannel.CONTROL.value,
+        }
+    )
 
     async def _process_message(self, raw_message: Dict):
         """Process incoming message from pub/sub with signature verification."""

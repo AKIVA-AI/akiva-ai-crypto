@@ -1,7 +1,11 @@
-import pytest
 from uuid import uuid4
 
-from app.core.strategy_registry import StrategyDefinition, StrategyTimeframes, ScannerConfig
+import pytest
+from app.core.strategy_registry import (
+    ScannerConfig,
+    StrategyDefinition,
+    StrategyTimeframes,
+)
 from app.models.domain import Book, BookType, OrderSide, RiskCheckResult, RiskDecision
 from app.models.opportunity import SignalStack
 from app.services.market_data import market_data_service
@@ -91,9 +95,15 @@ async def test_scanner_to_oms_rejects_on_cost_gate(monkeypatch):
     async def noop_audit(*args, **kwargs):
         return None
 
-    monkeypatch.setattr("app.services.oms_execution.check_kill_switch_for_trading", allow_kill_switch)
-    monkeypatch.setattr("app.services.oms_execution.portfolio_engine.get_book", fake_get_book)
-    monkeypatch.setattr("app.services.oms_execution.risk_engine.check_intent", fake_check_intent)
+    monkeypatch.setattr(
+        "app.services.oms_execution.check_kill_switch_for_trading", allow_kill_switch
+    )
+    monkeypatch.setattr(
+        "app.services.oms_execution.portfolio_engine.get_book", fake_get_book
+    )
+    monkeypatch.setattr(
+        "app.services.oms_execution.risk_engine.check_intent", fake_check_intent
+    )
     monkeypatch.setattr("app.services.oms_execution.audit_log", noop_audit)
     monkeypatch.setattr(oms_service, "_get_book_positions", fake_positions)
     monkeypatch.setattr(oms_service, "_get_venue_health", fake_health)

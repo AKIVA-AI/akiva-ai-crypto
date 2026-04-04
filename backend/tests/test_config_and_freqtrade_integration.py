@@ -3,9 +3,8 @@ import sys
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
-
 import app.config as config_module
+import pytest
 from app.services import freqtrade_integration as ft_integration
 
 
@@ -36,9 +35,7 @@ def reset_freqtrade_hub():
     ft_integration._freqtrade_hub = None
 
 
-def test_settings_loads_secret_from_file_and_sets_compat_aliases(
-    tmp_path, monkeypatch
-):
+def test_settings_loads_secret_from_file_and_sets_compat_aliases(tmp_path, monkeypatch):
     secret_file = tmp_path / "supabase_service_role_key"
     secret_file.write_text("service-from-file\n", encoding="utf-8")
 

@@ -15,11 +15,11 @@ error schema regardless of which endpoint returned the error.
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import FastAPI, Request, HTTPException
+import structlog
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-import structlog
 
 logger = structlog.get_logger(__name__)
 
@@ -110,9 +110,7 @@ async def generic_exception_handler(request: Request, exc: Exception) -> JSONRes
     )
     return _build_error(
         status_code=500,
-        error=(
-            str(exc) if settings.DEBUG else "An unexpected internal error occurred"
-        ),
+        error=(str(exc) if settings.DEBUG else "An unexpected internal error occurred"),
         code="INTERNAL_ERROR",
         details={
             "timestamp": datetime.now(timezone.utc).isoformat(),

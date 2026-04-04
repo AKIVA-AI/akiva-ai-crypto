@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 
 from app.enterprise.compliance import (
     ComplianceManager,
@@ -6,7 +6,12 @@ from app.enterprise.compliance import (
     ComplianceRuleType,
 )
 from app.enterprise.rbac import Permission, RBACManager
-from app.enterprise.risk_limits import LimitPeriod, LimitType, RiskLimit, RiskLimitsManager
+from app.enterprise.risk_limits import (
+    LimitPeriod,
+    LimitType,
+    RiskLimit,
+    RiskLimitsManager,
+)
 
 
 def test_rbac_role_assignment_permissions_and_limits():
@@ -18,11 +23,15 @@ def test_rbac_role_assignment_permissions_and_limits():
     assert manager.has_permission("u1", Permission.TRADE_CREATE) is True
     assert manager.has_permission("u1", Permission.KILL_SWITCH) is False
 
-    allowed, message = manager.check_trade_limits("u1", trade_size=5000, daily_volume=1000)
+    allowed, message = manager.check_trade_limits(
+        "u1", trade_size=5000, daily_volume=1000
+    )
     assert allowed is True
     assert message == "OK"
 
-    allowed, message = manager.check_trade_limits("u1", trade_size=20000, daily_volume=1000)
+    allowed, message = manager.check_trade_limits(
+        "u1", trade_size=20000, daily_volume=1000
+    )
     assert allowed is False
     assert "exceeds limit" in message
 
@@ -48,7 +57,9 @@ def test_risk_limits_record_blocking_and_warning_breaches():
     assert within_limit is True
     assert message == "OK"
 
-    within_limit, message = manager.check_limit("daily_loss", 60000, user_id="risk-user")
+    within_limit, message = manager.check_limit(
+        "daily_loss", 60000, user_id="risk-user"
+    )
     assert within_limit is False
     assert "daily_loss" in message
 
@@ -93,7 +104,9 @@ def test_risk_limits_status_update_and_recent_breach_filter():
 def test_compliance_manager_blocks_restricted_assets_and_position_limits():
     manager = ComplianceManager()
     manager.restrict_asset("btc", "manual freeze")
-    allowed, violations = manager.check_trade("BTC", "buy", 1, 50000, portfolio_value=200000)
+    allowed, violations = manager.check_trade(
+        "BTC", "buy", 1, 50000, portfolio_value=200000
+    )
     assert allowed is False
     assert "restricted" in violations[0]
 

@@ -9,43 +9,44 @@ Production-grade institutional trading system with:
 - Enterprise security
 """
 
+import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-import uuid
 
-from fastapi import FastAPI, Request, HTTPException, Depends
+import structlog
+import uvicorn
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.security import HTTPBearer
-import structlog
-import uvicorn
 
+from app.api.health import increment_request_count
+from app.api.health import router as health_router
 from app.api.routes import api_router
-from app.api.health import router as health_router, increment_request_count
-from app.core.config import settings
-from app.core.security import get_current_user
-from app.database import init_db, close_db
-from app.services.market_data_service import market_data_service
-from app.services.smart_order_router import smart_order_router
-from app.services.advanced_risk_engine import advanced_risk_engine
-from app.logging_config import configure_logging
-from app.middleware.security import (
-    SecurityHeadersMiddleware,
-    RequestValidationMiddleware,
-    setup_rate_limiting,
-)
-from app.core.observability import init_sentry, init_tracing
-from app.core.error_handlers import register_error_handlers
-
-# FreqTrade Integration
-from app.services.freqtrade_integration import (
-    initialize_freqtrade_integration,
-    shutdown_freqtrade_integration,
-    get_freqtrade_status,
-)
 
 # Arbitrage Engine
 from app.arbitrage import get_arbitrage_engine
+from app.core.config import settings
+from app.core.error_handlers import register_error_handlers
+from app.core.observability import init_sentry, init_tracing
+from app.core.security import get_current_user
+from app.database import close_db, init_db
+from app.logging_config import configure_logging
+from app.middleware.security import (
+    RequestValidationMiddleware,
+    SecurityHeadersMiddleware,
+    setup_rate_limiting,
+)
+from app.services.advanced_risk_engine import advanced_risk_engine
+
+# FreqTrade Integration
+from app.services.freqtrade_integration import (
+    get_freqtrade_status,
+    initialize_freqtrade_integration,
+    shutdown_freqtrade_integration,
+)
+from app.services.market_data_service import market_data_service
+from app.services.smart_order_router import smart_order_router
 
 # Setup structured logging
 logger = configure_logging()

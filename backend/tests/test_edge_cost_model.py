@@ -1,7 +1,7 @@
-import pytest
 from uuid import uuid4
 
-from app.models.domain import TradeIntent, OrderSide
+import pytest
+from app.models.domain import OrderSide, TradeIntent
 from app.services.edge_cost_model import EdgeCostModel
 
 

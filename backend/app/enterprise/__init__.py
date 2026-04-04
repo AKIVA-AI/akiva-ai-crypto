@@ -9,9 +9,9 @@ Production-grade enterprise features:
 - Multi-tenancy Support
 """
 
-from .rbac import RBACManager, Permission, Role
-from .audit import AuditLogger, AuditEvent
+from .audit import AuditEvent, AuditLogger
 from .compliance import ComplianceManager
+from .rbac import Permission, RBACManager, Role
 from .risk_limits import RiskLimitsManager
 
 __all__ = [

@@ -7,16 +7,18 @@ Usage:
 
 Web UI will be available at http://localhost:8089
 """
+
 import os
-from locust import HttpUser, task, between, tag
+
+from locust import HttpUser, between, tag, task
 
 
 class TradingPlatformUser(HttpUser):
     """Simulates a typical trading platform user."""
-    
+
     # Wait 1-3 seconds between tasks
     wait_time = between(1, 3)
-    
+
     def on_start(self):
         """Setup before starting tasks."""
         # Get auth token if needed
@@ -71,10 +73,10 @@ class TradingPlatformUser(HttpUser):
 
 class HighFrequencyTrader(HttpUser):
     """Simulates high-frequency trading patterns."""
-    
+
     # Very short waits for HFT simulation
     wait_time = between(0.1, 0.5)
-    
+
     def on_start(self):
         self.token = os.getenv("TEST_AUTH_TOKEN", "test-token")
         self.headers = {
@@ -92,14 +94,16 @@ class HighFrequencyTrader(HttpUser):
     @task(8)
     def rapid_order_check(self):
         """Rapid order status checks."""
-        self.client.get("/api/trading/orders?status=pending&limit=10", headers=self.headers)
+        self.client.get(
+            "/api/trading/orders?status=pending&limit=10", headers=self.headers
+        )
 
 
 class MonitoringUser(HttpUser):
     """Simulates monitoring/observability tools."""
-    
+
     wait_time = between(5, 15)
-    
+
     @tag("monitoring")
     @task(5)
     def health_check(self):
@@ -121,4 +125,3 @@ class MonitoringUser(HttpUser):
     def metrics_scrape(self):
         """Metrics scraping (like Prometheus)."""
         self.client.get("/metrics")
-

@@ -4,6 +4,7 @@ Base Venue Adapter - Interface for all venue implementations.
 
 from abc import ABC, abstractmethod
 from typing import Dict, List
+
 from app.models.domain import Order, VenueHealth
 
 

@@ -10,8 +10,8 @@ Tracks:
 
 import logging
 from collections import defaultdict
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, UTC
+from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
@@ -114,16 +114,16 @@ class AgentBehaviorTracker:
         error: bool = False,
     ):
         """Record an agent decision for drift tracking."""
-        self._decisions[agent_id].append({
-            "timestamp": datetime.now(UTC).isoformat(),
-            "overridden": overridden,
-            "fallback": fallback,
-            "error": error,
-        })
+        self._decisions[agent_id].append(
+            {
+                "timestamp": datetime.now(UTC).isoformat(),
+                "overridden": overridden,
+                "fallback": fallback,
+                "error": error,
+            }
+        )
 
-    def get_drift_metrics(
-        self, agent_id: str, last_n: int = 100
-    ) -> DriftMetrics:
+    def get_drift_metrics(self, agent_id: str, last_n: int = 100) -> DriftMetrics:
         """Get drift metrics for an agent over the last N decisions."""
         decisions = self._decisions.get(agent_id, [])[-last_n:]
         now = datetime.now(UTC).isoformat()

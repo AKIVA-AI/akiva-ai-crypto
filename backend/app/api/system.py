@@ -2,18 +2,19 @@
 System Control API - Kill Switch and System Management
 """
 
-from fastapi import APIRouter, HTTPException, Depends
-from typing import Dict, Any
-from pydantic import BaseModel
-import structlog
+from typing import Any, Dict
 
+import structlog
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+
+from app.core.security import get_current_user
 from app.database import (
     activate_kill_switch,
+    create_alert,
     deactivate_kill_switch,
     get_kill_switch_status,
-    create_alert,
 )
-from app.core.security import get_current_user
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/system", tags=["system"])

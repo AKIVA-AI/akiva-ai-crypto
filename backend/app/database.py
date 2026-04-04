@@ -3,10 +3,12 @@ Database connection and utilities for Supabase.
 Kill switch state is now persisted to global_settings for cluster safety.
 """
 
-import structlog
 from datetime import datetime
-from supabase import create_client, Client
+
+import structlog
+
 from app.config import settings
+from supabase import Client, create_client
 
 logger = structlog.get_logger()
 

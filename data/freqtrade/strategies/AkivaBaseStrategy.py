@@ -43,17 +43,17 @@ from technical import qtpylib
 class AkivaBaseStrategy(IStrategy):
     """
     Production-ready base strategy for Akiva AI Crypto platform.
-    
+
     Based on FreqTrade's official template with conservative settings
     suitable for initial production deployment.
-    
+
     Key Features:
     - RSI-based entry with Bollinger Band confirmation
     - TEMA trend filter
     - Volume confirmation
     - Hyperopt-ready parameters
     - Conservative risk management
-    
+
     ALWAYS backtest before live trading!
     """
 
@@ -64,10 +64,10 @@ class AkivaBaseStrategy(IStrategy):
 
     # Conservative ROI - adjust after backtesting
     minimal_roi = {
-        "120": 0.0,   # Break even after 2 hours
-        "60": 0.01,   # 1% after 1 hour
-        "30": 0.02,   # 2% after 30 min
-        "0": 0.04,    # 4% immediate
+        "120": 0.0,  # Break even after 2 hours
+        "60": 0.01,  # 1% after 1 hour
+        "30": 0.02,  # 2% after 30 min
+        "0": 0.04,  # 4% immediate
     }
 
     # Conservative stoploss
@@ -91,8 +91,12 @@ class AkivaBaseStrategy(IStrategy):
     ignore_roi_if_entry_signal = False
 
     # Hyperopt parameters
-    buy_rsi = IntParameter(low=20, high=40, default=30, space="buy", optimize=True, load=True)
-    sell_rsi = IntParameter(low=60, high=80, default=70, space="sell", optimize=True, load=True)
+    buy_rsi = IntParameter(
+        low=20, high=40, default=30, space="buy", optimize=True, load=True
+    )
+    sell_rsi = IntParameter(
+        low=60, high=80, default=70, space="sell", optimize=True, load=True
+    )
 
     # Candles needed for indicator warmup
     startup_candle_count: int = 200
@@ -196,4 +200,3 @@ class AkivaBaseStrategy(IStrategy):
         ] = 1
 
         return dataframe
-

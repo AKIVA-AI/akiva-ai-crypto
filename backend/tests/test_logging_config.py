@@ -1,7 +1,8 @@
 """Tests for core/logging.py"""
 
 from unittest.mock import patch
-from app.core.logging import setup_logging, get_logger
+
+from app.core.logging import get_logger, setup_logging
 
 
 class TestSetupLogging:

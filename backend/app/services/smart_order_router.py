@@ -9,13 +9,13 @@ Implements institutional-grade order routing and execution algorithms:
 - Liquidity analysis and fragmentation handling
 """
 
-import numpy as np
-from typing import Dict, List, Optional, Any
+import asyncio
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-import asyncio
-import structlog
+from typing import Any, Dict, List, Optional
 
+import numpy as np
+import structlog
 
 logger = structlog.get_logger()
 

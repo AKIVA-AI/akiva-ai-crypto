@@ -5,10 +5,10 @@ Tests for strategy lifecycle management (strategy_lifecycle.py).
 from datetime import datetime, timedelta
 
 from app.agents.strategy_lifecycle import (
+    StrategyLifecycle,
     StrategyLifecycleManager,
     StrategyLifecycleState,
     StrategyStateTransition,
-    StrategyLifecycle,
 )
 
 
@@ -113,8 +113,13 @@ class TestStrategyLifecycleManager:
     def test_update_metrics_all(self):
         m = self._m()
         m.register_strategy("s1", StrategyLifecycleState.ACTIVE)
-        m.update_metrics("s1", edge_decay_pct=0.5, performance_vs_expectation=0.6,
-                        current_drawdown_pct=0.12, execution_quality=0.85)
+        m.update_metrics(
+            "s1",
+            edge_decay_pct=0.5,
+            performance_vs_expectation=0.6,
+            current_drawdown_pct=0.12,
+            execution_quality=0.85,
+        )
         s = m.get_strategy("s1")
         assert s.edge_decay_pct == 0.5
         assert s.execution_quality == 0.85
@@ -219,8 +224,10 @@ class TestStrategyLifecycleManager:
         t = StrategyStateTransition(
             from_state=StrategyLifecycleState.ACTIVE,
             to_state=StrategyLifecycleState.QUARANTINED,
-            reason="decay", triggered_by="automatic",
-            timestamp=datetime.utcnow().isoformat())
+            reason="decay",
+            triggered_by="automatic",
+            timestamp=datetime.utcnow().isoformat(),
+        )
         m.execute_transition("s1", t)
         s = m.get_strategy("s1")
         assert s.current_state == StrategyLifecycleState.QUARANTINED
@@ -235,8 +242,10 @@ class TestStrategyLifecycleManager:
         t = StrategyStateTransition(
             from_state=StrategyLifecycleState.QUARANTINED,
             to_state=StrategyLifecycleState.ACTIVE,
-            reason="recovered", triggered_by="automatic",
-            timestamp=datetime.utcnow().isoformat())
+            reason="recovered",
+            triggered_by="automatic",
+            timestamp=datetime.utcnow().isoformat(),
+        )
         m.execute_transition("s1", t)
         s = m.get_strategy("s1")
         assert s.quarantine_reason is None
@@ -247,8 +256,10 @@ class TestStrategyLifecycleManager:
         t = StrategyStateTransition(
             from_state=StrategyLifecycleState.ACTIVE,
             to_state=StrategyLifecycleState.QUARANTINED,
-            reason="x", triggered_by="auto",
-            timestamp=datetime.utcnow().isoformat())
+            reason="x",
+            triggered_by="auto",
+            timestamp=datetime.utcnow().isoformat(),
+        )
         m.execute_transition("x", t)
 
     def test_quarantine_count_increments(self):
@@ -258,8 +269,10 @@ class TestStrategyLifecycleManager:
             t = StrategyStateTransition(
                 from_state=StrategyLifecycleState.ACTIVE,
                 to_state=StrategyLifecycleState.QUARANTINED,
-                reason="t", triggered_by="auto",
-                timestamp=datetime.utcnow().isoformat())
+                reason="t",
+                triggered_by="auto",
+                timestamp=datetime.utcnow().isoformat(),
+            )
             m.execute_transition("s1", t)
         assert m._quarantine_count_30d["s1"] == 3
 

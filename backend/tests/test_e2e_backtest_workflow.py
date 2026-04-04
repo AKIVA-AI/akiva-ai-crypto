@@ -4,14 +4,15 @@ End-to-End Test Suite for Backtest Workflow
 Sprint 6, Task 6.1: Comprehensive E2E tests covering the complete
 backtest workflow from strategy configuration to results analysis.
 """
-import pytest
+
 from datetime import datetime, timedelta
+
+import pytest
+from app.api import backtest as backtest_api
+from app.api.backtest import _backtest_results
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
-
-from app.api import backtest as backtest_api
-from app.api.backtest import _backtest_results
 
 
 # Test fixtures
@@ -51,7 +52,7 @@ def _auth_headers():
 class TestE2EBacktestWorkflow:
     """
     End-to-end tests for the complete backtest workflow.
-    
+
     Tests cover:
     1. Strategy configuration → Backtest execution → Results retrieval
     2. Multi-instrument backtests
@@ -63,7 +64,7 @@ class TestE2EBacktestWorkflow:
     def test_full_backtest_workflow(self, client):
         """
         E2E Test: Complete workflow from config to analysis.
-        
+
         1. Run backtest with valid config
         2. Retrieve full results
         3. Get equity curve
@@ -85,50 +86,50 @@ class TestE2EBacktestWorkflow:
                 "commission_bps": 10.0,
             },
         )
-        
+
         assert run_response.status_code == 200
         run_data = run_response.json()
         backtest_id = run_data["id"]
-        
+
         assert run_data["status"] == "completed"
         assert run_data["strategy_name"] == "RSIMomentumStrategy"
-        
+
         # Step 2: Get full results
         detail_response = client.get(
             f"/api/v1/backtest/{backtest_id}",
             headers=_auth_headers(),
         )
-        
+
         assert detail_response.status_code == 200
         detail = detail_response.json()
-        
+
         # Validate required fields
         assert "metrics" in detail
         assert "final_equity" in detail
         assert detail["initial_capital"] == 100000.0
-        
+
         # Step 3: Get equity curve
         equity_response = client.get(
             f"/api/v1/backtest/{backtest_id}/equity-curve",
             headers=_auth_headers(),
         )
-        
+
         assert equity_response.status_code == 200
         equity_data = equity_response.json()
         assert len(equity_data["data"]) > 0
-        
+
         # Validate equity point structure
         first_point = equity_data["data"][0]
         assert "timestamp" in first_point
         assert "equity" in first_point
         assert "drawdown" in first_point
-        
+
         # Step 4: Get trades
         trades_response = client.get(
             f"/api/v1/backtest/{backtest_id}/trades",
             headers=_auth_headers(),
         )
-        
+
         assert trades_response.status_code == 200
         trades_data = trades_response.json()
         assert "trades" in trades_data
@@ -169,15 +170,15 @@ class TestE2EBacktestWorkflow:
                 "end_date": "2023-06-01T00:00:00Z",
             },
         )
-        
+
         backtest_id = response.json()["id"]
         detail = client.get(
             f"/api/v1/backtest/{backtest_id}",
             headers=_auth_headers(),
         ).json()
-        
+
         metrics = detail["metrics"]
-        
+
         # Validate core metrics exist
         required_metrics = [
             "total_return",
@@ -186,7 +187,7 @@ class TestE2EBacktestWorkflow:
             "win_rate",
             "total_trades",
         ]
-        
+
         for metric in required_metrics:
             assert metric in metrics, f"Missing metric: {metric}"
 
@@ -226,7 +227,9 @@ class TestE2EBacktestWorkflow:
         assert filter_response.status_code == 200
         filtered = filter_response.json()
         # At least one result should match the filter
-        rsi_results = [bt for bt in filtered if bt["strategy_name"] == "RSIMomentumStrategy"]
+        rsi_results = [
+            bt for bt in filtered if bt["strategy_name"] == "RSIMomentumStrategy"
+        ]
         assert len(rsi_results) >= 1
 
     def test_backtest_delete_workflow(self, client):
@@ -257,7 +260,10 @@ class TestE2EBacktestWorkflow:
             f"/api/v1/backtest/{backtest_id}",
             headers=_auth_headers(),
         )
-        assert delete_response.status_code in [200, 204]  # Accept both OK and No Content
+        assert delete_response.status_code in [
+            200,
+            204,
+        ]  # Accept both OK and No Content
 
         # Verify deleted
         verify_response = client.get(
@@ -380,4 +386,3 @@ class TestE2EPerformanceConsistency:
         # First equity point should be near initial capital
         first_equity = equity_data[0]["equity"]
         assert abs(first_equity - 50000.0) < 1000  # Allow some variance
-

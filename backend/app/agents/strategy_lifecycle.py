@@ -5,10 +5,10 @@ Strategies must EARN the right to trade continuously through performance.
 """
 
 import logging
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Dict, List, Optional
-from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
 

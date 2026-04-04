@@ -8,7 +8,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
-from uuid import UUID, uuid5, NAMESPACE_URL, uuid4
+from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 import structlog
 
@@ -16,7 +16,7 @@ from app.config import settings
 from app.database import get_supabase
 from app.models.basis import BasisHedgePolicy
 from app.models.domain import Book, OrderSide, TradeIntent
-from app.models.opportunity import ExecutionLeg, ExecutionPlan, ExecutionMode
+from app.models.opportunity import ExecutionLeg, ExecutionMode, ExecutionPlan
 from app.services.basis_edge_model import BasisEdgeModel
 from app.services.basis_quote_service import BasisQuoteService
 

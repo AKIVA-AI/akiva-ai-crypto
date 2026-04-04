@@ -2,12 +2,13 @@
 API routes for trading operations.
 """
 
-from fastapi import APIRouter, Request
 from typing import Optional
+
+from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
 from app.database import get_supabase
-from app.middleware.security import get_rate_limiter, RATE_LIMITS
+from app.middleware.security import RATE_LIMITS, get_rate_limiter
 
 router = APIRouter(prefix="/api/trading", tags=["trading"])
 limiter = get_rate_limiter()

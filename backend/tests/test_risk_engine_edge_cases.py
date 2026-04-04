@@ -4,15 +4,22 @@ circuit breaker cascades, and boundary conditions.
 
 Sprint 0 - Dim 7 (Testing) hardening.
 """
-import asyncio
-import pytest
-from unittest.mock import patch, AsyncMock, MagicMock
-from uuid import uuid4
-from datetime import datetime, UTC
 
+import asyncio
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import uuid4
+
+import pytest
 from app.models.domain import (
-    TradeIntent, OrderSide, Book, BookType,
-    Position, VenueHealth, VenueStatus, RiskDecision
+    Book,
+    BookType,
+    OrderSide,
+    Position,
+    RiskDecision,
+    TradeIntent,
+    VenueHealth,
+    VenueStatus,
 )
 from app.services.risk_engine import RiskEngine
 
@@ -34,7 +41,7 @@ class TestKillSwitchFailSafe:
             current_exposure=100_000,
             max_drawdown_limit=10,
             risk_tier=1,
-            status="active"
+            status="active",
         )
 
     @pytest.fixture
@@ -75,23 +82,34 @@ class TestKillSwitchFailSafe:
         """When DB returns no rows, kill switch returns False (settings missing = off)."""
         with patch("app.services.risk_engine.get_supabase") as mock_sb:
             mock_table = MagicMock()
-            mock_table.table.return_value.select.return_value.limit.return_value.execute.return_value = MagicMock(data=[])
+            mock_table.table.return_value.select.return_value.limit.return_value.execute.return_value = MagicMock(
+                data=[]
+            )
             mock_sb.return_value = mock_table
             result = asyncio.get_event_loop().run_until_complete(
                 risk_engine._check_global_kill_switch()
             )
             assert result is False
 
-    def test_kill_switch_on_rejects_intent(self, risk_engine, sample_intent, sample_book, healthy_venue):
+    def test_kill_switch_on_rejects_intent(
+        self, risk_engine, sample_intent, sample_book, healthy_venue
+    ):
         """When kill switch is active, all intents must be REJECTED."""
-        with patch.object(RiskEngine, '_check_global_kill_switch', new_callable=AsyncMock, return_value=True):
+        with patch.object(
+            RiskEngine,
+            "_check_global_kill_switch",
+            new_callable=AsyncMock,
+            return_value=True,
+        ):
             result = asyncio.get_event_loop().run_until_complete(
                 risk_engine.check_intent(sample_intent, sample_book, healthy_venue, [])
             )
             assert result.decision == RiskDecision.REJECT
             assert "Global kill switch is active" in result.reasons
 
-    def test_kill_switch_db_failure_rejects_intent(self, risk_engine, sample_intent, sample_book, healthy_venue):
+    def test_kill_switch_db_failure_rejects_intent(
+        self, risk_engine, sample_intent, sample_book, healthy_venue
+    ):
         """When DB is unreachable, kill switch check fails closed, rejecting intent."""
         with patch("app.services.risk_engine.get_supabase") as mock_sb:
             mock_sb.side_effect = Exception("Database unreachable")
@@ -170,7 +188,7 @@ class TestBoundaryConditions:
             current_exposure=0,
             max_drawdown_limit=10,
             risk_tier=1,
-            status="active"
+            status="active",
         )
 
     def test_zero_capital_book_utilization(self, risk_engine, sample_book):
@@ -192,6 +210,7 @@ class TestBoundaryConditions:
     def test_exact_position_limit_passes(self, risk_engine):
         """Position exactly at limit should pass."""
         from app.config import settings
+
         max_size = settings.risk.max_position_size_usd
 
         intent = TradeIntent(
@@ -288,6 +307,7 @@ class TestSpotArbLimits:
     def test_arb_latency_shock_rejected(self, risk_engine):
         """Arb intent with latency exceeding threshold should be rejected."""
         from app.config import settings
+
         intent = TradeIntent(
             id=uuid4(),
             book_id=uuid4(),

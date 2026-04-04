@@ -2,14 +2,15 @@
 API routes for risk management.
 """
 
-from fastapi import APIRouter, HTTPException, Header
 from typing import Optional
 from uuid import UUID
+
+from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 
 from app.database import get_supabase
-from app.services.risk_engine import risk_engine
 from app.services.advanced_risk_engine import advanced_risk_engine
+from app.services.risk_engine import risk_engine
 
 router = APIRouter(prefix="/api/risk", tags=["risk"])
 

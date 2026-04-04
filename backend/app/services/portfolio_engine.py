@@ -2,14 +2,15 @@
 Portfolio Engine - Capital allocation and position sizing.
 """
 
-import structlog
+from datetime import datetime
 from typing import Dict, List, Optional
 from uuid import UUID
-from datetime import datetime
 
-from app.models.domain import Book, BookType, Position, TradeIntent
+import structlog
+
 from app.config import settings
-from app.database import get_supabase, audit_log
+from app.database import audit_log, get_supabase
+from app.models.domain import Book, BookType, Position, TradeIntent
 
 logger = structlog.get_logger()
 

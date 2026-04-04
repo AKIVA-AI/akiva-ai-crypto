@@ -1,16 +1,18 @@
+from app.api import system as system_api
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
-from app.api import system as system_api
 
 
 def _make_client(user: dict | None = None) -> TestClient:
     app = FastAPI()
     app.include_router(system_api.router, prefix="/api/v1")
-    app.dependency_overrides[system_api.get_current_user] = lambda: user or {
-        "id": "admin-1",
-        "is_admin": True,
-    }
+    app.dependency_overrides[system_api.get_current_user] = lambda: (
+        user
+        or {
+            "id": "admin-1",
+            "is_admin": True,
+        }
+    )
     return TestClient(app)
 
 

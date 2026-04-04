@@ -61,8 +61,8 @@ async def generate_ml_signal(request: MLSignalRequest):
     decide whether to execute the trade from the UI.
     """
     try:
-        from app.freqtrade.freqai_manager import FreqAIManager
         from app.freqtrade.data_provider import FreqTradeDataProvider
+        from app.freqtrade.freqai_manager import FreqAIManager
 
         # Get market data
         data_provider = FreqTradeDataProvider()

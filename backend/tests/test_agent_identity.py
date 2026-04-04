@@ -5,13 +5,12 @@ Tests for per-agent identity and inter-agent request signing (Zero Trust D18).
 import time
 
 import pytest
-
 from app.core.agent_identity import (
+    SIGNATURE_MAX_AGE_SECONDS,
+    _get_signing_key,
     create_agent_identity,
     sign_agent_message,
     verify_agent_signature,
-    SIGNATURE_MAX_AGE_SECONDS,
-    _get_signing_key,
 )
 
 

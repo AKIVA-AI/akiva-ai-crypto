@@ -1,12 +1,13 @@
 """
 Tests for health check and metrics endpoints.
 """
-import pytest
-from fastapi.testclient import TestClient
-from unittest.mock import patch, MagicMock
+
+from unittest.mock import MagicMock, patch
 
 import app.api.health as health_mod
-from app.api.health import router, increment_request_count, get_uptime_seconds
+import pytest
+from app.api.health import get_uptime_seconds, increment_request_count, router
+from fastapi.testclient import TestClient
 
 
 class TestHealthEndpoints:
@@ -16,6 +17,7 @@ class TestHealthEndpoints:
     def client(self):
         """Create test client for health router."""
         from fastapi import FastAPI
+
         app = FastAPI()
         app.include_router(router)
         return TestClient(app)
@@ -37,7 +39,9 @@ class TestHealthEndpoints:
         # Mock database call to avoid actual DB connection
         with patch("app.api.health.get_supabase") as mock_supabase:
             mock_table = MagicMock()
-            mock_table.select.return_value.limit.return_value.execute.return_value = MagicMock(data=[{"id": 1}])
+            mock_table.select.return_value.limit.return_value.execute.return_value = (
+                MagicMock(data=[{"id": 1}])
+            )
             mock_supabase.return_value.table.return_value = mock_table
 
             response = client.get("/ready")
@@ -54,7 +58,9 @@ class TestHealthEndpoints:
         """Test /ready reports database connected when DB is available."""
         with patch("app.api.health.get_supabase") as mock_supabase:
             mock_table = MagicMock()
-            mock_table.select.return_value.limit.return_value.execute.return_value = MagicMock(data=[{"id": 1}])
+            mock_table.select.return_value.limit.return_value.execute.return_value = (
+                MagicMock(data=[{"id": 1}])
+            )
             mock_supabase.return_value.table.return_value = mock_table
 
             response = client.get("/ready")
@@ -118,9 +124,10 @@ class TestHealthEndpoints:
             health_mod.time.time() - health_mod.HEARTBEAT_STALE_SECONDS - 5
         )
 
-        with patch("app.api.health.get_supabase") as mock_supabase, patch(
-            "redis.from_url"
-        ) as mock_redis:
+        with (
+            patch("app.api.health.get_supabase") as mock_supabase,
+            patch("redis.from_url") as mock_redis,
+        ):
             mock_table = MagicMock()
             mock_table.select.return_value.limit.return_value.execute.return_value = (
                 MagicMock(data=[{"id": 1}])
@@ -136,12 +143,14 @@ class TestHealthEndpoints:
     def test_increment_request_count(self):
         """Test request counter increments."""
         from app.api.health import _request_count
+
         initial_count = _request_count
 
         increment_request_count()
         increment_request_count()
 
         from app.api.health import _request_count as new_count
+
         assert new_count == initial_count + 2
 
     def test_get_uptime_seconds(self):
@@ -152,9 +161,10 @@ class TestHealthEndpoints:
 
     def test_ready_endpoint_reports_redis_degraded_but_non_blocking(self, client):
         """Test /ready stays ready when Redis is degraded but DB is healthy."""
-        with patch("app.api.health.get_supabase") as mock_supabase, patch(
-            "redis.from_url"
-        ) as mock_redis:
+        with (
+            patch("app.api.health.get_supabase") as mock_supabase,
+            patch("redis.from_url") as mock_redis,
+        ):
             mock_table = MagicMock()
             mock_table.select.return_value.limit.return_value.execute.return_value = (
                 MagicMock(data=[{"id": 1}])
@@ -178,6 +188,7 @@ class TestHealthIntegration:
         """Create test client for main app."""
         # Import here to avoid circular imports
         from app.main import app
+
         return TestClient(app, raise_server_exceptions=False)
 
     @pytest.mark.skip(reason="Requires full app context - run manually or in CI")
@@ -196,4 +207,3 @@ class TestHealthIntegration:
 
         metrics_response = app_client.get("/metrics")
         assert metrics_response.status_code == 200
-

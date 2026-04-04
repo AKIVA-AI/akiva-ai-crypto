@@ -8,10 +8,9 @@ using manually constructed records (no Supabase required).
 import csv
 import io
 import json
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 
 import pytest
-
 from app.services.compliance_reports import (
     ComplianceReport,
     ComplianceReportGenerator,
@@ -23,7 +22,6 @@ from app.services.compliance_reports import (
     RiskEventRecord,
     TradingActivityRecord,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers to build test data

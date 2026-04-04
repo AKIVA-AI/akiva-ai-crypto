@@ -3,9 +3,11 @@ Security utilities for authentication and authorization.
 """
 
 import os
+
 import structlog
-from supabase import create_client, Client
 from fastapi import HTTPException, Request
+
+from supabase import Client, create_client
 
 logger = structlog.get_logger()
 

@@ -3,26 +3,28 @@ Tests for health check and metrics endpoints.
 
 Sprint 0 - Dim 9 (Observability) hardening: metrics, Prometheus export, staleness detection.
 """
+
 import time
+
 import pytest
 from app.api.health import (
-    increment_request_count,
-    record_trade_latency,
-    record_trade_error,
-    record_order,
-    record_pnl,
-    update_agent_heartbeat,
-    get_stale_agents,
-    get_uptime_seconds,
-    _percentile,
     HEARTBEAT_STALE_SECONDS,
-    _trade_latencies,
+    _agent_heartbeats,
+    _order_count_by_side,
+    _percentile,
+    _pnl_total,
+    _request_count,
     _trade_count,
     _trade_errors,
-    _order_count_by_side,
-    _pnl_total,
-    _agent_heartbeats,
-    _request_count,
+    _trade_latencies,
+    get_stale_agents,
+    get_uptime_seconds,
+    increment_request_count,
+    record_order,
+    record_pnl,
+    record_trade_error,
+    record_trade_latency,
+    update_agent_heartbeat,
 )
 
 
@@ -39,6 +41,7 @@ class TestMetricsRecording:
     def test_record_trade_error(self):
         """Trade error count should increment."""
         import app.api.health as health_mod
+
         before = health_mod._trade_errors
         record_trade_error()
         assert health_mod._trade_errors == before + 1
@@ -62,6 +65,7 @@ class TestMetricsRecording:
     def test_record_pnl(self):
         """PnL should accumulate."""
         import app.api.health as health_mod
+
         before = health_mod._pnl_total
         record_pnl(100.0)
         record_pnl(-30.0)

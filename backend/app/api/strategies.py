@@ -4,8 +4,9 @@ API routes for strategy management.
 Production-ready FreqTrade strategy API.
 """
 
-from fastapi import APIRouter, HTTPException
 from typing import Optional
+
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/strategies", tags=["strategies"])
@@ -130,9 +131,9 @@ async def validate_strategy(strategy_name: str):
 async def run_backtest(request: BacktestRequest):
     """Run backtest for a strategy."""
     try:
-        from app.freqtrade.strategy_manager import StrategyManager
-        from app.freqtrade.backtester import Backtester, BacktestConfig
+        from app.freqtrade.backtester import BacktestConfig, Backtester
         from app.freqtrade.data_provider import FreqTradeDataProvider
+        from app.freqtrade.strategy_manager import StrategyManager
 
         # Load strategy
         manager = StrategyManager()
@@ -193,8 +194,8 @@ async def run_backtest(request: BacktestRequest):
 async def get_strategy_signal(request: StrategySignalRequest):
     """Get current signal from a strategy."""
     try:
-        from app.freqtrade.strategy_manager import StrategyManager
         from app.freqtrade.data_provider import FreqTradeDataProvider
+        from app.freqtrade.strategy_manager import StrategyManager
 
         # Load strategy
         manager = StrategyManager()

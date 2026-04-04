@@ -11,7 +11,6 @@ from datetime import datetime, timedelta
 from uuid import uuid4
 
 import pytest
-
 from app.models.domain import BookType, OrderSide, TradeIntent
 from app.services.backtesting import (
     BacktestConfig,
@@ -22,7 +21,6 @@ from app.services.backtesting import (
     HistoricalDataProvider,
     backtest_engine,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -226,9 +224,7 @@ class TestHistoricalDataProvider:
             datetime(2024, 1, 1, 2, 0),
         )
         # Far-future timestamp should return last close
-        price = provider.get_price_at_time(
-            "BTC-USD", datetime(2025, 1, 1), data
-        )
+        price = provider.get_price_at_time("BTC-USD", datetime(2025, 1, 1), data)
         assert price == data[-1]["close"]
 
     def test_get_price_at_time_empty_data(self, provider):
@@ -242,9 +238,7 @@ class TestHistoricalDataProvider:
             datetime(2024, 6, 1, 3, 0),
         )
         # Before the first bar
-        price = provider.get_price_at_time(
-            "BTC-USD", datetime(2023, 1, 1), data
-        )
+        price = provider.get_price_at_time("BTC-USD", datetime(2023, 1, 1), data)
         assert price == data[0]["close"]
 
     def test_cache_initialized_empty(self, provider):
@@ -271,7 +265,9 @@ class TestBacktestEngineHelpers:
         )
         assert engine._should_execute_intent(intent, 100_000, default_config) is True
 
-    def test_should_execute_intent_low_confidence_rejected(self, engine, default_config):
+    def test_should_execute_intent_low_confidence_rejected(
+        self, engine, default_config
+    ):
         intent = TradeIntent(
             book_id=default_config.book_id,
             strategy_id=default_config.strategy_id,
@@ -605,7 +601,7 @@ class TestCalculateMetrics:
         eq = [
             (datetime(2024, 1, 1), 100_000),
             (datetime(2024, 1, 2), 105_000),  # peak
-            (datetime(2024, 1, 3), 95_000),   # drawdown of 10_000 from peak
+            (datetime(2024, 1, 3), 95_000),  # drawdown of 10_000 from peak
         ]
         m = engine._calculate_metrics([trade], eq, [0.05, -0.095], cfg)
         assert m.max_drawdown == 10_000
@@ -670,13 +666,23 @@ class TestCalculateMetrics:
             initial_capital=100_000,
         )
         t1 = BacktestTrade(
-            id=uuid4(), timestamp=datetime(2024, 1, 1), instrument="BTC-USD",
-            side=OrderSide.BUY, size=1, entry_price=45_000, pnl=-300,
+            id=uuid4(),
+            timestamp=datetime(2024, 1, 1),
+            instrument="BTC-USD",
+            side=OrderSide.BUY,
+            size=1,
+            entry_price=45_000,
+            pnl=-300,
             holding_period_hours=12,
         )
         t2 = BacktestTrade(
-            id=uuid4(), timestamp=datetime(2024, 1, 2), instrument="BTC-USD",
-            side=OrderSide.BUY, size=1, entry_price=45_000, pnl=-200,
+            id=uuid4(),
+            timestamp=datetime(2024, 1, 2),
+            instrument="BTC-USD",
+            side=OrderSide.BUY,
+            size=1,
+            entry_price=45_000,
+            pnl=-200,
             holding_period_hours=6,
         )
         eq = [
@@ -702,8 +708,13 @@ class TestCalculateMetrics:
             initial_capital=100_000,
         )
         trade = BacktestTrade(
-            id=uuid4(), timestamp=datetime(2024, 1, 1), instrument="BTC-USD",
-            side=OrderSide.BUY, size=1, entry_price=45_000, pnl=100,
+            id=uuid4(),
+            timestamp=datetime(2024, 1, 1),
+            instrument="BTC-USD",
+            side=OrderSide.BUY,
+            size=1,
+            entry_price=45_000,
+            pnl=100,
             holding_period_hours=24,
         )
         eq = [(datetime(2024, 1, 1), 100_000), (datetime(2024, 1, 2), 100_100)]
@@ -720,8 +731,13 @@ class TestCalculateMetrics:
             initial_capital=100_000,
         )
         trade = BacktestTrade(
-            id=uuid4(), timestamp=datetime(2024, 1, 1), instrument="BTC-USD",
-            side=OrderSide.BUY, size=1, entry_price=45_000, pnl=-200,
+            id=uuid4(),
+            timestamp=datetime(2024, 1, 1),
+            instrument="BTC-USD",
+            side=OrderSide.BUY,
+            size=1,
+            entry_price=45_000,
+            pnl=-200,
             holding_period_hours=24,
         )
         eq = [(datetime(2024, 1, 1), 100_000), (datetime(2024, 1, 2), 99_800)]
@@ -886,7 +902,9 @@ class TestRunBacktest:
     def test_run_backtest_with_strategy_config(self, engine, short_config):
         strategy_cls = self._make_strategy_class()
         result = asyncio.get_event_loop().run_until_complete(
-            engine.run_backtest(short_config, strategy_cls, strategy_config={"lookback": 14})
+            engine.run_backtest(
+                short_config, strategy_cls, strategy_config={"lookback": 14}
+            )
         )
         assert result.status == "completed"
 

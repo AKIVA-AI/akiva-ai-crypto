@@ -19,16 +19,18 @@ pytest.importorskip("akiva_policy_runtime")
 # authority_adapter
 # ---------------------------------------------------------------------------
 
+
 class TestAuthorityAdapter:
     """AuthorityAdapter maps agent roles to AuthorityBoundary contracts."""
 
     def test_import(self):
         from app.control_plane.authority_adapter import AuthorityAdapter  # noqa: F401
+
         assert AuthorityAdapter is not None
 
     def test_signal_agent_gets_read_only(self):
+        from akiva_execution_contracts import ApprovalPolicy, PermissionScope
         from app.control_plane.authority_adapter import AuthorityAdapter
-        from akiva_execution_contracts import PermissionScope, ApprovalPolicy
 
         adapter = AuthorityAdapter()
         boundary = adapter.get_boundary("signal-agent-01")
@@ -36,16 +38,16 @@ class TestAuthorityAdapter:
         assert boundary.approval == ApprovalPolicy.AUTO
 
     def test_execution_agent_gets_workspace_write(self):
-        from app.control_plane.authority_adapter import AuthorityAdapter
         from akiva_execution_contracts import PermissionScope
+        from app.control_plane.authority_adapter import AuthorityAdapter
 
         adapter = AuthorityAdapter()
         boundary = adapter.get_boundary("execution-agent-01")
         assert boundary.scope == PermissionScope.WORKSPACE_WRITE
 
     def test_meta_decision_agent_gets_full_access_with_approval(self):
+        from akiva_execution_contracts import ApprovalPolicy, PermissionScope
         from app.control_plane.authority_adapter import AuthorityAdapter
-        from akiva_execution_contracts import PermissionScope, ApprovalPolicy
 
         adapter = AuthorityAdapter()
         boundary = adapter.get_boundary("meta-decision-agent-01")
@@ -53,32 +55,32 @@ class TestAuthorityAdapter:
         assert boundary.approval == ApprovalPolicy.REQUIRE_APPROVAL
 
     def test_risk_agent_gets_workspace_write(self):
-        from app.control_plane.authority_adapter import AuthorityAdapter
         from akiva_execution_contracts import PermissionScope
+        from app.control_plane.authority_adapter import AuthorityAdapter
 
         adapter = AuthorityAdapter()
         boundary = adapter.get_boundary("risk-agent-01")
         assert boundary.scope == PermissionScope.WORKSPACE_WRITE
 
     def test_capital_allocation_agent_gets_workspace_write(self):
-        from app.control_plane.authority_adapter import AuthorityAdapter
         from akiva_execution_contracts import PermissionScope
+        from app.control_plane.authority_adapter import AuthorityAdapter
 
         adapter = AuthorityAdapter()
         boundary = adapter.get_boundary("capital-allocation-agent-01")
         assert boundary.scope == PermissionScope.WORKSPACE_WRITE
 
     def test_freqtrade_signal_agent_gets_read_only(self):
-        from app.control_plane.authority_adapter import AuthorityAdapter
         from akiva_execution_contracts import PermissionScope
+        from app.control_plane.authority_adapter import AuthorityAdapter
 
         adapter = AuthorityAdapter()
         boundary = adapter.get_boundary("freqtrade-signal-agent-01")
         assert boundary.scope == PermissionScope.READ_ONLY
 
     def test_unknown_agent_defaults_to_read_only_deny(self):
+        from akiva_execution_contracts import ApprovalPolicy, PermissionScope
         from app.control_plane.authority_adapter import AuthorityAdapter
-        from akiva_execution_contracts import PermissionScope, ApprovalPolicy
 
         adapter = AuthorityAdapter()
         boundary = adapter.get_boundary("unknown-agent-xyz")
@@ -104,8 +106,8 @@ class TestAuthorityAdapter:
         assert meta["position_limit_usd"] > 0
 
     def test_scope_allows_read_on_workspace_write(self):
-        from app.control_plane.authority_adapter import AuthorityAdapter
         from akiva_execution_contracts import PermissionScope
+        from app.control_plane.authority_adapter import AuthorityAdapter
 
         adapter = AuthorityAdapter()
         boundary = adapter.get_boundary("execution-agent-01")
@@ -115,8 +117,8 @@ class TestAuthorityAdapter:
 
     def test_resolve_by_agent_type(self):
         """get_boundary_for_type resolves by type string, not agent id."""
-        from app.control_plane.authority_adapter import AuthorityAdapter
         from akiva_execution_contracts import PermissionScope
+        from app.control_plane.authority_adapter import AuthorityAdapter
 
         adapter = AuthorityAdapter()
         boundary = adapter.get_boundary_for_type("signal")
@@ -127,17 +129,19 @@ class TestAuthorityAdapter:
 # risk_policy
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 class TestVaRPolicy:
     """VaRPolicy: deny when VaR exceeds limit."""
 
     async def test_import(self):
         from app.control_plane.risk_policy import VaRPolicy  # noqa: F401
+
         assert VaRPolicy is not None
 
     async def test_allow_when_var_within_limit(self):
+        from akiva_policy_runtime import PolicyAction, PolicyContext
         from app.control_plane.risk_policy import VaRPolicy
-        from akiva_policy_runtime import PolicyContext, PolicyAction
 
         policy = VaRPolicy(max_var_usd=50_000)
         ctx = PolicyContext(
@@ -149,8 +153,8 @@ class TestVaRPolicy:
         assert decision.action == PolicyAction.ALLOW
 
     async def test_deny_when_var_exceeds_limit(self):
+        from akiva_policy_runtime import PolicyAction, PolicyContext
         from app.control_plane.risk_policy import VaRPolicy
-        from akiva_policy_runtime import PolicyContext, PolicyAction
 
         policy = VaRPolicy(max_var_usd=50_000)
         ctx = PolicyContext(
@@ -164,8 +168,8 @@ class TestVaRPolicy:
 
     async def test_deny_when_var_exactly_at_limit(self):
         """Boundary: equal to limit → deny (not strictly less)."""
+        from akiva_policy_runtime import PolicyAction, PolicyContext
         from app.control_plane.risk_policy import VaRPolicy
-        from akiva_policy_runtime import PolicyContext, PolicyAction
 
         policy = VaRPolicy(max_var_usd=50_000)
         ctx = PolicyContext(
@@ -178,8 +182,8 @@ class TestVaRPolicy:
 
     async def test_allow_when_no_var_provided(self):
         """Missing VaR key in input → allow (no data = no breach)."""
+        from akiva_policy_runtime import PolicyAction, PolicyContext
         from app.control_plane.risk_policy import VaRPolicy
-        from akiva_policy_runtime import PolicyContext, PolicyAction
 
         policy = VaRPolicy(max_var_usd=50_000)
         ctx = PolicyContext(capability_name="read_market_data", input_data={})
@@ -192,8 +196,8 @@ class TestPositionLimitPolicy:
     """PositionLimitPolicy: deny when proposed size > per-agent limit."""
 
     async def test_allow_within_limit(self):
+        from akiva_policy_runtime import PolicyAction, PolicyContext
         from app.control_plane.risk_policy import PositionLimitPolicy
-        from akiva_policy_runtime import PolicyContext, PolicyAction
 
         policy = PositionLimitPolicy(max_position_usd=100_000)
         ctx = PolicyContext(
@@ -205,8 +209,8 @@ class TestPositionLimitPolicy:
         assert decision.action == PolicyAction.ALLOW
 
     async def test_deny_when_over_limit(self):
+        from akiva_policy_runtime import PolicyAction, PolicyContext
         from app.control_plane.risk_policy import PositionLimitPolicy
-        from akiva_policy_runtime import PolicyContext, PolicyAction
 
         policy = PositionLimitPolicy(max_position_usd=100_000)
         ctx = PolicyContext(
@@ -219,8 +223,8 @@ class TestPositionLimitPolicy:
         assert "position" in decision.reason.lower()
 
     async def test_allow_when_no_size(self):
+        from akiva_policy_runtime import PolicyAction, PolicyContext
         from app.control_plane.risk_policy import PositionLimitPolicy
-        from akiva_policy_runtime import PolicyContext, PolicyAction
 
         policy = PositionLimitPolicy(max_position_usd=100_000)
         ctx = PolicyContext(capability_name="read_positions", input_data=None)
@@ -233,8 +237,8 @@ class TestDailyLossPolicy:
     """DailyLossPolicy: deny when daily_loss_usd exceeds the limit."""
 
     async def test_allow_when_loss_within_limit(self):
+        from akiva_policy_runtime import PolicyAction, PolicyContext
         from app.control_plane.risk_policy import DailyLossPolicy
-        from akiva_policy_runtime import PolicyContext, PolicyAction
 
         policy = DailyLossPolicy(max_daily_loss_usd=10_000)
         ctx = PolicyContext(
@@ -245,8 +249,8 @@ class TestDailyLossPolicy:
         assert decision.action == PolicyAction.ALLOW
 
     async def test_deny_when_loss_exceeds_limit(self):
+        from akiva_policy_runtime import PolicyAction, PolicyContext
         from app.control_plane.risk_policy import DailyLossPolicy
-        from akiva_policy_runtime import PolicyContext, PolicyAction
 
         policy = DailyLossPolicy(max_daily_loss_usd=10_000)
         ctx = PolicyContext(
@@ -258,8 +262,8 @@ class TestDailyLossPolicy:
         assert "daily loss" in decision.reason.lower()
 
     async def test_allow_when_no_loss_key(self):
+        from akiva_policy_runtime import PolicyAction, PolicyContext
         from app.control_plane.risk_policy import DailyLossPolicy
-        from akiva_policy_runtime import PolicyContext, PolicyAction
 
         policy = DailyLossPolicy(max_daily_loss_usd=10_000)
         ctx = PolicyContext(capability_name="read_pnl", input_data={})
@@ -272,41 +276,61 @@ class TestPolicyEngineIntegration:
     """Verify PolicyEngine composed with risk policies works end-to-end."""
 
     async def test_all_pass_gives_allow(self):
-        from app.control_plane.risk_policy import VaRPolicy, PositionLimitPolicy, DailyLossPolicy
-        from akiva_policy_runtime import PolicyEngine, PolicyContext, PolicyAction
+        from akiva_policy_runtime import PolicyAction, PolicyContext, PolicyEngine
+        from app.control_plane.risk_policy import (
+            DailyLossPolicy,
+            PositionLimitPolicy,
+            VaRPolicy,
+        )
 
-        engine = PolicyEngine([
-            VaRPolicy(max_var_usd=50_000),
-            PositionLimitPolicy(max_position_usd=100_000),
-            DailyLossPolicy(max_daily_loss_usd=10_000),
-        ])
+        engine = PolicyEngine(
+            [
+                VaRPolicy(max_var_usd=50_000),
+                PositionLimitPolicy(max_position_usd=100_000),
+                DailyLossPolicy(max_daily_loss_usd=10_000),
+            ]
+        )
         ctx = PolicyContext(
             capability_name="execute_order",
-            input_data={"var_usd": 20_000, "order_size_usd": 30_000, "daily_loss_usd": 2_000},
+            input_data={
+                "var_usd": 20_000,
+                "order_size_usd": 30_000,
+                "daily_loss_usd": 2_000,
+            },
         )
         result = await engine.evaluate(ctx)
         assert result.is_allowed()
 
     async def test_one_fail_gives_deny(self):
-        from app.control_plane.risk_policy import VaRPolicy, PositionLimitPolicy, DailyLossPolicy
-        from akiva_policy_runtime import PolicyEngine, PolicyContext
+        from akiva_policy_runtime import PolicyContext, PolicyEngine
+        from app.control_plane.risk_policy import (
+            DailyLossPolicy,
+            PositionLimitPolicy,
+            VaRPolicy,
+        )
 
-        engine = PolicyEngine([
-            VaRPolicy(max_var_usd=50_000),
-            PositionLimitPolicy(max_position_usd=100_000),
-            DailyLossPolicy(max_daily_loss_usd=10_000),
-        ])
+        engine = PolicyEngine(
+            [
+                VaRPolicy(max_var_usd=50_000),
+                PositionLimitPolicy(max_position_usd=100_000),
+                DailyLossPolicy(max_daily_loss_usd=10_000),
+            ]
+        )
         ctx = PolicyContext(
             capability_name="execute_order",
-            input_data={"var_usd": 80_000, "order_size_usd": 30_000, "daily_loss_usd": 2_000},
+            input_data={
+                "var_usd": 80_000,
+                "order_size_usd": 30_000,
+                "daily_loss_usd": 2_000,
+            },
         )
         result = await engine.evaluate(ctx)
         assert result.is_denied()
 
     async def test_build_default_engine_factory(self):
         """build_risk_engine() returns a configured PolicyEngine."""
-        from app.control_plane.risk_policy import build_risk_engine
         from akiva_policy_runtime import PolicyEngine
+        from app.control_plane.risk_policy import build_risk_engine
 
         engine = build_risk_engine()
         assert isinstance(engine, PolicyEngine)
@@ -316,16 +340,18 @@ class TestPolicyEngineIntegration:
 # evidence_adapter
 # ---------------------------------------------------------------------------
 
+
 class TestEvidenceAdapter:
     """EvidenceAdapter converts trading execution results to EvidenceRecord."""
 
     def test_import(self):
         from app.control_plane.evidence_adapter import EvidenceAdapter  # noqa: F401
+
         assert EvidenceAdapter is not None
 
     def test_successful_fill_creates_success_record(self):
-        from app.control_plane.evidence_adapter import EvidenceAdapter
         from akiva_execution_contracts import EvidenceRecord
+        from app.control_plane.evidence_adapter import EvidenceAdapter
 
         adapter = EvidenceAdapter()
         fill = {
@@ -429,13 +455,16 @@ class TestEvidenceAdapter:
 # control_plane module guard (ImportError path)
 # ---------------------------------------------------------------------------
 
+
 class TestImportGuard:
     """Verify the __init__ guard works when packages are missing."""
 
     def test_module_has_has_control_plane_flag(self):
         import app.control_plane as cp
+
         assert hasattr(cp, "_HAS_CONTROL_PLANE")
 
     def test_flag_is_true_when_packages_present(self):
         import app.control_plane as cp
+
         assert cp._HAS_CONTROL_PLANE is True

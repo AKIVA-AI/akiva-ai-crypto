@@ -10,8 +10,9 @@ Provides optimization utilities for:
 """
 
 import logging
-from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
+
 import numpy as np
 
 from .cuda_engine import GPUEngine, get_gpu_engine

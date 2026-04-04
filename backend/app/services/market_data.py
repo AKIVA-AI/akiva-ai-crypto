@@ -2,11 +2,12 @@
 Market Data Service - Unified market data from multiple venues.
 """
 
-import structlog
-from typing import Dict, List, Optional, Callable, Any
-from datetime import datetime, timezone
 import asyncio
 import json
+from datetime import datetime, timezone
+from typing import Any, Callable, Dict, List, Optional
+
+import structlog
 
 from app.config import settings
 from app.database import get_supabase

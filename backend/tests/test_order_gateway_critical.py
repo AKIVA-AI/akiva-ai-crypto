@@ -7,17 +7,18 @@ These tests verify that:
 3. Audit trails are created
 4. Transaction integrity is maintained
 """
-import pytest
+
+from decimal import Decimal
 from unittest.mock import AsyncMock
 from uuid import uuid4
-from decimal import Decimal
 
+import pytest
 from app.services.order_gateway import (
     OrderGateway,
     OrderRequest,
     OrderSide,
-    OrderType,
     OrderStatus,
+    OrderType,
 )
 
 
@@ -59,12 +60,14 @@ class TestOrderGatewayCritical:
         )
 
     @pytest.mark.asyncio
-    async def test_kill_switch_blocks_all_orders(self, gateway, sample_order_request, monkeypatch):
+    async def test_kill_switch_blocks_all_orders(
+        self, gateway, sample_order_request, monkeypatch
+    ):
         """
         CRITICAL: Kill switch must block ALL orders without exception.
         """
         # Mock kill switch as active
-        monkeypatch.setattr(gateway, '_check_kill_switch', AsyncMock(return_value=True))
+        monkeypatch.setattr(gateway, "_check_kill_switch", AsyncMock(return_value=True))
 
         # Attempt to submit order
         result = await gateway.submit_order(sample_order_request)
@@ -72,16 +75,22 @@ class TestOrderGatewayCritical:
         # Verify order was rejected
         assert result.success is False
         assert result.status == OrderStatus.REJECTED
-        assert 'kill switch' in result.error.lower()
+        assert "kill switch" in result.error.lower()
 
     @pytest.mark.asyncio
-    async def test_inactive_book_blocks_orders(self, gateway, sample_order_request, monkeypatch):
+    async def test_inactive_book_blocks_orders(
+        self, gateway, sample_order_request, monkeypatch
+    ):
         """
         CRITICAL: Orders to inactive/frozen books must be blocked.
         """
         # Mock kill switch as inactive, book as inactive
-        monkeypatch.setattr(gateway, '_check_kill_switch', AsyncMock(return_value=False))
-        monkeypatch.setattr(gateway, '_check_book_active', AsyncMock(return_value=False))
+        monkeypatch.setattr(
+            gateway, "_check_kill_switch", AsyncMock(return_value=False)
+        )
+        monkeypatch.setattr(
+            gateway, "_check_book_active", AsyncMock(return_value=False)
+        )
 
         # Attempt to submit order
         result = await gateway.submit_order(sample_order_request)
@@ -89,20 +98,24 @@ class TestOrderGatewayCritical:
         # Verify order was rejected
         assert result.success is False
         assert result.status == OrderStatus.REJECTED
-        assert 'not active' in result.error.lower() or 'frozen' in result.error.lower()
+        assert "not active" in result.error.lower() or "frozen" in result.error.lower()
 
     @pytest.mark.asyncio
-    async def test_order_creates_audit_trail(self, gateway, sample_order_request, monkeypatch):
+    async def test_order_creates_audit_trail(
+        self, gateway, sample_order_request, monkeypatch
+    ):
         """
         CRITICAL: Every order must create an audit trail.
         """
         mock_audit = AsyncMock()
 
         # Mock dependencies
-        monkeypatch.setattr(gateway, '_check_kill_switch', AsyncMock(return_value=False))
-        monkeypatch.setattr(gateway, '_check_book_active', AsyncMock(return_value=True))
-        monkeypatch.setattr(gateway, '_write_order', AsyncMock(return_value=True))
-        monkeypatch.setattr(gateway, '_log_audit_event', mock_audit)
+        monkeypatch.setattr(
+            gateway, "_check_kill_switch", AsyncMock(return_value=False)
+        )
+        monkeypatch.setattr(gateway, "_check_book_active", AsyncMock(return_value=True))
+        monkeypatch.setattr(gateway, "_write_order", AsyncMock(return_value=True))
+        monkeypatch.setattr(gateway, "_log_audit_event", mock_audit)
 
         # Submit order
         result = await gateway.submit_order(sample_order_request)
@@ -128,7 +141,7 @@ class TestOrderGatewayCritical:
             )
 
         # Verify the error is about size
-        assert 'size' in str(exc_info.value).lower()
+        assert "size" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
     async def test_market_order_no_price_required(self, gateway, monkeypatch):
@@ -145,14 +158,15 @@ class TestOrderGatewayCritical:
         )
 
         # Mock dependencies
-        monkeypatch.setattr(gateway, '_check_kill_switch', AsyncMock(return_value=False))
-        monkeypatch.setattr(gateway, '_check_book_active', AsyncMock(return_value=True))
-        monkeypatch.setattr(gateway, '_write_order', AsyncMock(return_value=True))
-        monkeypatch.setattr(gateway, '_log_audit_event', AsyncMock())
+        monkeypatch.setattr(
+            gateway, "_check_kill_switch", AsyncMock(return_value=False)
+        )
+        monkeypatch.setattr(gateway, "_check_book_active", AsyncMock(return_value=True))
+        monkeypatch.setattr(gateway, "_write_order", AsyncMock(return_value=True))
+        monkeypatch.setattr(gateway, "_log_audit_event", AsyncMock())
 
         # Submit market order
         result = await gateway.submit_order(market_order)
 
         # Should succeed
         assert result.success is True
-

@@ -2,12 +2,13 @@
 Portfolio Analytics Service - Performance metrics, risk attribution, and exposure analysis.
 """
 
-import structlog
-from typing import Dict, List, Optional
+import math
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from typing import Dict, List, Optional
 from uuid import UUID
-import math
+
+import structlog
 
 from app.database import get_supabase
 

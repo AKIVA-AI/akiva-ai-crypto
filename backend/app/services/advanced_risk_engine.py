@@ -10,15 +10,16 @@ Implements sophisticated risk management including:
 - Risk-adjusted performance metrics
 """
 
-import numpy as np
-import pandas as pd
-from scipy import stats
-from scipy.optimize import minimize
-from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-import structlog
+from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
+
+import numpy as np
+import pandas as pd
+import structlog
+from scipy import stats
+from scipy.optimize import minimize
 
 from app.database import get_supabase
 

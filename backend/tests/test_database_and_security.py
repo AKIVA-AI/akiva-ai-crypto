@@ -2,10 +2,9 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from fastapi import HTTPException
-
 from app import database
 from app.core import security
+from fastapi import HTTPException
 
 
 class QueryStub:
@@ -56,7 +55,9 @@ def reset_globals():
 
 def test_get_supabase_creates_and_caches_client(monkeypatch):
     created = object()
-    monkeypatch.setattr(database.settings, "supabase_url", "https://example.supabase.co")
+    monkeypatch.setattr(
+        database.settings, "supabase_url", "https://example.supabase.co"
+    )
     monkeypatch.setattr(database.settings, "supabase_service_role_key", "service-key")
     monkeypatch.setattr(database, "create_client", lambda url, key: (url, key, created))
 
@@ -96,7 +97,13 @@ async def test_activate_and_deactivate_kill_switch(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_activate_kill_switch_returns_false_without_settings(monkeypatch):
-    monkeypatch.setattr(database, "get_supabase", lambda: SupabaseStub({"global_settings": QueryStub([]), "alerts": QueryStub([])}))
+    monkeypatch.setattr(
+        database,
+        "get_supabase",
+        lambda: SupabaseStub(
+            {"global_settings": QueryStub([]), "alerts": QueryStub([])}
+        ),
+    )
     monkeypatch.setattr(database, "_get_global_settings_id", lambda: None)
 
     assert await database.activate_kill_switch("missing") is False
@@ -126,7 +133,9 @@ async def test_kill_switch_status_helpers(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_kill_switch_helpers_fail_safe(monkeypatch):
-    monkeypatch.setattr(database, "get_supabase", MagicMock(side_effect=RuntimeError("db down")))
+    monkeypatch.setattr(
+        database, "get_supabase", MagicMock(side_effect=RuntimeError("db down"))
+    )
 
     assert await database.is_kill_switch_active() is True
     status = await database.get_kill_switch_status()
@@ -192,7 +201,9 @@ async def test_verify_token_and_get_current_user(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_verify_token_failure_and_role_fallback(monkeypatch):
-    bad_stub = SimpleNamespace(auth=SimpleNamespace(get_user=lambda token: SimpleNamespace(user=None)))
+    bad_stub = SimpleNamespace(
+        auth=SimpleNamespace(get_user=lambda token: SimpleNamespace(user=None))
+    )
     monkeypatch.setattr(security, "get_supabase_client", lambda: bad_stub)
 
     with pytest.raises(HTTPException) as exc:
@@ -202,11 +213,17 @@ async def test_verify_token_failure_and_role_fallback(monkeypatch):
     monkeypatch.setattr(
         security,
         "verify_token",
-        AsyncMock(return_value={"id": "u1", "email": "u@example.com", "role": "trader"}),
+        AsyncMock(
+            return_value={"id": "u1", "email": "u@example.com", "role": "trader"}
+        ),
     )
     role_error_stub = SimpleNamespace(
         table=lambda _name: MagicMock(
-            select=MagicMock(return_value=MagicMock(eq=MagicMock(side_effect=RuntimeError("no table"))))
+            select=MagicMock(
+                return_value=MagicMock(
+                    eq=MagicMock(side_effect=RuntimeError("no table"))
+                )
+            )
         )
     )
     monkeypatch.setattr(security, "get_supabase_client", lambda: role_error_stub)

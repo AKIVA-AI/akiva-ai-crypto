@@ -11,14 +11,14 @@ Enterprise-grade audit logging for:
 Supports multiple backends: PostgreSQL, Elasticsearch, S3
 """
 
-import logging
-import json
 import asyncio
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, UTC
-from enum import Enum
+import json
+import logging
 import uuid
+from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime
+from enum import Enum
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 

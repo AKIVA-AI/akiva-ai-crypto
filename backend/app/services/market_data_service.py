@@ -13,16 +13,17 @@ Production-grade market data infrastructure for institutional trading:
 """
 
 import asyncio
-import aiohttp
-import websockets
 import json
-import structlog
-from typing import Dict, List, Optional, Any, Callable, Tuple
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from collections import defaultdict
-import numpy as np
+from typing import Any, Callable, Dict, List, Optional, Tuple
 from uuid import uuid4
+
+import aiohttp
+import numpy as np
+import structlog
+import websockets
 
 logger = structlog.get_logger()
 

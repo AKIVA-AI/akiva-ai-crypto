@@ -20,16 +20,17 @@ Integration Benefits:
 - Configuration versioning and migration
 """
 
-import logging
+import base64
 import json
+import logging
 import os
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Dict, List, Any, Callable
-from datetime import datetime, UTC
+from typing import Any, Callable, Dict, List
+
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-import base64
 
 # FreqTrade configuration imports (optional — CI uses requirements-ci.txt which excludes freqtrade)
 try:
@@ -44,6 +45,7 @@ except (ImportError, ModuleNotFoundError):
         """Fallback when freqtrade is not installed."""
 
         pass
+
 
 # Local imports
 from app.core.config import settings

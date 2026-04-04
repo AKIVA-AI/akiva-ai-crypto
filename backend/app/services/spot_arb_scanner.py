@@ -9,16 +9,16 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
-from uuid import uuid4, uuid5, NAMESPACE_URL
+from uuid import NAMESPACE_URL, uuid4, uuid5
 
 import structlog
 
 from app.config import settings
 from app.database import get_supabase
 from app.models.domain import Book, OrderSide, TradeIntent
-from app.models.opportunity import ExecutionLeg, ExecutionPlan, ExecutionMode
+from app.models.opportunity import ExecutionLeg, ExecutionMode, ExecutionPlan
 from app.services.spot_arb_edge_model import SpotArbEdgeModel
-from app.services.spot_quote_service import spot_quote_service, SpotQuote
+from app.services.spot_quote_service import SpotQuote, spot_quote_service
 
 logger = structlog.get_logger()
 

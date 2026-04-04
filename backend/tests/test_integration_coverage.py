@@ -7,30 +7,30 @@ Targets:
   - enhanced_signal_engine.py (29% -> 75%+)
 """
 
+from datetime import datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
+from uuid import UUID, uuid4
+
 import numpy as np
 import pandas as pd
 import pytest
-from datetime import datetime, timedelta
-from unittest.mock import patch, AsyncMock, MagicMock, PropertyMock
-from uuid import uuid4, UUID
-
-from app.services.technical_analysis import TechnicalAnalysisEngine, TASignal, PriceData
 from app.services.capital_allocator import (
-    CapitalAllocatorService,
     AllocationConfig,
     AllocationResult,
+    CapitalAllocatorService,
 )
-from app.services.regime_detection_service import RegimeState
 from app.services.enhanced_signal_engine import (
-    EnhancedSignalEngine,
     EnhancedSignal,
+    EnhancedSignalEngine,
     SignalSource,
 )
-
+from app.services.regime_detection_service import RegimeState
+from app.services.technical_analysis import PriceData, TASignal, TechnicalAnalysisEngine
 
 # ---------------------------------------------------------------------------
 # Fixtures & helpers
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def ta():
@@ -113,6 +113,7 @@ def _regime(**overrides):
 # TechnicalAnalysisEngine — RSI
 # ===================================================================
 
+
 class TestRSI:
     """Tests for calculate_rsi."""
 
@@ -191,6 +192,7 @@ class TestRSI:
 # TechnicalAnalysisEngine — MACD
 # ===================================================================
 
+
 class TestMACD:
     """Tests for calculate_macd.
 
@@ -204,7 +206,9 @@ class TestMACD:
     def test_macd_insufficient_data(self, ta):
         """Fewer than slow_period + signal_period → ({}, None)."""
         prices = np.random.normal(100, 1, 30)
-        result, signal = ta.calculate_macd(prices, fast_period=12, slow_period=26, signal_period=9)
+        result, signal = ta.calculate_macd(
+            prices, fast_period=12, slow_period=26, signal_period=9
+        )
         assert result == {}
         assert signal is None
 
@@ -274,6 +278,7 @@ class TestMACD:
 # TechnicalAnalysisEngine — Bollinger Bands
 # ===================================================================
 
+
 class TestBollingerBands:
     """Tests for calculate_bollinger_bands."""
 
@@ -334,6 +339,7 @@ class TestBollingerBands:
 # TechnicalAnalysisEngine — ATR
 # ===================================================================
 
+
 class TestATR:
     """Tests for calculate_atr."""
 
@@ -376,6 +382,7 @@ class TestATR:
 # TechnicalAnalysisEngine — VWAP
 # ===================================================================
 
+
 class TestVWAP:
     """Tests for calculate_vwap."""
 
@@ -405,6 +412,7 @@ class TestVWAP:
 # ===================================================================
 # TechnicalAnalysisEngine — Support/Resistance
 # ===================================================================
+
 
 class TestSupportResistance:
     """Tests for detect_support_resistance."""
@@ -447,7 +455,9 @@ class TestSupportResistance:
         # Add two nearby peaks
         high[30] = 51000.0
         high[35] = 51010.0  # Within 2% of 51000
-        result = ta.detect_support_resistance(high, low, close, lookback=5, tolerance=0.02)
+        result = ta.detect_support_resistance(
+            high, low, close, lookback=5, tolerance=0.02
+        )
         # The two nearby peaks should cluster into one resistance level
         resistances = result["resistances"]
         # If both are found, they should be clustered
@@ -458,6 +468,7 @@ class TestSupportResistance:
 # ===================================================================
 # TechnicalAnalysisEngine — Moving Averages
 # ===================================================================
+
 
 class TestMovingAverages:
     """Tests for EMA and SMA calculations."""
@@ -509,6 +520,7 @@ class TestMovingAverages:
 # TechnicalAnalysisEngine — Composite Signal
 # ===================================================================
 
+
 class TestCompositeSignal:
     """Tests for generate_composite_signal."""
 
@@ -534,10 +546,14 @@ class TestCompositeSignal:
     def test_composite_with_ohlcv_includes_volatility(self, ta, volatile_ohlcv):
         """When high/low are provided, ATR volatility should be reported."""
         high, low, close, volume = volatile_ohlcv
-        result = ta.generate_composite_signal("BTC-USD", close, high=high, low=low, volume=volume)
+        result = ta.generate_composite_signal(
+            "BTC-USD", close, high=high, low=low, volume=volume
+        )
         assert result["volatility"] in ("high", "low", "normal")
 
-    def test_composite_without_ohlcv_reports_unknown_volatility(self, ta, uptrend_prices):
+    def test_composite_without_ohlcv_reports_unknown_volatility(
+        self, ta, uptrend_prices
+    ):
         """Without high/low, volatility should be 'unknown'."""
         result = ta.generate_composite_signal("BTC-USD", uptrend_prices)
         assert result["volatility"] == "unknown"
@@ -556,6 +572,7 @@ class TestCompositeSignal:
 # ===================================================================
 # TechnicalAnalysisEngine — Private helpers
 # ===================================================================
+
 
 class TestPrivateHelpers:
     """Tests for _cluster_levels."""
@@ -581,6 +598,7 @@ class TestPrivateHelpers:
 # ===================================================================
 # CapitalAllocatorService — compute_allocations coverage
 # ===================================================================
+
 
 class TestCapitalAllocatorCompute:
     """Tests for CapitalAllocatorService.compute_allocations static method."""
@@ -698,14 +716,20 @@ class TestCapitalAllocatorCompute:
         risk = {"s1": {"correlation_cluster": None}}
 
         alloc_neutral = CapitalAllocatorService.compute_allocations(
-            strategies=strategies, performance=perf, risk=risk,
+            strategies=strategies,
+            performance=perf,
+            risk=risk,
             regime=_regime(risk_bias="neutral"),
-            total_capital=100000, config=config,
+            total_capital=100000,
+            config=config,
         )
         alloc_risk_off = CapitalAllocatorService.compute_allocations(
-            strategies=strategies, performance=perf, risk=risk,
+            strategies=strategies,
+            performance=perf,
+            risk=risk,
             regime=_regime(risk_bias="risk_off"),
-            total_capital=100000, config=config,
+            total_capital=100000,
+            config=config,
         )
 
         # Risk-off should produce less allocated capital (same weight but lower score)
@@ -723,8 +747,12 @@ class TestCapitalAllocatorCompute:
         regime = _regime()
 
         allocations = CapitalAllocatorService.compute_allocations(
-            strategies=strategies, performance=perf, risk=risk,
-            regime=regime, total_capital=100000, config=config,
+            strategies=strategies,
+            performance=perf,
+            risk=risk,
+            regime=regime,
+            total_capital=100000,
+            config=config,
         )
 
         assert allocations[0].allocation_pct <= 0.4
@@ -744,8 +772,12 @@ class TestCapitalAllocatorCompute:
         regime = _regime()
 
         allocations = CapitalAllocatorService.compute_allocations(
-            strategies=strategies, performance=perf, risk=risk,
-            regime=regime, total_capital=100000, config=config,
+            strategies=strategies,
+            performance=perf,
+            risk=risk,
+            regime=regime,
+            total_capital=100000,
+            config=config,
         )
 
         alloc_map = {a.strategy_id: a for a in allocations}
@@ -761,17 +793,31 @@ class TestCapitalAllocatorCompute:
             {"id": "s2", "strategy_type": "basis"},
         ]
         perf = {s["id"]: {"sharpe": 1.0, "max_drawdown": 0.01} for s in strategies}
-        risk_with = {"s1": {"correlation_cluster": "directional"}, "s2": {"correlation_cluster": None}}
-        risk_without = {"s1": {"correlation_cluster": None}, "s2": {"correlation_cluster": None}}
+        risk_with = {
+            "s1": {"correlation_cluster": "directional"},
+            "s2": {"correlation_cluster": None},
+        }
+        risk_without = {
+            "s1": {"correlation_cluster": None},
+            "s2": {"correlation_cluster": None},
+        }
         regime = _regime()
 
         alloc_with = CapitalAllocatorService.compute_allocations(
-            strategies=strategies, performance=perf, risk=risk_with,
-            regime=regime, total_capital=100000, config=config,
+            strategies=strategies,
+            performance=perf,
+            risk=risk_with,
+            regime=regime,
+            total_capital=100000,
+            config=config,
         )
         alloc_without = CapitalAllocatorService.compute_allocations(
-            strategies=strategies, performance=perf, risk=risk_without,
-            regime=regime, total_capital=100000, config=config,
+            strategies=strategies,
+            performance=perf,
+            risk=risk_without,
+            regime=regime,
+            total_capital=100000,
+            config=config,
         )
 
         map_with = {a.strategy_id: a for a in alloc_with}
@@ -791,8 +837,12 @@ class TestCapitalAllocatorCompute:
         regime = _regime()
 
         allocations = CapitalAllocatorService.compute_allocations(
-            strategies=strategies, performance=perf, risk=risk,
-            regime=regime, total_capital=100000, config=config,
+            strategies=strategies,
+            performance=perf,
+            risk=risk,
+            regime=regime,
+            total_capital=100000,
+            config=config,
         )
 
         assert allocations[0].enabled is False
@@ -809,14 +859,20 @@ class TestCapitalAllocatorCompute:
         risk = {s["id"]: {"correlation_cluster": None} for s in strategies}
 
         alloc_trending = CapitalAllocatorService.compute_allocations(
-            strategies=strategies, performance=perf, risk=risk,
+            strategies=strategies,
+            performance=perf,
+            risk=risk,
             regime=_regime(direction="trending_up"),
-            total_capital=100000, config=config,
+            total_capital=100000,
+            config=config,
         )
         alloc_range = CapitalAllocatorService.compute_allocations(
-            strategies=strategies, performance=perf, risk=risk,
+            strategies=strategies,
+            performance=perf,
+            risk=risk,
             regime=_regime(direction="range_bound"),
-            total_capital=100000, config=config,
+            total_capital=100000,
+            config=config,
         )
 
         map_t = {a.strategy_id: a for a in alloc_trending}
@@ -828,6 +884,7 @@ class TestCapitalAllocatorCompute:
 # ===================================================================
 # EnhancedSignalEngine
 # ===================================================================
+
 
 class TestEnhancedSignalEngine:
     """Tests for EnhancedSignalEngine."""
@@ -846,14 +903,16 @@ class TestEnhancedSignalEngine:
         low = close - np.abs(np.random.normal(0, 2, n))
         volume = np.random.uniform(1e6, 5e6, n)
         timestamps = pd.date_range(end=datetime.utcnow(), periods=n, freq="1h")
-        return pd.DataFrame({
-            "recorded_at": timestamps,
-            "open": np.roll(close, 1),
-            "high": high,
-            "low": low,
-            "close": close,
-            "volume": volume,
-        })
+        return pd.DataFrame(
+            {
+                "recorded_at": timestamps,
+                "open": np.roll(close, 1),
+                "high": high,
+                "low": low,
+                "close": close,
+                "volume": volume,
+            }
+        )
 
     def test_generate_synthetic_ohlcv_btc(self, engine):
         """Synthetic data for BTC-USD should center around 65000."""
@@ -875,7 +934,9 @@ class TestEnhancedSignalEngine:
     @pytest.mark.asyncio
     async def test_generate_technical_signals_returns_list(self, engine, mock_df):
         """Should return a list of EnhancedSignal."""
-        with patch.object(engine, "fetch_market_data", new_callable=AsyncMock) as mock_fetch:
+        with patch.object(
+            engine, "fetch_market_data", new_callable=AsyncMock
+        ) as mock_fetch:
             mock_fetch.return_value = mock_df
             signals = await engine.generate_technical_signals("BTC-USD")
             assert isinstance(signals, list)
@@ -883,7 +944,9 @@ class TestEnhancedSignalEngine:
     @pytest.mark.asyncio
     async def test_generate_technical_signals_empty_on_no_data(self, engine):
         """Should return empty list when no market data."""
-        with patch.object(engine, "fetch_market_data", new_callable=AsyncMock) as mock_fetch:
+        with patch.object(
+            engine, "fetch_market_data", new_callable=AsyncMock
+        ) as mock_fetch:
             mock_fetch.return_value = None
             signals = await engine.generate_technical_signals("BTC-USD")
             assert signals == []
@@ -891,13 +954,17 @@ class TestEnhancedSignalEngine:
     @pytest.mark.asyncio
     async def test_generate_technical_signals_empty_on_short_data(self, engine):
         """Should return empty list when data has < 30 rows."""
-        short_df = pd.DataFrame({
-            "close": [100.0] * 10,
-            "high": [101.0] * 10,
-            "low": [99.0] * 10,
-            "volume": [1000.0] * 10,
-        })
-        with patch.object(engine, "fetch_market_data", new_callable=AsyncMock) as mock_fetch:
+        short_df = pd.DataFrame(
+            {
+                "close": [100.0] * 10,
+                "high": [101.0] * 10,
+                "low": [99.0] * 10,
+                "volume": [1000.0] * 10,
+            }
+        )
+        with patch.object(
+            engine, "fetch_market_data", new_callable=AsyncMock
+        ) as mock_fetch:
             mock_fetch.return_value = short_df
             signals = await engine.generate_technical_signals("BTC-USD")
             assert signals == []
@@ -905,7 +972,9 @@ class TestEnhancedSignalEngine:
     @pytest.mark.asyncio
     async def test_signal_cooldown_prevents_duplicate(self, engine, mock_df):
         """Second call within cooldown should return empty."""
-        with patch.object(engine, "fetch_market_data", new_callable=AsyncMock) as mock_fetch:
+        with patch.object(
+            engine, "fetch_market_data", new_callable=AsyncMock
+        ) as mock_fetch:
             mock_fetch.return_value = mock_df
             signals1 = await engine.generate_technical_signals("BTC-USD")
             if signals1:
@@ -916,7 +985,9 @@ class TestEnhancedSignalEngine:
     @pytest.mark.asyncio
     async def test_signal_has_stop_loss_and_take_profit(self, engine, mock_df):
         """Generated signal should include stop_loss and take_profit."""
-        with patch.object(engine, "fetch_market_data", new_callable=AsyncMock) as mock_fetch:
+        with patch.object(
+            engine, "fetch_market_data", new_callable=AsyncMock
+        ) as mock_fetch:
             mock_fetch.return_value = mock_df
             signals = await engine.generate_technical_signals("BTC-USD")
             if signals:
@@ -928,7 +999,9 @@ class TestEnhancedSignalEngine:
     @pytest.mark.asyncio
     async def test_signal_direction_is_buy_or_sell(self, engine, mock_df):
         """Signal direction should be 'buy' or 'sell', not 'bullish'/'bearish'."""
-        with patch.object(engine, "fetch_market_data", new_callable=AsyncMock) as mock_fetch:
+        with patch.object(
+            engine, "fetch_market_data", new_callable=AsyncMock
+        ) as mock_fetch:
             mock_fetch.return_value = mock_df
             signals = await engine.generate_technical_signals("BTC-USD")
             for sig in signals:
@@ -954,8 +1027,14 @@ class TestEnhancedSignalEngine:
     @pytest.mark.asyncio
     async def test_composite_signal_no_tech_or_external(self, engine):
         """No signals from any source should return None."""
-        with patch.object(engine, "generate_technical_signals", new_callable=AsyncMock) as mock_tech, \
-             patch.object(engine, "fetch_external_signals", new_callable=AsyncMock) as mock_ext:
+        with (
+            patch.object(
+                engine, "generate_technical_signals", new_callable=AsyncMock
+            ) as mock_tech,
+            patch.object(
+                engine, "fetch_external_signals", new_callable=AsyncMock
+            ) as mock_ext,
+        ):
             mock_tech.return_value = []
             mock_ext.return_value = []
             result = await engine.generate_composite_signal("BTC-USD")
@@ -973,9 +1052,17 @@ class TestEnhancedSignalEngine:
             source=SignalSource.TECHNICAL,
             entry_price=50000.0,
         )
-        with patch.object(engine, "generate_technical_signals", new_callable=AsyncMock) as mock_tech, \
-             patch.object(engine, "fetch_external_signals", new_callable=AsyncMock) as mock_ext, \
-             patch.object(engine, "fetch_market_data", new_callable=AsyncMock) as mock_fetch:
+        with (
+            patch.object(
+                engine, "generate_technical_signals", new_callable=AsyncMock
+            ) as mock_tech,
+            patch.object(
+                engine, "fetch_external_signals", new_callable=AsyncMock
+            ) as mock_ext,
+            patch.object(
+                engine, "fetch_market_data", new_callable=AsyncMock
+            ) as mock_fetch,
+        ):
             mock_tech.return_value = [buy_signal]
             mock_ext.return_value = []
             mock_fetch.return_value = mock_df
@@ -1016,6 +1103,7 @@ class TestEnhancedSignalEngine:
 # TASignal dataclass
 # ===================================================================
 
+
 class TestTASignal:
     """Tests for TASignal dataclass."""
 
@@ -1033,7 +1121,19 @@ class TestTASignal:
 
     def test_metadata_not_shared_across_instances(self):
         """Each TASignal should get its own metadata dict."""
-        s1 = TASignal(indicator="RSI", instrument="BTC", direction="bullish", strength=0.5, value=25)
-        s2 = TASignal(indicator="MACD", instrument="ETH", direction="bearish", strength=0.3, value=-1)
+        s1 = TASignal(
+            indicator="RSI",
+            instrument="BTC",
+            direction="bullish",
+            strength=0.5,
+            value=25,
+        )
+        s2 = TASignal(
+            indicator="MACD",
+            instrument="ETH",
+            direction="bearish",
+            strength=0.3,
+            value=-1,
+        )
         s1.metadata["key"] = "value"
         assert "key" not in s2.metadata

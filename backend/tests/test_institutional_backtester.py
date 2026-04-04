@@ -1,11 +1,11 @@
+from datetime import datetime, timedelta
+
 import numpy as np
 import pandas as pd
 import pytest
-from datetime import datetime, timedelta
-
 from app.services.institutional_backtester import (
-    InstitutionalBacktester,
     BacktestConfig,
+    InstitutionalBacktester,
 )
 
 

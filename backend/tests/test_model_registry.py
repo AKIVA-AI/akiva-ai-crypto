@@ -3,7 +3,6 @@ Tests for ML Model Registry — version tracking, metadata, and lifecycle (D13).
 """
 
 import pytest
-
 from app.services.model_registry import ModelRegistry, ModelStatus, ModelVersion
 
 

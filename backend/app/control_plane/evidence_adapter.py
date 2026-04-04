@@ -16,6 +16,7 @@ from typing import Any
 
 try:
     from akiva_execution_contracts import EvidenceRecord
+
     _HAS_CONTRACTS = True
 except ImportError as _e:  # pragma: no cover
     raise ImportError(
@@ -149,7 +150,9 @@ class EvidenceAdapter:
             outcome="denied",
             input_summary=input_summary,
             output_summary={"halted": True, "global_state": global_state},
-            error_detail=f"Trading halted: {', '.join(reason_codes)}" if reason_codes else None,
+            error_detail=f"Trading halted: {', '.join(reason_codes)}"
+            if reason_codes
+            else None,
             authority_evidence=authority_evidence,
             metadata={"raw_decision": decision},
         )

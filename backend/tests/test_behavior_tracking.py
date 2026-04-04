@@ -13,7 +13,12 @@ class TestBehaviorChangeRecording:
     def test_record_change(self):
         tracker = AgentBehaviorTracker()
         change = tracker.record_change(
-            "risk-agent", "config", "max_leverage", "3.0", "2.0", reason="risk reduction"
+            "risk-agent",
+            "config",
+            "max_leverage",
+            "3.0",
+            "2.0",
+            reason="risk reduction",
         )
         assert change.agent_id == "risk-agent"
         assert change.change_type == "config"

@@ -1,6 +1,5 @@
 import pytest
-
-from app.services.basis_quote_service import BasisQuoteService, BasisQuoteConfig
+from app.services.basis_quote_service import BasisQuoteConfig, BasisQuoteService
 from app.services.market_data import market_data_service
 
 

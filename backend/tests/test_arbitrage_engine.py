@@ -1,8 +1,8 @@
-import pytest
 from uuid import uuid4
 
+import pytest
 from app.models.domain import Order, OrderSide, OrderStatus, TradeIntent
-from app.models.opportunity import ExecutionLeg, ExecutionPlan, ExecutionMode
+from app.models.opportunity import ExecutionLeg, ExecutionMode, ExecutionPlan
 from app.services.arbitrage_engine import ArbitrageEngine
 from app.services.execution_planner import ExecutionPlanner
 
@@ -63,8 +63,12 @@ async def test_legged_execution_unwinds_on_failure(monkeypatch):
     plan = ExecutionPlan(
         mode=ExecutionMode.LEGGED,
         legs=[
-            ExecutionLeg(venue="venue_a", instrument="BTC-USD", side=OrderSide.BUY, size=1.0),
-            ExecutionLeg(venue="venue_b", instrument="BTC-USD", side=OrderSide.SELL, size=1.0),
+            ExecutionLeg(
+                venue="venue_a", instrument="BTC-USD", side=OrderSide.BUY, size=1.0
+            ),
+            ExecutionLeg(
+                venue="venue_b", instrument="BTC-USD", side=OrderSide.SELL, size=1.0
+            ),
         ],
         max_time_between_legs_ms=10_000,
         unwind_on_fail=True,

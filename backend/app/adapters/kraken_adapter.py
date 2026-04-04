@@ -8,16 +8,17 @@ IMPLEMENTATION STATUS:
 - Known issues: Nonce generation must use monotonically increasing values
 """
 
-import structlog
-import time
 import random
-from typing import Dict, List, Optional
+import time
 from datetime import datetime
+from typing import Dict, List, Optional
 from uuid import uuid4
+
 import httpx
+import structlog
 
 from app.adapters.base import VenueAdapter
-from app.models.domain import Order, OrderStatus, OrderSide, VenueHealth, VenueStatus
+from app.models.domain import Order, OrderSide, OrderStatus, VenueHealth, VenueStatus
 
 logger = structlog.get_logger()
 

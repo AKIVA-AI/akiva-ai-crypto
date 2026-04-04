@@ -51,7 +51,9 @@ class AgentIdentity:
         sig = hmac.new(self._secret, message.encode(), hashlib.sha256).hexdigest()
         return f"{ts}:{sig}"
 
-    def verify_signature(self, sender_agent_id: str, payload: str, signature: str) -> bool:
+    def verify_signature(
+        self, sender_agent_id: str, payload: str, signature: str
+    ) -> bool:
         """Verify a signed message from another agent (delegates to module function)."""
         return verify_agent_signature(sender_agent_id, payload, signature)
 
@@ -62,7 +64,9 @@ def create_agent_identity(agent_id: str, agent_type: str) -> AgentIdentity:
     per_agent_secret = hmac.new(
         master, f"agent-identity:{agent_id}".encode(), hashlib.sha256
     ).digest()
-    return AgentIdentity(agent_id=agent_id, agent_type=agent_type, _secret=per_agent_secret)
+    return AgentIdentity(
+        agent_id=agent_id, agent_type=agent_type, _secret=per_agent_secret
+    )
 
 
 def sign_agent_message(agent_id: str, payload: str) -> str:
@@ -77,9 +81,7 @@ def sign_agent_message(agent_id: str, payload: str) -> str:
     return f"{ts}:{sig}"
 
 
-def verify_agent_signature(
-    claimed_agent_id: str, payload: str, signature: str
-) -> bool:
+def verify_agent_signature(claimed_agent_id: str, payload: str, signature: str) -> bool:
     """
     Verify that a message was signed by the claimed agent.
     Uses deterministic key derivation so any node can verify any agent's signature.

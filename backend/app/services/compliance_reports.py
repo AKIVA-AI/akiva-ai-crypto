@@ -8,8 +8,8 @@ Supports JSON and CSV export for SEC/CPO-PQR style reporting.
 
 import csv
 import io
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, UTC
+from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -146,17 +146,13 @@ class ComplianceReportGenerator:
             )
 
         if report_type in (ReportType.RISK_EVENTS, ReportType.FULL_REGULATORY):
-            report.risk_events = await self._fetch_risk_events(
-                period_start, period_end
-            )
+            report.risk_events = await self._fetch_risk_events(period_start, period_end)
 
         if report_type in (
             ReportType.COMPLIANCE_VIOLATIONS,
             ReportType.FULL_REGULATORY,
         ):
-            report.violations = await self._fetch_violations(
-                period_start, period_end
-            )
+            report.violations = await self._fetch_violations(period_start, period_end)
 
         if report_type in (ReportType.POSITION_SUMMARY, ReportType.FULL_REGULATORY):
             report.position_summary = await self._fetch_position_summary(book_id)
@@ -213,7 +209,9 @@ class ComplianceReportGenerator:
                         records.append(
                             TradingActivityRecord(
                                 timestamp=row.get("created_at", ""),
-                                order_id=details.get("order_id", row.get("resource_id", "")),
+                                order_id=details.get(
+                                    "order_id", row.get("resource_id", "")
+                                ),
                                 symbol=details.get("symbol", ""),
                                 side=details.get("side", ""),
                                 quantity=float(details.get("quantity", 0)),
@@ -263,7 +261,9 @@ class ComplianceReportGenerator:
                                 timestamp=row.get("created_at", ""),
                                 event_type=row.get("action", ""),
                                 severity=row.get("severity", "info"),
-                                description=details.get("description", row.get("action", "")),
+                                description=details.get(
+                                    "description", row.get("action", "")
+                                ),
                                 trigger_value=str(details.get("trigger_value", "")),
                                 threshold=str(details.get("threshold", "")),
                                 action_taken=details.get("action_taken", ""),
@@ -307,7 +307,9 @@ class ComplianceReportGenerator:
                                 timestamp=row.get("created_at", ""),
                                 rule_id=details.get("rule_id", ""),
                                 rule_name=details.get("rule_name", ""),
-                                violation_type=details.get("violation_type", row.get("action", "")),
+                                violation_type=details.get(
+                                    "violation_type", row.get("action", "")
+                                ),
                                 severity=row.get("severity", "warning"),
                                 details=str(details),
                                 user_id=row.get("user_id"),
@@ -354,7 +356,9 @@ class ComplianceReportGenerator:
                                 unrealized_pnl=float(row.get("unrealized_pnl", 0)),
                                 realized_pnl=float(row.get("realized_pnl", 0)),
                                 book_id=row.get("book_id", ""),
-                                concentration_pct=float(row.get("concentration_pct", 0)),
+                                concentration_pct=float(
+                                    row.get("concentration_pct", 0)
+                                ),
                             )
                         )
         except Exception as e:
@@ -402,7 +406,9 @@ class ComplianceReportGenerator:
             "position_summary": [asdict(r) for r in report.position_summary],
         }
 
-    def export_csv(self, report: ComplianceReport, section: str = "trading_activity") -> str:
+    def export_csv(
+        self, report: ComplianceReport, section: str = "trading_activity"
+    ) -> str:
         """Export a report section as CSV string."""
         output = io.StringIO()
 

@@ -3,11 +3,16 @@ Tests for security middleware: headers, HSTS, request validation.
 
 Sprint 0 - Dim 8 (Security) hardening.
 """
+
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
-from starlette.testclient import TestClient
+from app.middleware.security import (
+    RequestValidationMiddleware,
+    SecurityHeadersMiddleware,
+)
 from fastapi import FastAPI
-from app.middleware.security import SecurityHeadersMiddleware, RequestValidationMiddleware
+from starlette.testclient import TestClient
 
 
 def _make_app(production: bool = False) -> FastAPI:

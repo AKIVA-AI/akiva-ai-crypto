@@ -22,6 +22,7 @@ try:
         AuthorityBoundary,
         PermissionScope,
     )
+
     _HAS_CONTRACTS = True
 except ImportError:  # pragma: no cover
     _HAS_CONTRACTS = False
@@ -34,13 +35,13 @@ logger = logging.getLogger(__name__)
 
 # Prefix → (scope, approval_policy)
 _AGENT_TYPE_RULES: dict[str, tuple[str, str]] = {
-    "meta-decision": ("full_access",      "require_approval"),
-    "execution":     ("workspace_write",  "auto"),
-    "risk":          ("workspace_write",  "auto"),
+    "meta-decision": ("full_access", "require_approval"),
+    "execution": ("workspace_write", "auto"),
+    "risk": ("workspace_write", "auto"),
     "capital-allocation": ("workspace_write", "auto"),
-    "arbitrage":     ("workspace_write",  "auto"),
-    "signal":        ("read_only",        "auto"),
-    "freqtrade-signal": ("read_only",     "auto"),
+    "arbitrage": ("workspace_write", "auto"),
+    "signal": ("read_only", "auto"),
+    "freqtrade-signal": ("read_only", "auto"),
     "strategy-lifecycle": ("workspace_write", "auto"),
 }
 

@@ -7,10 +7,10 @@ profitable arbitrage opportunities across multiple strategies.
 
 import asyncio
 import logging
+from datetime import UTC, datetime
 from typing import Dict, List
-from datetime import datetime, UTC
 
-from .base_agent import BaseAgent, AgentChannel, AgentMessage
+from .base_agent import AgentChannel, AgentMessage, BaseAgent
 
 logger = logging.getLogger(__name__)
 

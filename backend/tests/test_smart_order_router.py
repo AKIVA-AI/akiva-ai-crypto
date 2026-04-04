@@ -2,7 +2,6 @@ from datetime import datetime, timedelta
 from unittest.mock import AsyncMock
 
 import pytest
-
 from app.services.smart_order_router import (
     ExecutionAlgorithm,
     SmartOrderRouter,
@@ -59,7 +58,9 @@ async def test_route_order_selects_best_venue(router, monkeypatch):
             )
         ),
     )
-    monkeypatch.setattr(router, "_estimate_price_impact", AsyncMock(return_value=0.0005))
+    monkeypatch.setattr(
+        router, "_estimate_price_impact", AsyncMock(return_value=0.0005)
+    )
     monkeypatch.setattr(router, "_estimate_slippage", AsyncMock(return_value=0.0007))
     monkeypatch.setattr(router, "_estimate_execution_time", AsyncMock(return_value=5))
 
@@ -131,7 +132,9 @@ async def test_select_execution_algorithm_varies_by_participation(router, monkey
         "analyze_market_impact",
         AsyncMock(return_value={"participation_rate": 0.2}),
     )
-    large = await router._select_execution_algorithm("BTC-USD", "buy", 10, venue, {"time_horizon_minutes": 60})
+    large = await router._select_execution_algorithm(
+        "BTC-USD", "buy", 10, venue, {"time_horizon_minutes": 60}
+    )
     assert large.algorithm_type == "vwap"
 
     monkeypatch.setattr(
@@ -156,7 +159,9 @@ async def test_select_execution_algorithm_varies_by_participation(router, monkey
         "analyze_market_impact",
         AsyncMock(return_value={"participation_rate": 0.15}),
     )
-    twap = await router._select_execution_algorithm("BTC-USD", "buy", 10, venue, {"time_horizon_minutes": 15})
+    twap = await router._select_execution_algorithm(
+        "BTC-USD", "buy", 10, venue, {"time_horizon_minutes": 15}
+    )
     assert twap.algorithm_type == "twap"
 
 
@@ -223,11 +228,15 @@ async def test_analyze_market_impact_and_slippage(router, monkeypatch):
         max_order_size=200_000,
     )
     monkeypatch.setattr(router, "_get_venue_liquidity", AsyncMock(return_value=venue))
-    monkeypatch.setattr(router, "_get_market_data", AsyncMock(return_value={"volatility": 0.04}))
+    monkeypatch.setattr(
+        router, "_get_market_data", AsyncMock(return_value={"volatility": 0.04})
+    )
 
     impact = await router.analyze_market_impact("BTC-USD", "buy", 1000, "kraken")
     slippage = await router._estimate_slippage("BTC-USD", "buy", 1000, venue, "market")
-    limit_slippage = await router._estimate_slippage("BTC-USD", "buy", 1000, venue, "limit")
+    limit_slippage = await router._estimate_slippage(
+        "BTC-USD", "buy", 1000, venue, "limit"
+    )
 
     assert impact["total_impact"] > 0
     assert slippage > limit_slippage
@@ -342,7 +351,9 @@ async def test_execute_twap_dispatches_real_slices(router, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_execute_vwap_uses_volume_profile_and_remaining_quantity(router, monkeypatch):
+async def test_execute_vwap_uses_volume_profile_and_remaining_quantity(
+    router, monkeypatch
+):
     sleep_calls = []
 
     async def fake_sleep(seconds):

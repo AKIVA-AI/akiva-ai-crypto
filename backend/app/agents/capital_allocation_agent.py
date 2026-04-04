@@ -7,11 +7,11 @@ It dynamically adjusts allocations based on performance, risk, and regime.
 
 import asyncio
 import logging
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, Optional
-from dataclasses import dataclass
 
-from .base_agent import BaseAgent, AgentChannel, AgentMessage
+from .base_agent import AgentChannel, AgentMessage, BaseAgent
 
 logger = logging.getLogger(__name__)
 

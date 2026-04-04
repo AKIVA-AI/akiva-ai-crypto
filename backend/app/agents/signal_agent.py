@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
-from .base_agent import BaseAgent, AgentChannel, AgentMessage
+from .base_agent import AgentChannel, AgentMessage, BaseAgent
 
 logger = logging.getLogger(__name__)
 

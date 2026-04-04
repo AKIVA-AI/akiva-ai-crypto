@@ -10,12 +10,13 @@ Production-grade reconciliation with:
 """
 
 import asyncio
-import structlog
-from typing import Dict, List, Optional
-from datetime import datetime, timedelta
 from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional
 
-from app.database import get_supabase, audit_log, create_alert
+import structlog
+
+from app.database import audit_log, create_alert, get_supabase
 
 logger = structlog.get_logger()
 

@@ -12,13 +12,17 @@ class TestSentryInit:
         assert result is False
 
     def test_sentry_initializes_with_dsn(self, monkeypatch):
-        monkeypatch.setenv("SENTRY_DSN", "https://examplePublicKey@o0.ingest.sentry.io/0")
+        monkeypatch.setenv(
+            "SENTRY_DSN", "https://examplePublicKey@o0.ingest.sentry.io/0"
+        )
         monkeypatch.setenv("ENVIRONMENT", "test")
         result = init_sentry()
         assert result is True
 
     def test_sentry_respects_sample_rates(self, monkeypatch):
-        monkeypatch.setenv("SENTRY_DSN", "https://examplePublicKey@o0.ingest.sentry.io/0")
+        monkeypatch.setenv(
+            "SENTRY_DSN", "https://examplePublicKey@o0.ingest.sentry.io/0"
+        )
         monkeypatch.setenv("SENTRY_TRACES_SAMPLE_RATE", "0.5")
         monkeypatch.setenv("SENTRY_PROFILES_SAMPLE_RATE", "0.25")
         result = init_sentry()
@@ -68,7 +72,7 @@ class TestHealthMetrics:
         assert "/health" in paths
 
     def test_trade_latency_recording(self):
-        from app.api.health import record_trade_latency, _percentile
+        from app.api.health import _percentile, record_trade_latency
 
         # Record some latencies
         record_trade_latency(0.05)

@@ -2,9 +2,10 @@
 API routes for market data operations.
 """
 
+from datetime import datetime
+
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
-from datetime import datetime
 
 router = APIRouter(prefix="/api/market", tags=["market"])
 

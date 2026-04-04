@@ -13,11 +13,11 @@ NO OTHER CODE should write to the orders table directly.
 
 import logging
 import os
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from decimal import Decimal
+from enum import Enum
 from typing import Any, Dict, Optional
 from uuid import UUID, uuid4
-from enum import Enum
 
 import httpx
 from pydantic import BaseModel, Field

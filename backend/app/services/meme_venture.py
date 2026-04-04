@@ -2,13 +2,14 @@
 Meme Venture Service - Opportunity scoring and project lifecycle.
 """
 
-import structlog
+from datetime import datetime
 from typing import Dict, List, Optional
 from uuid import UUID, uuid4
-from datetime import datetime
 
+import structlog
+
+from app.database import audit_log, create_alert, get_supabase
 from app.models.domain import MemeProjectStage
-from app.database import get_supabase, audit_log, create_alert
 
 logger = structlog.get_logger()
 

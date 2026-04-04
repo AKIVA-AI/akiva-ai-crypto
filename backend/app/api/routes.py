@@ -5,21 +5,21 @@ API Routes - Combined router for all API endpoints
 from fastapi import APIRouter
 
 from . import (
-    trading,
-    risk,
-    venues,
-    meme,
-    system,
     agents,
     arbitrage,
-    market,
-    strategies,
-    websocket,
-    screener,
     backtest,
-    execution,
-    ml_signals,
     compliance,
+    execution,
+    market,
+    meme,
+    ml_signals,
+    risk,
+    screener,
+    strategies,
+    system,
+    trading,
+    venues,
+    websocket,
 )
 
 # Create main API router

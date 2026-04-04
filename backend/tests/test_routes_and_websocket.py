@@ -1,7 +1,6 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from app.api import routes
 from app.api.websocket import (
     ConnectionManager,
@@ -21,7 +20,9 @@ def test_api_router_exposes_expected_routes():
 
 def test_ws_router_uses_ws_prefix():
     assert routes.ws_router.prefix == "/ws"
-    ws_paths = {route.path for route in routes.ws_router.routes if hasattr(route, "path")}
+    ws_paths = {
+        route.path for route in routes.ws_router.routes if hasattr(route, "path")
+    }
     assert "/ws/stream/{stream_type}" in ws_paths
 
 

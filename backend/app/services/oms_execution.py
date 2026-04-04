@@ -5,32 +5,33 @@ IMPORTANT: This is the SINGLE SOURCE OF TRUTH for order writes.
 No other service should write to the orders table.
 """
 
-import structlog
+from datetime import datetime
 from typing import Dict, List, Optional
 from uuid import UUID, uuid4
-from datetime import datetime
 
+import structlog
+
+from app.config import settings
+from app.database import (
+    audit_log,
+    check_kill_switch_for_trading,
+    create_alert,
+    get_supabase,
+)
 from app.models.domain import (
     Order,
     OrderSide,
     OrderStatus,
-    TradeIntent,
     RiskCheckResult,
     RiskDecision,
+    TradeIntent,
     VenueHealth,
 )
-from app.config import settings
-from app.database import (
-    get_supabase,
-    audit_log,
-    create_alert,
-    check_kill_switch_for_trading,
-)
-from app.services.risk_engine import risk_engine
-from app.services.portfolio_engine import portfolio_engine
 from app.services.edge_cost_model import EdgeCostModel
 from app.services.execution_planner import ExecutionPlanner
 from app.services.market_data import market_data_service
+from app.services.portfolio_engine import portfolio_engine
+from app.services.risk_engine import risk_engine
 
 logger = structlog.get_logger()
 

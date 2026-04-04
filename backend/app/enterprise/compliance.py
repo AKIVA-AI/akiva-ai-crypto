@@ -10,10 +10,10 @@ Enterprise compliance features:
 """
 
 import logging
-from typing import Dict, List, Optional, Any, Set
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional, Set
 
 logger = logging.getLogger(__name__)
 

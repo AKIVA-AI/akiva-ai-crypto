@@ -11,10 +11,11 @@ Production-grade technical analysis with proper calculations:
 - Support/Resistance Detection
 """
 
-import numpy as np
-from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Dict, List, Optional, Tuple
+
+import numpy as np
 import structlog
 
 logger = structlog.get_logger()

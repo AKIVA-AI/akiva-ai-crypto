@@ -3,9 +3,12 @@ Tests for enterprise features: compliance, audit, risk limits (D19/D7).
 """
 
 import pytest
-
-from app.enterprise.compliance import ComplianceManager, ComplianceRuleType, ComplianceRule
-from app.enterprise.audit import AuditLogger, AuditEvent, AuditCategory, AuditSeverity
+from app.enterprise.audit import AuditCategory, AuditEvent, AuditLogger, AuditSeverity
+from app.enterprise.compliance import (
+    ComplianceManager,
+    ComplianceRule,
+    ComplianceRuleType,
+)
 
 
 class TestComplianceCheckTrade:

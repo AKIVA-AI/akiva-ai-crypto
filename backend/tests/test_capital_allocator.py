@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from app.services.capital_allocator import CapitalAllocatorService, AllocationConfig
+from app.services.capital_allocator import AllocationConfig, CapitalAllocatorService
 from app.services.regime_detection_service import RegimeState
 
 
@@ -56,7 +56,13 @@ def test_allocator_throttles_drawdown():
     strategies = [{"id": "s1", "strategy_type": "spot"}]
     perf = {"s1": {"sharpe": 0.2, "max_drawdown": 0.2}}
     risk = {"s1": {"correlation_cluster": "directional"}}
-    regime = RegimeState(direction="range_bound", volatility="low_vol", liquidity="normal", risk_bias="neutral", details={})
+    regime = RegimeState(
+        direction="range_bound",
+        volatility="low_vol",
+        liquidity="normal",
+        risk_bias="neutral",
+        details={},
+    )
 
     allocations = CapitalAllocatorService.compute_allocations(
         strategies=strategies,
@@ -88,7 +94,13 @@ def test_allocator_diversifies_by_cluster():
         "s1": {"correlation_cluster": "directional"},
         "s2": {"correlation_cluster": "directional"},
     }
-    regime = RegimeState(direction="range_bound", volatility="low_vol", liquidity="normal", risk_bias="neutral", details={})
+    regime = RegimeState(
+        direction="range_bound",
+        volatility="low_vol",
+        liquidity="normal",
+        risk_bias="neutral",
+        details={},
+    )
 
     allocations = CapitalAllocatorService.compute_allocations(
         strategies=strategies,

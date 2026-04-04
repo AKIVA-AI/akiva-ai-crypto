@@ -7,39 +7,43 @@ Covers:
 - order_gateway.py     (OrderGateway: submit, execute, kill switch, book check, position updates)
 """
 
-import pytest
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
+import pytest
 from app.models.domain import (
     Book,
     BookType,
-    Position,
-    TradeIntent,
     Order,
     OrderSide,
     OrderStatus,
-    RiskDecision,
+    Position,
     RiskCheckResult,
+    RiskDecision,
+    TradeIntent,
     VenueHealth,
     VenueStatus,
 )
-from app.services.portfolio_engine import PortfolioEngine
-from app.services.oms_execution import OMSExecutionService, DataQuality
+from app.services.oms_execution import DataQuality, OMSExecutionService
 from app.services.order_gateway import (
     OrderGateway,
     OrderRequest,
     OrderResult,
-    OrderSide as GatewayOrderSide,
     OrderType,
+)
+from app.services.order_gateway import (
+    OrderSide as GatewayOrderSide,
+)
+from app.services.order_gateway import (
     OrderStatus as GatewayOrderStatus,
 )
-
+from app.services.portfolio_engine import PortfolioEngine
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
+
 
 def _make_book(
     book_type=BookType.PROP,
@@ -294,8 +298,10 @@ class TestOMSReducingOrder:
 
     @pytest.fixture
     def oms(self):
-        with patch("app.services.oms_execution.EdgeCostModel"), \
-             patch("app.services.oms_execution.ExecutionPlanner"):
+        with (
+            patch("app.services.oms_execution.EdgeCostModel"),
+            patch("app.services.oms_execution.ExecutionPlanner"),
+        ):
             return OMSExecutionService()
 
     def test_buy_position_sell_intent_is_reducing(self, oms):
@@ -341,8 +347,10 @@ class TestOMSResolveExecutionPlan:
 
     @pytest.fixture
     def oms(self):
-        with patch("app.services.oms_execution.EdgeCostModel"), \
-             patch("app.services.oms_execution.ExecutionPlanner"):
+        with (
+            patch("app.services.oms_execution.EdgeCostModel"),
+            patch("app.services.oms_execution.ExecutionPlanner"),
+        ):
             return OMSExecutionService()
 
     def test_returns_none_when_no_execution_plan(self, oms):
@@ -433,8 +441,11 @@ class TestOrderGateway:
     # -- submit_order: kill switch ----------------------------------------
 
     @pytest.mark.asyncio
-    async def test_submit_order_rejects_when_kill_switch_active(self, gateway, sample_order):
+    async def test_submit_order_rejects_when_kill_switch_active(
+        self, gateway, sample_order
+    ):
         """Kill switch active -> order rejected."""
+
         async def _kill_switch_active():
             return True
 
@@ -448,8 +459,11 @@ class TestOrderGateway:
     # -- submit_order: book not active ------------------------------------
 
     @pytest.mark.asyncio
-    async def test_submit_order_rejects_when_book_not_active(self, gateway, sample_order):
+    async def test_submit_order_rejects_when_book_not_active(
+        self, gateway, sample_order
+    ):
         """Inactive book -> order rejected."""
+
         async def _no_kill():
             return False
 
@@ -469,6 +483,7 @@ class TestOrderGateway:
     @pytest.mark.asyncio
     async def test_submit_order_happy_path(self, gateway, sample_order):
         """Happy path produces PENDING order."""
+
         async def _no_kill():
             return False
 
@@ -493,6 +508,7 @@ class TestOrderGateway:
     @pytest.mark.asyncio
     async def test_submit_order_db_write_failure(self, gateway, sample_order):
         """Database write failure -> rejected."""
+
         async def _no_kill():
             return False
 
@@ -515,6 +531,7 @@ class TestOrderGateway:
     @pytest.mark.asyncio
     async def test_submit_and_execute_success(self, gateway, sample_order):
         """Successful venue execution returns filled order."""
+
         async def _no_kill():
             return False
 
@@ -541,6 +558,7 @@ class TestOrderGateway:
     @pytest.mark.asyncio
     async def test_submit_and_execute_partial_fill(self, gateway, sample_order):
         """Partial fill returns PARTIALLY_FILLED status."""
+
         async def _no_kill():
             return False
 
@@ -566,6 +584,7 @@ class TestOrderGateway:
     @pytest.mark.asyncio
     async def test_submit_and_execute_failure(self, gateway, sample_order):
         """Venue execution failure -> rejected with error message."""
+
         async def _no_kill():
             return False
 

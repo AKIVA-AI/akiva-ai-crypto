@@ -6,11 +6,12 @@ Provides OHLCV data in FreqTrade-compatible format.
 """
 
 import logging
-from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-import pandas as pd
+from typing import Any, Dict, List, Optional
+
 import numpy as np
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 

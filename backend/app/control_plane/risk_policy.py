@@ -27,6 +27,7 @@ try:
         PolicyDecision,
         PolicyEngine,
     )
+
     _HAS_RUNTIME = True
 except ImportError as _e:  # pragma: no cover
     raise ImportError(
@@ -101,7 +102,9 @@ class PositionLimitPolicy(PolicyAdapter):
                 f"Position limit breached: order size {order_size:,.0f} USD > "
                 f"max {self.max_position_usd:,.0f} USD"
             )
-            logger.warning("PositionLimitPolicy DENY: %s (caller=%s)", reason, ctx.caller_id)
+            logger.warning(
+                "PositionLimitPolicy DENY: %s (caller=%s)", reason, ctx.caller_id
+            )
             return PolicyDecision.deny(reason)
 
         return PolicyDecision.allow(
@@ -139,7 +142,9 @@ class DailyLossPolicy(PolicyAdapter):
                 f"Daily loss limit breached: {daily_loss:,.0f} USD > "
                 f"{self.max_daily_loss_usd:,.0f} USD limit"
             )
-            logger.warning("DailyLossPolicy DENY: %s (caller=%s)", reason, ctx.caller_id)
+            logger.warning(
+                "DailyLossPolicy DENY: %s (caller=%s)", reason, ctx.caller_id
+            )
             return PolicyDecision.deny(reason)
 
         return PolicyDecision.allow(
@@ -174,11 +179,15 @@ def build_risk_engine() -> PolicyEngine:
 
     logger.info(
         "build_risk_engine: VaR=%s, position=%s, daily_loss=%s",
-        max_var_usd, max_position_usd, max_daily_loss_usd,
+        max_var_usd,
+        max_position_usd,
+        max_daily_loss_usd,
     )
 
-    return PolicyEngine([
-        VaRPolicy(max_var_usd=max_var_usd),
-        PositionLimitPolicy(max_position_usd=max_position_usd),
-        DailyLossPolicy(max_daily_loss_usd=max_daily_loss_usd),
-    ])
+    return PolicyEngine(
+        [
+            VaRPolicy(max_var_usd=max_var_usd),
+            PositionLimitPolicy(max_position_usd=max_position_usd),
+            DailyLossPolicy(max_daily_loss_usd=max_daily_loss_usd),
+        ]
+    )

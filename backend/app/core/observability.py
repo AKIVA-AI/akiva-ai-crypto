@@ -29,9 +29,7 @@ def init_sentry() -> bool:
             environment=os.getenv("ENVIRONMENT", "development"),
             release=f"enterprise-crypto@{os.getenv('APP_VERSION', '1.0.0')}",
             traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
-            profiles_sample_rate=float(
-                os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "0.1")
-            ),
+            profiles_sample_rate=float(os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "0.1")),
             integrations=[
                 FastApiIntegration(transaction_style="endpoint"),
                 StarletteIntegration(transaction_style="endpoint"),
@@ -58,10 +56,10 @@ def init_tracing(app) -> bool:
 
     try:
         from opentelemetry import trace
+        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+        from opentelemetry.sdk.resources import SERVICE_NAME, Resource
         from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import BatchSpanProcessor
-        from opentelemetry.sdk.resources import Resource, SERVICE_NAME
-        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
         resource = Resource.create({SERVICE_NAME: service_name})
         provider = TracerProvider(resource=resource)

@@ -17,11 +17,11 @@ from app.api.schemas.backtest_schemas import (
     TradesResponse,
 )
 from app.models.backtest_result import BacktestResult, PerformanceMetrics
+from app.services.cache import TTLCache
 from app.services.institutional_backtester import (
     BacktestConfig,
     InstitutionalBacktester,
 )
-from app.services.cache import TTLCache
 
 logger = logging.getLogger(__name__)
 

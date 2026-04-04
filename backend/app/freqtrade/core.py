@@ -9,10 +9,10 @@ Provides the main interface to FreqTrade functionality:
 """
 
 import logging
-from typing import Optional, Dict, Any
 from dataclasses import dataclass, field
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -87,8 +87,8 @@ class FreqTradeCore:
             ft_config = self._build_config()
 
             # Initialize FreqTrade
-            from freqtrade.freqtradebot import FreqtradeBot  # noqa: F401
             from freqtrade.configuration import Configuration
+            from freqtrade.freqtradebot import FreqtradeBot  # noqa: F401
 
             # Create configuration object
             config_obj = Configuration(

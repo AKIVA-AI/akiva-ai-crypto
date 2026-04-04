@@ -12,24 +12,25 @@ This service coordinates:
 IMPORTANT: Order writes are handled ONLY by OMS to prevent duplicates.
 """
 
-import structlog
 import asyncio
-from typing import Optional, List, Dict
 from datetime import datetime
+from typing import Dict, List, Optional
 from uuid import UUID
 
+import structlog
+
 from app.config import settings
-from app.database import get_supabase, create_alert, audit_log
-from app.models.domain import Book, TradeIntent, RiskDecision, Order, OrderSide
-from app.services.freqtrade_integration import FreqTradeIntegrationHub
-from app.services.risk_engine import risk_engine
-from app.services.oms_execution import oms_service
-from app.services.reconciliation import recon_service
-from app.services.market_data import market_data_service
-from app.services.opportunity_scanner import opportunity_scanner
+from app.database import audit_log, create_alert, get_supabase
+from app.models.domain import Book, Order, OrderSide, RiskDecision, TradeIntent
 from app.services.basis_opportunity_scanner import basis_opportunity_scanner
-from app.services.spot_arb_scanner import spot_arb_scanner
 from app.services.capital_allocator import capital_allocator_service
+from app.services.freqtrade_integration import FreqTradeIntegrationHub
+from app.services.market_data import market_data_service
+from app.services.oms_execution import oms_service
+from app.services.opportunity_scanner import opportunity_scanner
+from app.services.reconciliation import recon_service
+from app.services.risk_engine import risk_engine
+from app.services.spot_arb_scanner import spot_arb_scanner
 
 logger = structlog.get_logger()
 

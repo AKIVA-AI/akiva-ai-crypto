@@ -1,10 +1,9 @@
 import pytest
+from app.api import execution as execution_api
+from app.services.strategy_registry import strategy_registry
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
-
-from app.api import execution as execution_api
-from app.services.strategy_registry import strategy_registry
 
 
 @pytest.fixture
@@ -16,7 +15,9 @@ def client():
         if request.url.path.startswith("/api/v1"):
             auth_header = request.headers.get("Authorization")
             if not auth_header or not auth_header.startswith("Bearer "):
-                return JSONResponse(status_code=401, content={"detail": "Missing or invalid token"})
+                return JSONResponse(
+                    status_code=401, content={"detail": "Missing or invalid token"}
+                )
         return await call_next(request)
 
     app.include_router(execution_api.router, prefix="/api/v1")

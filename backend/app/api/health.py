@@ -10,14 +10,14 @@ Provides:
 
 import time
 from datetime import datetime, timezone
-from typing import Dict, Any
+from typing import Any, Dict
 
+import structlog
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse, PlainTextResponse
-import structlog
 
-from app.database import get_supabase
 from app.config import settings
+from app.database import get_supabase
 
 logger = structlog.get_logger()
 
@@ -202,6 +202,7 @@ async def metrics() -> Dict[str, Any]:
     Returns request count, uptime, memory, trade metrics, and agent status.
     """
     import os
+
     import psutil
 
     process = psutil.Process(os.getpid())
@@ -241,6 +242,7 @@ async def prometheus_metrics() -> PlainTextResponse:
     Exposes key trading platform metrics for Prometheus scraping.
     """
     import os
+
     import psutil
 
     process = psutil.Process(os.getpid())

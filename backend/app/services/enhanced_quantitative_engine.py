@@ -18,20 +18,21 @@ Integration Benefits:
 - Production-ready ML operations
 """
 
+import asyncio
 import logging
+from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime
+from importlib import import_module
+from pathlib import Path
+from typing import Any, Dict
+
 import numpy as np
 import pandas as pd
-from typing import Dict, Any
-from datetime import datetime, UTC
-from pathlib import Path
-import asyncio
-from concurrent.futures import ThreadPoolExecutor
-from importlib import import_module
+from freqtrade.configuration import TimeRange
 
 # FreqTrade FreqAI imports
 from freqtrade.freqai.data_kitchen import FreqaiDataKitchen
 from freqtrade.freqai.freqai_interface import IFreqaiModel
-from freqtrade.configuration import TimeRange
 
 # Local imports
 from app.core.config import settings
@@ -55,9 +56,7 @@ LightGBMRegressor = _load_prediction_model("LightGBMRegressor", "LightGBMRegress
 TensorFlowRegressor = _load_prediction_model(
     "TensorFlowRegressor", "TensorFlowRegressor"
 )
-PyTorchRegressor = _load_prediction_model(
-    "PyTorchMLPRegressor", "PyTorchMLPRegressor"
-)
+PyTorchRegressor = _load_prediction_model("PyTorchMLPRegressor", "PyTorchMLPRegressor")
 
 
 class FreqAIEnhancedEngine:

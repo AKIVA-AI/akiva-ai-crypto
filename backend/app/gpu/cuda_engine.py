@@ -6,9 +6,10 @@ Supports NVIDIA CUDA, Apple Metal, and CPU backends.
 """
 
 import logging
-from typing import Optional, Dict, Any
-from enum import Enum
 from dataclasses import dataclass
+from enum import Enum
+from typing import Any, Dict, Optional
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -132,9 +133,9 @@ class GPUEngine:
 
                 # Try to import RAPIDS
                 try:
-                    import cupy as cp
-                    import cuml
                     import cudf
+                    import cuml
+                    import cupy as cp
 
                     self._cupy = cp
                     self._cuml = cuml

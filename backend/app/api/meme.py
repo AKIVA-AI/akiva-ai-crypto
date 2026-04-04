@@ -2,8 +2,9 @@
 API routes for meme venture management.
 """
 
-from fastapi import APIRouter, HTTPException, Header
-from typing import Optional, List
+from typing import List, Optional
+
+from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 
 from app.database import get_supabase
@@ -80,6 +81,7 @@ async def advance_stage(
 ):
     """Advance project to next stage."""
     from uuid import UUID
+
     from app.models.domain import MemeProjectStage
 
     try:
