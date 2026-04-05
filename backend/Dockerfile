@@ -21,13 +21,16 @@ RUN pip install --no-cache-dir --user -r requirements.txt && \
 # Production stage - minimal image
 FROM python:3.12-slim as production
 
+# Create non-root user for production
+RUN groupadd -r appuser && useradd -r -g appuser -d /app -s /sbin/nologin appuser
+
 WORKDIR /app
 
-# Copy only installed packages from builder stage
-COPY --from=builder /root/.local /root/.local
+# Copy installed packages from builder stage into site-packages
+COPY --from=builder /root/.local /home/appuser/.local
 
 # Copy application
-COPY . .
+COPY --chown=appuser:appuser . .
 
 # Clean up production image
 RUN apt-get clean && \
@@ -35,8 +38,11 @@ RUN apt-get clean && \
     pip cache purge
 
 # Ensure Python uses user site packages
-ENV PATH=/root/.local/bin:$PATH
-ENV PYTHONPATH=/root/.local/lib/python3.12/site-packages:$PYTHONPATH
+ENV PATH=/home/appuser/.local/bin:$PATH
+ENV PYTHONPATH=/home/appuser/.local/lib/python3.12/site-packages:$PYTHONPATH
+
+# Switch to non-root user
+USER appuser
 
 # Run with uvicorn
 EXPOSE 8000

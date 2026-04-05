@@ -94,6 +94,27 @@ jobs:
         working-directory: backend
         run: docker build -t enterprise-crypto-backend .
 
+      - name: Scan container image (Trivy)
+        if: matrix.python-version == '3.12'
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+          trivy image --exit-code 1 --severity CRITICAL,HIGH --ignore-unfixed enterprise-crypto-backend
+
+      - name: Generate SBOM (Syft)
+        if: matrix.python-version == '3.12'
+        uses: anchore/sbom-action@v0
+        with:
+          image: enterprise-crypto-backend
+          format: cyclonedx-json
+          output-file: sbom.cdx.json
+
+      - name: Upload SBOM artifact
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v7
+        with:
+          name: sbom
+          path: backend/sbom.cdx.json
+
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest

@@ -1,5 +1,13 @@
 # Security Policy
 
+## Supported Versions
+
+| Version | Supported |
+| ------- | --------- |
+| latest (main branch) | Yes |
+| Tagged releases | Yes (most recent) |
+| Older releases | No |
+
 ## Reporting a Vulnerability
 
 If you discover a security vulnerability, **please do not open a public issue**.
