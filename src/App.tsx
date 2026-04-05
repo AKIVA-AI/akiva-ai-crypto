@@ -37,6 +37,7 @@ const Auth = lazy(() => import("./pages/Auth"));
 const UpdatePassword = lazy(() => import("./pages/UpdatePassword"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const MultiExchangeDemo = lazy(() => import("./pages/MultiExchangeDemo"));
+const Onboarding = lazy(() => import("./pages/Onboarding"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -71,6 +72,7 @@ const App = () => (
                         <Routes>
                           <Route path="/auth" element={<Auth />} />
                           <Route path="/update-password" element={<UpdatePassword />} />
+                          <Route path="/onboarding" element={<Onboarding />} />
                           <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
                           <Route path="/agents" element={<ProtectedRoute><Agents /></ProtectedRoute>} />
                           <Route path="/strategies" element={<ProtectedRoute><Strategies /></ProtectedRoute>} />
