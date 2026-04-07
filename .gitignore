@@ -56,3 +56,10 @@ __pycache__/
 *.pyc
 *.pyo
 supabase/.temp/
+
+# RADAR healing outcomes (per-repo runtime state)
+.radar/
+
+# Coverage cache
+backend/.coverage
+.coverage
