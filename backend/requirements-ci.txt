@@ -9,7 +9,7 @@ python-multipart==0.0.22
 # Database
 asyncpg==0.29.0
 supabase==2.3.4
-python-dotenv==1.0.1
+python-dotenv==1.2.2
 
 # Redis (for agent pub/sub)
 redis==5.0.1
