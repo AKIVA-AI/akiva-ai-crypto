@@ -40,7 +40,7 @@ structlog==24.1.0
 cryptography==46.0.7  # CVE-2026-39892 (buffer overflow on non-contiguous Hash.update buffers, Python >3.11)
 
 # System monitoring
-psutil==5.9.8
+psutil==7.2.2
 
 # Advanced analytics and risk management
 scipy>=1.13.0
