@@ -1,5 +1,5 @@
 # FastAPI and server
-fastapi==0.121.3
+fastapi==0.136.1
 uvicorn[standard]==0.27.1
 python-multipart==0.0.26  # CVE-2026-40347 (DoS via crafted multipart preamble/epilogue)
 
