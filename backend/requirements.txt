@@ -34,7 +34,7 @@ pytest-asyncio==0.23.4
 pytest-cov==4.1.0
 
 # Logging
-structlog==24.1.0
+structlog==25.5.0
 
 # Security and encryption
 cryptography==46.0.7  # CVE-2026-39892 (buffer overflow on non-contiguous Hash.update buffers, Python >3.11)
