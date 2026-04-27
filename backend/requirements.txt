@@ -57,7 +57,7 @@ freqtrade>=2023.12
 # Machine Learning - GPU Accelerated
 lightgbm>=4.0.0
 xgboost>=2.0.0
-catboost>=1.2.0
+catboost>=1.2.10
 torch>=2.0.0
 
 # Technical Analysis
