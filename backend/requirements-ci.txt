@@ -8,7 +8,7 @@ python-multipart==0.0.26  # CVE-2026-40347 (DoS via crafted multipart preamble/e
 
 # Database
 asyncpg==0.29.0
-supabase==2.3.4
+supabase==2.29.0
 python-dotenv==1.2.2  # CVE-2026-28684 (symlink overwrite via cross-device rename)
 
 # Redis (for agent pub/sub)
